@@ -31,6 +31,7 @@ under the License.
     <form method="post" action="<@ofbizUrl>login</@ofbizUrl>" name="loginform">
       <input type="hidden" name="requirePasswordChange" value="Y"/>
       <input type="hidden" name="USERNAME" value="${username}"/>
+      <input type="hidden" name="TOKEN" value="${parameters.TOKEN!}"/>
       <input type="hidden" name="userTenantId" value="${tenantId}"/>
       <input type="hidden" name="forgotPwdFlag" value="${parameters.forgotPwdFlag!}" />
       <table cellspacing="0">
@@ -38,23 +39,23 @@ under the License.
           <td class="label">${uiLabelMap.CommonUsername}</td>
           <td>${username}</td>
         </tr>
-        <#if forgotPwdFlag?has_content && forgotPwdFlag?string == "true">
+        <#if forgotPwdFlag?has_content && "true" == forgotPwdFlag?string>
           <tr>
             <td><input type="hidden" name="PASSWORD" value="${parameters.password!}" size="20"/></td>
           </tr>
         <#else>
           <tr>
             <td class="label">${uiLabelMap.CommonCurrentPassword}</td>
-            <td><input type="password" name="PASSWORD" value="" size="20" /></td>
+            <td><input type="password" name="PASSWORD" autocomplete="off" value="" size="20" /></td>
           </tr>
         </#if>
         <tr>
           <td class="label">${uiLabelMap.CommonNewPassword}</td>
-          <td><input type="password" name="newPassword" value="" size="20"/></td>
+          <td><input type="password" name="newPassword" autocomplete="off" value="" size="20"/></td>
         </tr>
         <tr>
           <td class="label">${uiLabelMap.CommonNewPasswordVerify}</td>
-          <td><input type="password" name="newPasswordVerify" value="" size="20"/></td>
+          <td><input type="password" name="newPasswordVerify" autocomplete="off" value="" size="20"/></td>
         </tr>
         <#if securityQuestion?has_content>
           <tr>
@@ -80,6 +81,6 @@ under the License.
 </div>
 </center>
 
-<script language="JavaScript" type="text/javascript">
+<script type="application/javascript">
   document.loginform.PASSWORD.focus();
 </script>

@@ -18,7 +18,7 @@
  */
 
 
-import org.apache.ofbiz.base.util.*
+import org.apache.ofbiz.base.util.ObjectType
 
 if (security.hasEntityPermission("MANUFACTURING", "_VIEW", session)) {
     context.hasPermission = Boolean.TRUE
@@ -44,7 +44,7 @@ calendarExceptionWeeks.each { calendarExceptionWeek ->
 }
 
 exceptionDateStart = parameters.exceptionDateStart ?: request.getAttribute("exceptionDateStart")
-exceptionDateStart = ObjectType.simpleTypeConvert(exceptionDateStart, "java.sql.Date", null, null)
+exceptionDateStart = ObjectType.simpleTypeOrObjectConvert(exceptionDateStart, "java.sql.Date", null, null)
 
 if (exceptionDateStart) {
     calendarExceptionWeek = from("TechDataCalendarExcWeek").where("calendarId", calendarId , "exceptionDateStart", exceptionDateStart).queryOne()

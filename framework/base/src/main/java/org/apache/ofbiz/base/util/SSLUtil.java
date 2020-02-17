@@ -19,10 +19,12 @@
 package org.apache.ofbiz.base.util;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.Principal;
 import java.security.SecureRandom;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
@@ -67,6 +69,7 @@ public final class SSLUtil {
 
     private static class TrustAnyManager implements X509TrustManager {
 
+        @Override
         public void checkClientTrusted(X509Certificate[] certs, String string) throws CertificateException {
             Debug.logImportant("Trusting (un-trusted) client certificate chain:", module);
             for (X509Certificate cert: certs) {
@@ -75,6 +78,7 @@ public final class SSLUtil {
             }
         }
 
+        @Override
         public void checkServerTrusted(X509Certificate[] certs, String string) throws CertificateException {
             Debug.logImportant("Trusting (un-trusted) server certificate chain:", module);
             for (X509Certificate cert: certs) {
@@ -82,6 +86,7 @@ public final class SSLUtil {
             }
         }
 
+        @Override
         public X509Certificate[] getAcceptedIssuers() {
             return new X509Certificate[0];
         }
@@ -104,23 +109,17 @@ public final class SSLUtil {
         TrustManager[] mgrs = new TrustManager[0];
         try {
             mgrs = SSLUtil.getTrustManagers();
-        } catch (IOException e) {
-            Debug.logError(e, module);
-        } catch (GeneralSecurityException e) {
-            Debug.logError(e, module);
-        } catch (GenericConfigException e) {
+        } catch (IOException | GeneralSecurityException | GenericConfigException e) {
             Debug.logError(e, module);
         }
 
-        if (mgrs != null) {
-            for (TrustManager mgr: mgrs) {
-                if (mgr instanceof X509TrustManager) {
-                    try {
-                        ((X509TrustManager) mgr).checkClientTrusted(chain, authType);
-                        return true;
-                    } catch (CertificateException e) {
-                        // do nothing; just loop
-                    }
+        for (TrustManager mgr : mgrs) {
+            if (mgr instanceof X509TrustManager) {
+                try {
+                    ((X509TrustManager) mgr).checkClientTrusted(chain, authType);
+                    return true;
+                } catch (CertificateException e) {
+                    Debug.logError(e, module);
                 }
             }
         }
@@ -128,14 +127,18 @@ public final class SSLUtil {
     }
 
     public static KeyManager[] getKeyManagers(String alias) throws IOException, GeneralSecurityException, GenericConfigException {
-        List<KeyManager> keyMgrs = new LinkedList<KeyManager>();
+        List<KeyManager> keyMgrs = new LinkedList<>();
         for (ComponentConfig.KeystoreInfo ksi: ComponentConfig.getAllKeystoreInfos()) {
             if (ksi.isCertStore()) {
                 KeyStore ks = ksi.getKeyStore();
                 if (ks != null) {
                     List<KeyManager> newKeyManagers = Arrays.asList(getKeyManagers(ks, ksi.getPassword(), alias));
                     keyMgrs.addAll(newKeyManagers);
-                    if (Debug.verboseOn()) Debug.logVerbose("Loaded another cert store, adding [" + (newKeyManagers == null ? "0" : newKeyManagers.size()) + "] KeyManagers for alias [" + alias + "] and keystore: " + ksi.createResourceHandler().getFullLocation(), module);
+                    if (Debug.verboseOn()) {
+                        Debug.logVerbose("Loaded another cert store, adding [" + newKeyManagers.size()
+                                + "] KeyManagers for alias [" + alias + "] and keystore: " + ksi.createResourceHandler()
+                                        .getFullLocation(), module);
+                    }
                 } else {
                     throw new IOException("Unable to load keystore: " + ksi.createResourceHandler().getFullLocation());
                 }
@@ -188,7 +191,7 @@ public final class SSLUtil {
         return keyManagers;
     }
 
-    public static TrustManager[] getTrustManagers(KeyStore ks) throws GeneralSecurityException {
+    public static TrustManager[] getTrustManagers(KeyStore ks) {
         return new TrustManager[] { new MultiTrustManager(ks) };
     }
 
@@ -248,24 +251,28 @@ public final class SSLUtil {
         switch (level) {
             case HOSTCERT_MIN_CHECK:
                 return new HostnameVerifier() {
+                    @Override
                     public boolean verify(String hostname, SSLSession session) {
-                        javax.security.cert.X509Certificate[] peerCerts;
+                        Certificate[] peerCerts;
                         try {
-                            peerCerts = session.getPeerCertificateChain();
+                            peerCerts = session.getPeerCertificates();
                         } catch (SSLPeerUnverifiedException e) {
                             // cert not verified
                             Debug.logWarning(e.getMessage(), module);
                             return false;
                         }
-                        for (javax.security.cert.X509Certificate peerCert: peerCerts) {
-                            Principal x500s = peerCert.getSubjectDN();
-                            Map<String, String> subjectMap = KeyStoreUtil.getX500Map(x500s);
-
-                            if (Debug.infoOn())
-                                Debug.logInfo(peerCert.getSerialNumber().toString(16) + " :: " + subjectMap.get("CN"), module);
-
+                        for (Certificate peerCert : peerCerts) {
                             try {
-                                peerCert.checkValidity();
+                                Principal x500s = session.getPeerPrincipal();
+                                Map<String, String> subjectMap = KeyStoreUtil.getX500Map(x500s);
+                                if (Debug.infoOn()) {
+                                    byte[] encodedCert = peerCert.getEncoded();
+                                    Debug.logInfo(new BigInteger(encodedCert).toString(16)
+                                            + " :: " + subjectMap.get("CN"), module);
+                                }
+                                peerCert.verify(peerCert.getPublicKey());
+                            } catch (RuntimeException e) {
+                                throw e;
                             } catch (Exception e) {
                                 // certificate not valid
                                 Debug.logWarning("Certificate is not valid!", module);
@@ -277,6 +284,7 @@ public final class SSLUtil {
                 };
             case HOSTCERT_NO_CHECK:
                 return new HostnameVerifier() {
+                    @Override
                     public boolean verify(String hostname, SSLSession session) {
                         return true;
                     }
@@ -296,16 +304,16 @@ public final class SSLUtil {
             String proxyHost = UtilProperties.getPropertyValue("jsse", "https.proxyHost", "NONE");
             String proxyPort = UtilProperties.getPropertyValue("jsse", "https.proxyPort", "NONE");
             String cypher = UtilProperties.getPropertyValue("jsse", "https.cipherSuites", "NONE");
-            if (protocol != null && !protocol.equals("NONE")) {
+            if (protocol != null && !"NONE".equals(protocol)) {
                 System.setProperty("java.protocol.handler.pkgs", protocol);
             }
-            if (proxyHost != null && !proxyHost.equals("NONE")) {
+            if (proxyHost != null && !"NONE".equals(proxyHost)) {
                 System.setProperty("https.proxyHost", proxyHost);
             }
-            if (proxyPort != null && !proxyPort.equals("NONE")) {
+            if (proxyPort != null && !"NONE".equals(proxyPort)) {
                 System.setProperty("https.proxyPort", proxyPort);
             }
-            if (cypher != null && !cypher.equals("NONE")) {
+            if (cypher != null && !"NONE".equals(cypher)) {
                 System.setProperty("https.cipherSuites", cypher);
             }
 

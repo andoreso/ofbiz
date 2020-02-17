@@ -92,9 +92,9 @@ under the License.
         <permission-service service-name="returnPermissionCheck" main-action="DELETE"/>
         <auto-attributes entity-name="ReturnItem" include="pk" mode="IN" optional="false"/>
     </service>
-    <service name="createReturnItemResponse" engine="entity-auto" invoke="create">
+    <service name="createReturnItemResponse" engine="entity-auto" invoke="create" default-entity-name="ReturnItemResponse">
             <description>Creates a ReturnItemResponse record.</description>
-        <auto-attributes entity-name="ReturnItemResponse" include="nonpk" mode="IN" optional="true"/>
+        <auto-attributes include="nonpk" mode="IN" optional="true"/>
         <attribute name="returnItemResponseId" type="String" mode="OUT" optional="false"/>
     </service>
     <service name="createPaymentApplicationsFromReturnItemResponse" engine="java"
@@ -473,5 +473,14 @@ under the License.
     <service name="deleteReturnType" engine="entity-auto" invoke="delete" default-entity-name="ReturnType" auth="true">
         <description>Delete a ReturnType record</description>
         <auto-attributes include="pk" mode="IN"/>
+    </service>
+    
+    <service name="createCommunicationEventReturn" default-entity-name="CommunicationEventReturn" engine="entity-auto" invoke="create" auth="true">
+        <description>Create a Communication Event Return</description>
+        <auto-attributes entity-name="CommunicationEventReturn" include="pk" mode="IN"/>
+    </service>
+    <service name="removeCommunicationEventReturn" default-entity-name="CommunicationEventReturn" engine="entity-auto" invoke="delete" auth="true">
+        <description>Remove a Communication Event Return</description>
+        <auto-attributes entity-name="CommunicationEventReturn" include="pk" mode="IN"/>
     </service>
 </services>

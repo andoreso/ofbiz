@@ -19,7 +19,6 @@
 package org.apache.ofbiz.minilang;
 
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -62,7 +61,7 @@ public final class MiniLangUtil {
     private static final Set<String> SCRIPT_PREFIXES;
 
     static {
-        Set<String> scriptPrefixes = new HashSet<String>();
+        Set<String> scriptPrefixes = new HashSet<>();
         for (String scriptName : ScriptUtil.SCRIPT_NAMES) {
             scriptPrefixes.add(scriptName.concat(":"));
         }
@@ -172,7 +171,7 @@ public final class MiniLangUtil {
         Converter<Object, Object> converter = (Converter<Object, Object>) Converters.getConverter(sourceClass, targetClass);
         LocalizedConverter<Object, Object> localizedConverter = null;
         if (converter instanceof LocalizedConverter) {
-            localizedConverter = (LocalizedConverter) converter;
+            localizedConverter = (LocalizedConverter<Object, Object>) converter;
             if (locale == null) {
                 locale = Locale.getDefault();
             }
@@ -283,40 +282,22 @@ public final class MiniLangUtil {
      */
     public static void writeMiniLangDocument(URL xmlURL, Document document) {
         URL styleSheetURL = null;
-        InputStream styleSheetInStream = null;
         Transformer transformer = null;
         try {
             styleSheetURL = FlexibleLocation.resolveLocation("component://minilang/config/MiniLang.xslt");
-            styleSheetInStream = styleSheetURL.openStream();
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            try (InputStream styleSheetInStream = styleSheetURL.openStream()) {
             transformer = transformerFactory.newTransformer(new StreamSource(styleSheetInStream));
+            }
         } catch (Exception e) {
             Debug.logWarning(e, "Error reading minilang/config/MiniLang.xslt: ", module);
             return;
-        } finally {
-            if (styleSheetInStream != null) {
-                try {
-                    styleSheetInStream.close();
-                } catch (IOException e) {
-                    Debug.logWarning(e, "Error closing minilang/config/MiniLang.xslt: ", module);
-                }
-            }
         }
-        FileOutputStream fos = null;
-        try {
-            fos = new FileOutputStream(xmlURL.getFile());
+        try (FileOutputStream fos = new FileOutputStream(xmlURL.getFile())) {
             UtilXml.transformDomDocument(transformer, document, fos);
             Debug.logInfo("Saved Mini-language file " + xmlURL, module);
         } catch (Exception e) {
             Debug.logWarning(e, "Error writing mini-language file " + xmlURL + ": ", module);
-        } finally {
-            if (fos != null) {
-                try {
-                    fos.close();
-                } catch (IOException e) {
-                    Debug.logWarning(e, "Error closing " + xmlURL + ": ", module);
-                }
-            }
         }
     }
 

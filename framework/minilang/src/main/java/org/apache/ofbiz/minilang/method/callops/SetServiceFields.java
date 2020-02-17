@@ -41,7 +41,7 @@ import org.w3c.dom.Element;
 /**
  * Implements the &lt;set-service-fields&gt; element.
  * 
- * @see <a href="https://cwiki.apache.org/confluence/display/OFBADMIN/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
+ * @see <a href="https://cwiki.apache.org/confluence/display/OFBIZ/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
  */
 public final class SetServiceFields extends MethodOperation {
 
@@ -100,10 +100,10 @@ public final class SetServiceFields extends MethodOperation {
         }
         Map<String, Object> toMap = toMapFma.get(methodContext.getEnvMap());
         if (toMap == null) {
-            toMap = new HashMap<String, Object>();
+            toMap = new HashMap<>();
             toMapFma.put(methodContext.getEnvMap(), toMap);
         }
-        List<Object> errorMessages = new LinkedList<Object>();
+        List<Object> errorMessages = new LinkedList<>();
         Map<String, Object> validAttributes = modelService.makeValid(fromMap, mode, true, errorMessages, methodContext.getTimeZone(), methodContext.getLocale());
         if (errorMessages.size() > 0) {
             for (Object obj : errorMessages) {

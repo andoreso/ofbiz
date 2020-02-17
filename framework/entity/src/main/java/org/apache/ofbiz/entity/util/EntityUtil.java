@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.UtilDateTime;
@@ -49,6 +50,8 @@ import org.apache.ofbiz.entity.condition.EntityDateFilterCondition;
 import org.apache.ofbiz.entity.condition.OrderByList;
 import org.apache.ofbiz.entity.model.ModelField;
 
+import static java.util.stream.Collectors.toList;
+
 /**
  * Helper methods when dealing with Entities, especially ones that follow certain conventions
  */
@@ -60,15 +63,19 @@ public final class EntityUtil {
 
     @SafeVarargs
     public static <V> Map<String, V> makeFields(V... args) {
-        Map<String, V> fields = new HashMap<String, V>();
+        Map<String, V> fields = new HashMap<>();
         if (args != null) {
             for (int i = 0; i < args.length;) {
-                if (!(args[i] instanceof String)) throw new IllegalArgumentException("Key(" + i + "), with value(" + args[i] + ") is not a String.");
-                String key = (String) args[i];
+                V keyValue = args[i];
+                if (!(keyValue instanceof String)) throw new IllegalArgumentException("Key(" + i + "), with value(" + args[i] + ") is not a String.");
+                String key = (String) keyValue;
                 i++;
-                if (!(args[i] instanceof Comparable<?>)) throw new IllegalArgumentException("Value(" + i + "), with value(" + args[i] + ") does not implement Comparable.");
-                if (!(args[i] instanceof Serializable)) throw new IllegalArgumentException("Value(" + i + "), with value(" + args[i] + ") does not implement Serializable.");
-                fields.put(key, args[i]);
+                V value = args[i];
+                if (value != null) {
+                    if (! (value instanceof Comparable<?>)) throw new IllegalArgumentException("Value(" + i + "), with value(" + args[i] + ") does not implement Comparable.");
+                    if (! (value instanceof Serializable)) throw new IllegalArgumentException("Value(" + i + "), with value(" + args[i] + ") does not implement Serializable.");
+                }
+                fields.put(key, value);
                 i++;
             }
         }
@@ -194,7 +201,7 @@ public final class EntityUtil {
         if (fromDateName == null) fromDateName = "fromDate";
         if (thruDateName == null) thruDateName = "thruDate";
 
-        List<T> result = new LinkedList<T>();
+        List<T> result = new LinkedList<>();
         Iterator<T> iter = datedValues.iterator();
 
         if (allAreSame) {
@@ -248,13 +255,8 @@ public final class EntityUtil {
     public static boolean isValueActive(GenericValue datedValue, java.sql.Timestamp moment, String fromDateName, String thruDateName) {
         java.sql.Timestamp fromDate = datedValue.getTimestamp(fromDateName);
         java.sql.Timestamp thruDate = datedValue.getTimestamp(thruDateName);
-
-        if ((thruDate == null || thruDate.after(moment)) && (fromDate == null || fromDate.before(moment) || fromDate.equals(moment))) {
-            return true;
-        } else {
-            // else not active at moment
-            return false;
-        }
+        return (thruDate == null || thruDate.after(moment)) &&
+                (fromDate == null || fromDate.before(moment) || fromDate.equals(moment));
     }
 
     /**
@@ -265,21 +267,10 @@ public final class EntityUtil {
      *@return List of GenericValue's that match the values in fields
      */
     public static <T extends GenericEntity> List<T> filterByAnd(List<T> values, Map<String, ? extends Object> fields) {
-        if (values == null) return null;
-
-        List<T> result = null;
-        if (UtilValidate.isEmpty(fields)) {
-            result = new LinkedList<T>();
-            result.addAll(values);
-        } else {
-            result = new LinkedList<T>();
-            for (T value: values) {
-                if (value.matchesFields(fields)) {
-                    result.add(value);
-                }// else did not match
-            }
+        if (values == null || UtilValidate.isEmpty(fields)) {
+            return values;
         }
-        return result;
+        return values.stream().filter(value -> value.matchesFields(fields)).collect(toList());
     }
 
     /**
@@ -290,25 +281,13 @@ public final class EntityUtil {
      *@return List of GenericValue's that match the values in fields
      */
     public static <T extends GenericEntity> List<T> filterByAnd(List<T> values, List<? extends EntityCondition> exprs) {
-        if (values == null) return null;
-        if (UtilValidate.isEmpty(exprs)) {
-            // no constraints... oh well
+        if (values == null || UtilValidate.isEmpty(exprs)) {
             return values;
         }
 
-        List<T> result = new LinkedList<T>();
-        for (T value: values) {
-            boolean include = true;
-
-            for (EntityCondition condition: exprs) {
-                include = condition.entityMatches(value);
-                if (!include) break;
-            }
-            if (include) {
-                result.add(value);
-            }
-        }
-        return result;
+        return values.stream()
+                .filter(value -> exprs.stream().allMatch(condition -> condition.entityMatches(value)))
+                .collect(toList());
     }
 
     /**
@@ -319,24 +298,13 @@ public final class EntityUtil {
      *@return List of GenericValue's that match the values in fields
      */
     public static <T extends GenericEntity> List<T> filterByOr(List<T> values, List<? extends EntityCondition> exprs) {
-        if (values == null) return null;
-        if (UtilValidate.isEmpty(exprs)) {
+        if (values == null || UtilValidate.isEmpty(exprs)) {
             return values;
         }
 
-        List<T> result = new LinkedList<T>();
-        for (T value: values) {
-            boolean include = false;
-
-            for (EntityCondition condition: exprs) {
-                include = condition.entityMatches(value);
-                if (include) break;
-            }
-            if (include) {
-                result.add(value);
-            }
-        }
-        return result;
+        return values.stream()
+                .filter(value -> exprs.stream().anyMatch(condition -> condition.entityMatches(value)))
+                .collect(toList());
     }
     
     /**
@@ -350,11 +318,11 @@ public final class EntityUtil {
      */
     public static <T extends GenericEntity> List<T> localizedOrderBy(Collection<T> values, List<String> orderBy, Locale locale) {
         if (values == null) return null;
-        if (values.isEmpty()) return new ArrayList<T>();
+        if (values.isEmpty()) return new ArrayList<>();
         //force check entity label before order by
-        List<T> localizedValues = new ArrayList<T>();
+        List<T> localizedValues = new ArrayList<>();
         for (T value : values) {
-            T newValue = (T) value.clone();
+            T newValue = UtilGenerics.cast(value.clone());
             for (String orderByField : orderBy) {
                 if (orderByField.endsWith(" DESC")) {
                     orderByField= orderByField.substring(0, orderByField.length() - 5);
@@ -381,14 +349,14 @@ public final class EntityUtil {
      */
     public static <T extends GenericEntity> List<T> orderBy(Collection<T> values, List<String> orderBy) {
         if (values == null) return null;
-        if (values.isEmpty()) return new ArrayList<T>();
+        if (values.isEmpty()) return new ArrayList<>();
         if (UtilValidate.isEmpty(orderBy)) {
-            List<T> newList = new ArrayList<T>();
+            List<T> newList = new ArrayList<>();
             newList.addAll(values);
             return newList;
         }
 
-        List<T> result = new ArrayList<T>();
+        List<T> result = new ArrayList<>();
         result.addAll(values);
         if (Debug.verboseOn()) Debug.logVerbose("Sorting " + values.size() + " values, orderBy=" + orderBy.toString(), module);
         Collections.sort(result, new OrderByList(orderBy));
@@ -407,7 +375,7 @@ public final class EntityUtil {
     public static List<GenericValue> getRelated(String relationName, Map<String, ? extends Object> fields, List<GenericValue> values, boolean useCache) throws GenericEntityException {
         if (values == null) return null;
 
-        List<GenericValue> result = new LinkedList<GenericValue>();
+        List<GenericValue> result = new LinkedList<>();
         for (GenericValue value: values) {
             result.addAll(value.getRelated(relationName, fields, null, useCache));
         }
@@ -415,27 +383,17 @@ public final class EntityUtil {
     }
 
     public static <T extends GenericEntity> List<T> filterByCondition(List<T> values, EntityCondition condition) {
-        if (values == null) return null;
-
-        List<T> result = new LinkedList<T>();
-        for (T value: values) {
-            if (condition.entityMatches(value)) {
-                result.add(value);
-            }
+        if (values == null || UtilValidate.isEmpty(condition)) {
+            return values;
         }
-        return result;
+        return values.stream().filter(value -> condition.entityMatches(value)).collect(toList());
     }
 
     public static <T extends GenericEntity> List<T> filterOutByCondition(List<T> values, EntityCondition condition) {
-        if (values == null) return null;
-
-        List<T> result = new LinkedList<T>();
-        for (T value: values) {
-            if (!condition.entityMatches(value)) {
-                result.add(value);
-            }
+        if (values == null || UtilValidate.isEmpty(condition)) {
+            return values;
         }
-        return result;
+        return values.stream().filter(value -> !condition.entityMatches(value)).collect(toList());
     }
 
     public static List<GenericValue> findDatedInclusionEntity(Delegator delegator, String entityName, Map<String, ? extends Object> search) throws GenericEntityException {
@@ -459,7 +417,7 @@ public final class EntityUtil {
             search = null;
             for (GenericValue entity: entities) {
                 if (now.equals(entity.get("fromDate"))) {
-                    search = new HashMap<String, Object>();
+                    search = new HashMap<>();
                     for (Map.Entry<String, ? super Object> entry: entity.getPrimaryKey().entrySet()) {
                         search.put(entry.getKey(), entry.getValue());
                     }
@@ -470,14 +428,14 @@ public final class EntityUtil {
                 entity.store();
             }
             if (search == null) {
-                search = new HashMap<String, Object>();
+                search = new HashMap<>();
                 search.putAll(EntityUtil.getFirst(entities));
             }
         } else {
             /* why is this being done? leaving out for now...
             search = new HashMap(search);
             */
-            search = new HashMap<String, Object>();
+            search = new HashMap<>();
             search.putAll(find);
         }
         if (now.equals(search.get("fromDate"))) {
@@ -505,37 +463,23 @@ public final class EntityUtil {
         if (genericValueList == null || fieldName == null) {
             return null;
         }
-        List<T> fieldList = new LinkedList<T>();
-        Set<T> distinctSet = null;
+
+        Stream<T> fieldListStream = genericValueList.stream().map(genericValue -> UtilGenerics.cast(genericValue.get(fieldName)));
         if (distinct) {
-            distinctSet = new HashSet<T>();
+            return fieldListStream.distinct().collect(toList());
+        } else {
+            return fieldListStream.collect(toList());
         }
-
-        for (GenericValue value: genericValueList) {
-            T fieldValue = UtilGenerics.<T>cast(value.get(fieldName));
-            if (fieldValue != null) {
-                if (distinct) {
-                    if (!distinctSet.contains(fieldValue)) {
-                        fieldList.add(fieldValue);
-                        distinctSet.add(fieldValue);
-                    }
-                } else {
-                    fieldList.add(fieldValue);
-                }
-            }
-        }
-
-        return fieldList;
     }
 
     public static <T> List<T> getFieldListFromEntityListIterator(EntityListIterator genericValueEli, String fieldName, boolean distinct) {
         if (genericValueEli == null || fieldName == null) {
             return null;
         }
-        List<T> fieldList = new LinkedList<T>();
+        List<T> fieldList = new LinkedList<>();
         Set<T> distinctSet = null;
         if (distinct) {
-            distinctSet = new HashSet<T>();
+            distinctSet = new HashSet<>();
         }
 
         GenericValue value = null;
@@ -572,10 +516,7 @@ public final class EntityUtil {
      * @see EntityUtil#getPagedList
      */
     public static int getStartIndexFromViewIndex(int viewIndex, int viewSize) {
-        if (viewIndex == 0) {
-            return 1;
-        }
-        return (viewIndex * viewSize) + 1;
+        return viewIndex == 0 ? 1 : (viewIndex * viewSize) + 1;
     }
 
     /**
@@ -600,7 +541,7 @@ public final class EntityUtil {
             endIndex = size;
         }
 
-        return new PagedList<GenericValue>(startIndex, endIndex, size, viewIndex, viewSize, dataItems);
+        return new PagedList<>(startIndex, endIndex, size, viewIndex, viewSize, dataItems);
     }
 
 }

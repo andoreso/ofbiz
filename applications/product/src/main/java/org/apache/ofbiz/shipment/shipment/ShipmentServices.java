@@ -19,6 +19,7 @@
 package org.apache.ofbiz.shipment.shipment;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -60,14 +61,14 @@ public class ShipmentServices {
     public static final String resource = "ProductUiLabels";
     public static final String resource_error = "OrderErrorUiLabels";
     public static final int decimals = UtilNumber.getBigDecimalScale("order.decimals");
-    public static final int rounding = UtilNumber.getBigDecimalRoundingMode("order.rounding");
+    public static final RoundingMode rounding = UtilNumber.getRoundingMode("order.rounding");
     public static final BigDecimal ZERO = BigDecimal.ZERO.setScale(decimals, rounding);
 
     public static Map<String, Object> createShipmentEstimate(DispatchContext dctx, Map<String, ? extends Object> context) {
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         Delegator delegator = dctx.getDelegator();
         Locale locale = (Locale) context.get("locale");
-        List<GenericValue> storeAll = new LinkedList<GenericValue>();
+        List<GenericValue> storeAll = new LinkedList<>();
         String productStoreShipMethId = (String)context.get("productStoreShipMethId");
 
         GenericValue productStoreShipMeth = null;
@@ -168,7 +169,7 @@ public class ShipmentServices {
                         String newSeqId = delegator.getNextSeqId("QuantityBreak");
                         GenericValue weightBreak = delegator.makeValue("QuantityBreak");
                         weightBreak.set("quantityBreakId", newSeqId);
-                        weightBreak.set("quantityBreakTypeId", "SHIP_" + breakType.toUpperCase());
+                        weightBreak.set("quantityBreakTypeId", "SHIP_" + breakType.toUpperCase(Locale.getDefault()));
                         weightBreak.set("fromQuantity", min);
                         weightBreak.set("thruQuantity", max);
                         estimate.set(breakType + "BreakId", newSeqId);
@@ -211,7 +212,7 @@ public class ShipmentServices {
         String shippingPostalCode = (String) context.get("shippingPostalCode");
         String shippingCountryCode = (String) context.get("shippingCountryCode");
 
-        List<Map<String, Object>> shippableItemInfo = UtilGenerics.checkList(context.get("shippableItemInfo"));
+        List<Map<String, Object>> shippableItemInfo = UtilGenerics.cast(context.get("shippableItemInfo"));
         BigDecimal shippableTotal = (BigDecimal) context.get("shippableTotal");
         BigDecimal shippableQuantity = (BigDecimal) context.get("shippableQuantity");
         BigDecimal shippableWeight = (BigDecimal) context.get("shippableWeight");
@@ -291,97 +292,74 @@ public class ShipmentServices {
             shipAddress.set("postalCodeGeoId", shippingPostalCode);
         }
         // Get the possible estimates.
-        List<GenericValue> estimateList = new LinkedList<GenericValue>();
+        List<GenericValue> estimateList = new LinkedList<>();
 
         for (GenericValue thisEstimate: estimates) {
-            String toGeo = thisEstimate.getString("geoIdTo");
-            if (UtilValidate.isNotEmpty(toGeo) && shipAddress ==null) {
-                // This estimate requires shipping address details. We don't have it so we cannot use this estimate.
-                continue;
-            }
-            List<GenericValue> toGeoList = GeoWorker.expandGeoGroup(toGeo, delegator);
-            // Make sure we have a valid GEOID.
-            if (UtilValidate.isEmpty(toGeoList) ||
-                    GeoWorker.containsGeo(toGeoList, shipAddress.getString("countryGeoId"), delegator) ||
-                    GeoWorker.containsGeo(toGeoList, shipAddress.getString("stateProvinceGeoId"), delegator) ||
-                    GeoWorker.containsGeo(toGeoList, shipAddress.getString("postalCodeGeoId"), delegator)) {
-
-                GenericValue wv = null;
-                GenericValue qv = null;
-                GenericValue pv = null;
-
-                try {
-                    wv = thisEstimate.getRelatedOne("WeightQuantityBreak", false);
-                } catch (GenericEntityException e) {
+            try {
+                String toGeo = thisEstimate.getString("geoIdTo");
+                if (UtilValidate.isNotEmpty(toGeo) && shipAddress ==null) {
+                    // This estimate requires shipping address details. We don't have it so we cannot use this estimate.
+                    continue;
                 }
-                try {
-                    qv = thisEstimate.getRelatedOne("QuantityQuantityBreak", false);
-                } catch (GenericEntityException e) {
-                }
-                try {
-                    pv = thisEstimate.getRelatedOne("PriceQuantityBreak", false);
-                } catch (GenericEntityException e) {
-                }
-                if (wv == null && qv == null && pv == null) {
-                    estimateList.add(thisEstimate);
-                } else {
-                    // Do some testing.
-                    boolean useWeight = false;
-                    boolean weightValid = false;
-                    boolean useQty = false;
-                    boolean qtyValid = false;
-                    boolean usePrice = false;
-                    boolean priceValid = false;
+                List<GenericValue> toGeoList = GeoWorker.expandGeoGroup(toGeo, delegator);
+                // Make sure we have a valid GEOID.
+                if (UtilValidate.isEmpty(toGeoList) ||
+                        GeoWorker.containsGeo(toGeoList, shipAddress.getString("countryGeoId"), delegator) ||
+                        GeoWorker.containsGeo(toGeoList, shipAddress.getString("stateProvinceGeoId"), delegator) ||
+                        GeoWorker.containsGeo(toGeoList, shipAddress.getString("postalCodeGeoId"), delegator)) {
+                    GenericValue wv = thisEstimate.getRelatedOne("WeightQuantityBreak", false);
+                    GenericValue qv = thisEstimate.getRelatedOne("QuantityQuantityBreak", false);
+                    GenericValue pv = thisEstimate.getRelatedOne("PriceQuantityBreak", false);
+                    if (wv == null && qv == null && pv == null) {
+                        estimateList.add(thisEstimate);
+                    } else {
+                        // Do some testing.
+                        boolean useWeight = false;
+                        boolean weightValid = false;
+                        boolean useQty = false;
+                        boolean qtyValid = false;
+                        boolean usePrice = false;
+                        boolean priceValid = false;
 
-                    if (wv != null) {
-                        useWeight = true;
-                        BigDecimal min = BigDecimal.ONE.movePointLeft(4);
-                        BigDecimal max = BigDecimal.ONE.movePointLeft(4);
-
-                        try {
+                        if (wv != null) {
+                            useWeight = true;
+                            BigDecimal min = BigDecimal.ONE.movePointLeft(4);
+                            BigDecimal max = BigDecimal.ONE.movePointLeft(4);
                             min = wv.getBigDecimal("fromQuantity");
                             max = wv.getBigDecimal("thruQuantity");
-                        } catch (Exception e) {
+                            if (shippableWeight.compareTo(min) >= 0 && (max.compareTo(BigDecimal.ZERO) == 0 || shippableWeight.compareTo(max) <= 0)) {
+                                weightValid = true;
+                            }
                         }
-                        if (shippableWeight.compareTo(min) >= 0 && (max.compareTo(BigDecimal.ZERO) == 0 || shippableWeight.compareTo(max) <= 0)) {
-                            weightValid = true;
-                        }
-                    }
-                    if (qv != null) {
-                        useQty = true;
-                        BigDecimal min = BigDecimal.ONE.movePointLeft(4);
-                        BigDecimal max = BigDecimal.ONE.movePointLeft(4);
-
-                        try {
+                        if (qv != null) {
+                            useQty = true;
+                            BigDecimal min = BigDecimal.ONE.movePointLeft(4);
+                            BigDecimal max = BigDecimal.ONE.movePointLeft(4);
                             min = qv.getBigDecimal("fromQuantity");
                             max = qv.getBigDecimal("thruQuantity");
-                        } catch (Exception e) {
+                            if (shippableQuantity.compareTo(min) >= 0 && (max.compareTo(BigDecimal.ZERO) == 0 || shippableQuantity.compareTo(max) <= 0)) {
+                                qtyValid = true;
+                            }
                         }
-                        if (shippableQuantity.compareTo(min) >= 0 && (max.compareTo(BigDecimal.ZERO) == 0 || shippableQuantity.compareTo(max) <= 0)) {
-                            qtyValid = true;
-                        }
-                    }
-                    if (pv != null) {
-                        usePrice = true;
-                        BigDecimal min = BigDecimal.ONE.movePointLeft(4);
-                        BigDecimal max = BigDecimal.ONE.movePointLeft(4);
-
-                        try {
+                        if (pv != null) {
+                            usePrice = true;
+                            BigDecimal min = BigDecimal.ONE.movePointLeft(4);
+                            BigDecimal max = BigDecimal.ONE.movePointLeft(4);
                             min = pv.getBigDecimal("fromQuantity");
                             max = pv.getBigDecimal("thruQuantity");
-                        } catch (Exception e) {
+                            if (shippableTotal.compareTo(min) >= 0 && (max.compareTo(BigDecimal.ZERO) == 0 || shippableTotal.compareTo(max) <= 0)) {
+                                priceValid = true;
+                            }
                         }
-                        if (shippableTotal.compareTo(min) >= 0 && (max.compareTo(BigDecimal.ZERO) == 0 || shippableTotal.compareTo(max) <= 0)) {
-                            priceValid = true;
+                        // Now check the tests.
+                        if ((useWeight && weightValid) || (useQty && qtyValid) || (usePrice && priceValid)) {
+                            estimateList.add(thisEstimate);
                         }
-                    }
-                    // Now check the tests.
-                    if ((useWeight && weightValid) || (useQty && qtyValid) || (usePrice && priceValid)) {
-                        estimateList.add(thisEstimate);
                     }
                 }
+            } catch (GenericEntityException e) {
+                Debug.logError(e, e.getLocalizedMessage(), module);
             }
-
         }
 
         if (estimateList.size() < 1) {
@@ -392,8 +370,8 @@ public class ShipmentServices {
         }
 
         // make the shippable item size/feature objects
-        List<BigDecimal> shippableItemSizes = new LinkedList<BigDecimal>();
-        Map<String, BigDecimal> shippableFeatureMap = new HashMap<String, BigDecimal>();
+        List<BigDecimal> shippableItemSizes = new LinkedList<>();
+        Map<String, BigDecimal> shippableFeatureMap = new HashMap<>();
         if (shippableItemInfo != null) {
             for (Map<String, Object> itemMap: shippableItemInfo) {
                 // add the item sizes
@@ -407,7 +385,7 @@ public class ShipmentServices {
                 // add the feature quantities
                 BigDecimal quantity = (BigDecimal) itemMap.get("quantity");
                 if (itemMap.containsKey("featureSet")) {
-                    Set<String> featureSet = UtilGenerics.checkSet(itemMap.get("featureSet"));
+                    Set<String> featureSet = UtilGenerics.cast(itemMap.get("featureSet"));
                     if (UtilValidate.isNotEmpty(featureSet)) {
                         for (String featureId: featureSet) {
                             BigDecimal featureQuantity = shippableFeatureMap.get(featureId);
@@ -434,7 +412,7 @@ public class ShipmentServices {
         int estimateIndex = 0;
 
         if (estimateList.size() > 1) {
-            TreeMap<Integer, GenericValue> estimatePriority = new TreeMap<Integer, GenericValue>();
+            TreeMap<Integer, GenericValue> estimatePriority = new TreeMap<>();
 
             for (GenericValue currentEstimate: estimateList) {
                 int prioritySum = 0;
@@ -458,7 +436,7 @@ public class ShipmentServices {
                 }
 
                 // there will be only one of each priority; latest will replace
-                estimatePriority.put(Integer.valueOf(prioritySum), currentEstimate);
+                estimatePriority.put(prioritySum, currentEstimate);
             }
 
             // locate the highest priority estimate; or the latest entered
@@ -526,7 +504,7 @@ public class ShipmentServices {
             featurePrice = BigDecimal.ZERO;
         }
 
-        if (UtilValidate.isNotEmpty(featureGroupId) && shippableFeatureMap != null) {
+        if (UtilValidate.isNotEmpty(featureGroupId)) {
             for (Map.Entry<String, BigDecimal> entry: shippableFeatureMap.entrySet()) {
                 String featureId = entry.getKey();
                 BigDecimal quantity = entry.getValue();
@@ -553,11 +531,9 @@ public class ShipmentServices {
         BigDecimal sizeUnit = estimate.getBigDecimal("oversizeUnit");
         BigDecimal sizePrice = estimate.getBigDecimal("oversizePrice");
         if (sizeUnit != null && sizeUnit.compareTo(BigDecimal.ZERO) > 0) {
-            if (shippableItemSizes != null) {
-                for (BigDecimal size: shippableItemSizes) {
-                    if (size != null && size.compareTo(sizeUnit) >= 0) {
-                        sizeSurcharge = sizeSurcharge.add(sizePrice);
-                    }
+            for (BigDecimal size : shippableItemSizes) {
+                if (size != null && size.compareTo(sizeUnit) >= 0) {
+                    sizeSurcharge = sizeSurcharge.add(sizePrice);
                 }
             }
         }
@@ -639,7 +615,7 @@ public class ShipmentServices {
             GenericValue routeSeg = EntityUtil.getFirst(routeSegs);
 
             // to store list
-            List<GenericValue> toStore = new LinkedList<GenericValue>();
+            List<GenericValue> toStore = new LinkedList<>();
 
             // make the staging records
             GenericValue stageShip = delegator.makeValue("OdbcShipmentOut");
@@ -657,7 +633,7 @@ public class ShipmentServices {
             stageShip.set("postalCodeExt", address.get("postalCodeExt"));
             stageShip.set("countryGeoId", address.get("countryGeoId"));
             stageShip.set("stateProvinceGeoId", address.get("stateProvinceGeoId"));
-            stageShip.set("numberOfPackages", Long.valueOf(packages.size()));
+            stageShip.set("numberOfPackages", (long) packages.size());
             stageShip.set("handlingInstructions", shipment.get("handlingInstructions"));
             toStore.add(stageShip);
 
@@ -691,11 +667,13 @@ public class ShipmentServices {
         Delegator delegator = dctx.getDelegator();
         GenericValue userLogin = (GenericValue) context.get("userLogin");
         Locale locale = (Locale) context.get("locale");
-        Map<String, String> shipmentMap = new HashMap<String, String>();
+        Map<String, String> shipmentMap = new HashMap<>();
 
-        EntityListIterator eli = null;
-        try {
-            eli = EntityQuery.use(delegator).from("OdbcPackageIn").orderBy("shipmentId", "shipmentPackageSeqId", "voidIndicator").queryIterator();
+        EntityQuery eq = EntityQuery.use(delegator)
+                .from("OdbcPackageIn")
+                .orderBy("shipmentId", "shipmentPackageSeqId", "voidIndicator");
+        
+        try (EntityListIterator eli = eq.queryIterator()) {
             GenericValue pkgInfo;
             while ((pkgInfo = eli.next()) != null) {
                 String packageSeqId = pkgInfo.getString("shipmentPackageSeqId");
@@ -703,17 +681,11 @@ public class ShipmentServices {
 
                 // locate the shipment package
                 GenericValue shipmentPackage = EntityQuery.use(delegator).from("ShipmentPackage").where("shipmentId", shipmentId, "shipmentPackageSeqId", packageSeqId).queryOne();
-
                 if (shipmentPackage != null) {
                     if ("00001".equals(packageSeqId)) {
                         // only need to do this for the first package
                         GenericValue rtSeg = null;
-                        try {
                             rtSeg = EntityQuery.use(delegator).from("ShipmentRouteSegment").where("shipmentId", shipmentId, "shipmentRouteSegmentId", "00001").queryOne();
-                        } catch (GenericEntityException e) {
-                            Debug.logError(e, module);
-                            return ServiceUtil.returnError(e.getMessage());
-                        }
 
                         if (rtSeg == null) {
                             rtSeg = delegator.makeValue("ShipmentRouteSegment", UtilMisc.toMap("shipmentId", shipmentId, "shipmentRouteSegmentId", "00001"));
@@ -729,28 +701,18 @@ public class ShipmentServices {
                         rtSeg.set("billingWeight", pkgInfo.get("billingWeight"));
                         rtSeg.set("actualCost", pkgInfo.get("shippingTotal"));
                         rtSeg.set("trackingIdNumber", pkgInfo.get("trackingNumber"));
-                        try {
                             delegator.store(rtSeg);
-                        } catch (GenericEntityException e) {
-                            Debug.logError(e, module);
-                            return ServiceUtil.returnError(e.getMessage());
-                        }
                     }
 
-                    Map<String, Object> pkgCtx = new HashMap<String, Object>();
+                    Map<String, Object> pkgCtx = new HashMap<>();
                     pkgCtx.put("shipmentId", shipmentId);
                     pkgCtx.put("shipmentPackageSeqId", packageSeqId);
 
                     // first update the weight of the package
                     GenericValue pkg = null;
-                    try {
                         pkg = EntityQuery.use(delegator).from("ShipmentPackage")
                                   .where(pkgCtx)
                                   .queryOne();
-                    } catch (GenericEntityException e) {
-                        Debug.logError(e, module);
-                        return ServiceUtil.returnError(e.getMessage());
-                    }
 
                     if (pkg == null) {
                         return ServiceUtil.returnError(UtilProperties.getMessage(resource, 
@@ -760,22 +722,12 @@ public class ShipmentServices {
                     }
 
                     pkg.set("weight", pkgInfo.get("packageWeight"));
-                    try {
                         delegator.store(pkg);
-                    } catch (GenericEntityException e) {
-                        Debug.logError(e, module);
-                        return ServiceUtil.returnError(e.getMessage());
-                    }
 
                     // need if we are the first package (only) update the route seg info
                     pkgCtx.put("shipmentRouteSegmentId", "00001");
                     GenericValue pkgRtSeg = null;
-                    try {
                         pkgRtSeg = EntityQuery.use(delegator).from("ShipmentPackageRouteSeg").where(pkgCtx).queryOne();
-                    } catch (GenericEntityException e) {
-                        Debug.logError(e, module);
-                        return ServiceUtil.returnError(e.getMessage());
-                    }
 
                     if (pkgRtSeg == null) {
                         pkgRtSeg = delegator.makeValue("ShipmentPackageRouteSeg", pkgCtx);
@@ -790,33 +742,20 @@ public class ShipmentServices {
                     pkgRtSeg.set("trackingCode", pkgInfo.get("trackingNumber"));
                     pkgRtSeg.set("boxNumber", pkgInfo.get("shipmentPackageSeqId"));
                     pkgRtSeg.set("packageServiceCost", pkgInfo.get("packageTotal"));
-                    try {
                         delegator.store(pkgRtSeg);
-                    } catch (GenericEntityException e) {
-                        Debug.logError(e, module);
-                        return ServiceUtil.returnError(e.getMessage());
-                    }
                     shipmentMap.put(shipmentId, pkgInfo.getString("voidIndicator"));
                 }
             }
         } catch (GenericEntityException e) {
             Debug.logError(e, module);
             return ServiceUtil.returnError(e.getMessage());
-        } finally {
-            if (eli != null) {
-                try {
-                    eli.close();
-                } catch (GenericEntityException e) {
-                    Debug.logError(e, module);
-                }
-            }
         }
 
         // update the status of each shipment
         for (Map.Entry<String, String> entry: shipmentMap.entrySet()) {
             String shipmentId = entry.getKey();
             String voidInd = entry.getValue();
-            Map<String, Object> shipCtx = new HashMap<String, Object>();
+            Map<String, Object> shipCtx = new HashMap<>();
             shipCtx.put("shipmentId", shipmentId);
             if ("Y".equals(voidInd)) {
                 shipCtx.put("statusId", "SHIPMENT_CANCELLED");
@@ -897,7 +836,7 @@ public class ShipmentServices {
             }
 
             // store the quantity of each product shipped in a hashmap keyed to productId
-            Map<String, BigDecimal> shippedCountMap = new HashMap<String, BigDecimal>();
+            Map<String, BigDecimal> shippedCountMap = new HashMap<>();
             for (GenericValue item: shipmentAndItems) {
                 BigDecimal shippedQuantity = item.getBigDecimal("quantity");
                 BigDecimal quantity = shippedCountMap.get(item.getString("productId"));
@@ -906,7 +845,7 @@ public class ShipmentServices {
             }
 
             // store the quantity of each product received in a hashmap keyed to productId
-            Map<String, BigDecimal> receivedCountMap = new HashMap<String, BigDecimal>();
+            Map<String, BigDecimal> receivedCountMap = new HashMap<>();
             for (GenericValue item: shipmentReceipts) {
                 BigDecimal receivedQuantity = item.getBigDecimal("quantityAccepted");
                 BigDecimal quantity = receivedCountMap.get(item.getString("productId"));
@@ -920,7 +859,10 @@ public class ShipmentServices {
             }
 
             // now update the shipment
-            dispatcher.runSync("updateShipment", UtilMisc.<String, Object>toMap("shipmentId", shipmentId, "statusId", "PURCH_SHIP_RECEIVED", "userLogin", userLogin));
+            Map<String, Object> serviceResult = dispatcher.runSync("updateShipment", UtilMisc.<String, Object>toMap("shipmentId", shipmentId, "statusId", "PURCH_SHIP_RECEIVED", "userLogin", userLogin));
+            if (ServiceUtil.isError(serviceResult)) {
+                return ServiceUtil.returnError(ServiceUtil.getErrorMessage(serviceResult));
+            }
         } catch (GenericEntityException e) {
             Debug.logError(e, module);
             return ServiceUtil.returnError(e.getMessage());
@@ -962,7 +904,7 @@ public class ShipmentServices {
 
             Map<String, Object> tmpResult = dispatcher.runSync("createShipmentRouteSegment", params);
             if (ServiceUtil.isError(tmpResult)) {
-                return tmpResult;
+                    return ServiceUtil.returnError(ServiceUtil.getErrorMessage(tmpResult));
             } else {
                 results.put("newShipmentRouteSegmentId", tmpResult.get("shipmentRouteSegmentId"));
                 return results;
@@ -1003,7 +945,7 @@ public class ShipmentServices {
         try {
             Map<String, Object> input = UtilMisc.toMap("shipmentId", shipmentId, "shipmentRouteSegmentId", shipmentRouteSegmentId, "userLogin", userLogin);
             // for DHL, we just need to confirm the shipment to get the label.  Other carriers may have more elaborate requirements.
-            if (carrierPartyId.equals("DHL")) {
+            if ("DHL".equals(carrierPartyId)) {
                 dispatcher.runAsync("dhlShipmentConfirm", input);
             } else {
                 Debug.logError(carrierPartyId + " is not supported at this time.  Sorry.", module);
@@ -1061,7 +1003,9 @@ public class ShipmentServices {
 
                 // Get the value of the orderItem by calling the getOrderItemInvoicedAmountAndQuantity service
                 Map<String, Object> getOrderItemValueResult = dispatcher.runSync("getOrderItemInvoicedAmountAndQuantity", UtilMisc.toMap("orderId", orderId, "orderItemSeqId", orderItemSeqId, "userLogin", userLogin, "locale", locale));
-                if (ServiceUtil.isError(getOrderItemValueResult)) return getOrderItemValueResult;
+                if (ServiceUtil.isError(getOrderItemValueResult)){
+                    return ServiceUtil.returnError(ServiceUtil.getErrorMessage(getOrderItemValueResult));
+                }
                 BigDecimal invoicedAmount = (BigDecimal) getOrderItemValueResult.get("invoicedAmount");
                 BigDecimal invoicedQuantity = (BigDecimal) getOrderItemValueResult.get("invoicedQuantity");
 
@@ -1076,7 +1020,7 @@ public class ShipmentServices {
                 GenericValue orderHeader = packageContent.getRelatedOne("OrderHeader", false);
                 Map<String, Object> convertUomResult = dispatcher.runSync("convertUom", UtilMisc.<String, Object>toMap("uomId", orderHeader.getString("currencyUom"), "uomIdTo", currencyUomId, "originalValue", packageContentValue));
                 if (ServiceUtil.isError(convertUomResult)) {
-                    return convertUomResult;
+                    return ServiceUtil.returnError(ServiceUtil.getErrorMessage(convertUomResult));
                 }
                 if (convertUomResult.containsKey("convertedValue")) {
                     packageContentValue = ((BigDecimal) convertUomResult.get("convertedValue")).setScale(decimals, rounding);
@@ -1108,7 +1052,7 @@ public class ShipmentServices {
         Locale localePar = (Locale) context.get("locale");
         
         // prepare the shipment information
-        Map<String, Object> sendMap = new HashMap<String, Object>();
+        Map<String, Object> sendMap = new HashMap<>();
         GenericValue shipment = null ;
         GenericValue orderHeader = null;
         try {

@@ -22,11 +22,12 @@ package org.apache.ofbiz.shipment.thirdparty.usps;
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
+import java.util.Base64;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -37,7 +38,6 @@ import java.util.Map;
 import javax.xml.transform.TransformerException;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.ofbiz.base.util.Base64;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.GeneralException;
 import org.apache.ofbiz.base.util.HttpClient;
@@ -76,7 +76,7 @@ public class UspsServices {
     public final static String module = UspsServices.class.getName();
     public final static String resourceError = "ProductUiLabels";
 
-    private static List<String> domesticCountries = new LinkedList<String>();
+    private static List<String> domesticCountries = new LinkedList<>();
     // Countries treated as domestic for rate enquiries
     static {
         domesticCountries.add("USA");
@@ -146,10 +146,12 @@ public class UspsServices {
         String serviceCode = null;
         try {
             GenericValue carrierShipmentMethod = EntityQuery.use(delegator).from("CarrierShipmentMethod")
-                    .where("shipmentMethodTypeId", (String) context.get("shipmentMethodTypeId"), "partyId", (String) context.get("carrierPartyId"), "roleTypeId", (String) context.get("carrierRoleTypeId"))
+                    .where("shipmentMethodTypeId", context.get("shipmentMethodTypeId"),
+                           "partyId", context.get("carrierPartyId"),
+                           "roleTypeId", context.get("carrierRoleTypeId"))
                     .queryOne();
             if (carrierShipmentMethod != null) {
-                serviceCode = carrierShipmentMethod.getString("carrierServiceCode").toUpperCase();
+                serviceCode = carrierShipmentMethod.getString("carrierServiceCode").toUpperCase(Locale.getDefault());
             }
         } catch (GenericEntityException e) {
             Debug.logError(e, module);
@@ -163,7 +165,7 @@ public class UspsServices {
         Document requestDocument = createUspsRequestDocument("RateV2Request", true, delegator, shipmentGatewayConfigId, resource);
 
         // TODO: 70 lb max is valid for Express, Priority and Parcel only - handle other methods
-        BigDecimal maxWeight = new BigDecimal("70");
+        BigDecimal maxWeight;
         String maxWeightStr = getShipmentGatewayConfigValue(delegator, shipmentGatewayConfigId, "maxEstimateWeight", 
                 resource, "shipment.usps.max.estimate.weight", "70");
         try {
@@ -173,7 +175,7 @@ public class UspsServices {
             maxWeight = new BigDecimal("70");
         }
 
-        List<Map<String, Object>> shippableItemInfo = UtilGenerics.checkList(context.get("shippableItemInfo"));
+        List<Map<String, Object>> shippableItemInfo = UtilGenerics.cast(context.get("shippableItemInfo"));
         List<Map<String, BigDecimal>> packages = ShipmentWorker.getPackageSplit(dctx, shippableItemInfo, maxWeight);
         boolean isOnePackage = packages.size() == 1; // use shippableWeight if there's only one package
         // TODO: Up to 25 packages can be included per request - handle more than 25
@@ -192,14 +194,14 @@ public class UspsServices {
             UtilXml.addChildElementValue(packageElement, "ZipOrigination", StringUtils.substring(originationZip, 0, 5), requestDocument);
             UtilXml.addChildElementValue(packageElement, "ZipDestination", StringUtils.substring(destinationZip, 0, 5), requestDocument);
 
-            BigDecimal weightPounds = packageWeight.setScale(0, BigDecimal.ROUND_FLOOR);
+            BigDecimal weightPounds = packageWeight.setScale(0, RoundingMode.FLOOR);
             // for Parcel post, the weight must be at least 1 lb
-            if ("PARCEL".equals(serviceCode.toUpperCase()) && (weightPounds.compareTo(BigDecimal.ONE) < 0)) {
+            if ("PARCEL".equals(serviceCode.toUpperCase(Locale.getDefault())) && (weightPounds.compareTo(BigDecimal.ONE) < 0)) {
                 weightPounds = BigDecimal.ONE;
                 packageWeight = BigDecimal.ZERO;
             }
             // (packageWeight % 1) * 16 (Rounded up to 0 dp)
-            BigDecimal weightOunces = packageWeight.remainder(BigDecimal.ONE).multiply(new BigDecimal("16")).setScale(0, BigDecimal.ROUND_CEILING);
+            BigDecimal weightOunces = packageWeight.remainder(BigDecimal.ONE).multiply(new BigDecimal("16")).setScale(0, RoundingMode.CEILING);
             
             UtilXml.addChildElementValue(packageElement, "Pounds", weightPounds.toPlainString(), requestDocument);
             UtilXml.addChildElementValue(packageElement, "Ounces", weightOunces.toPlainString(), requestDocument);
@@ -297,7 +299,7 @@ public class UspsServices {
                     return ServiceUtil.returnError(UtilProperties.getMessage(resourceError, 
                             "FacilityShipmentUspsRateInternationCannotBeUsedForUsDestinations", locale));
                 }
-                if (shipToAddress != null && UtilValidate.isNotEmpty(shipToAddress.getString("countryGeoId"))) {
+                if (UtilValidate.isNotEmpty(shipToAddress.getString("countryGeoId"))) {
                     GenericValue countryGeo = shipToAddress.getRelatedOne("CountryGeo", false);
                     // TODO: Test against all country geoNames against what USPS expects
                     destinationCountry = countryGeo.getString("geoName");
@@ -315,7 +317,9 @@ public class UspsServices {
         String serviceCode = null;
         try {
             GenericValue carrierShipmentMethod = EntityQuery.use(delegator).from("CarrierShipmentMethod")
-                    .where("shipmentMethodTypeId", (String) context.get("shipmentMethodTypeId"), "partyId", (String) context.get("carrierPartyId"), "roleTypeId", (String) context.get("carrierRoleTypeId"))
+                    .where("shipmentMethodTypeId", context.get("shipmentMethodTypeId"),
+                           "partyId", context.get("carrierPartyId"),
+                           "roleTypeId", context.get("carrierRoleTypeId"))
                     .queryOne();
             if (carrierShipmentMethod != null) {
                 serviceCode = carrierShipmentMethod.getString("carrierServiceCode");
@@ -328,7 +332,7 @@ public class UspsServices {
                     "FacilityShipmentUspsUnableDetermineServiceCode", locale));
         }
 
-        BigDecimal maxWeight = new BigDecimal("70");
+        BigDecimal maxWeight;
         String maxWeightStr = getShipmentGatewayConfigValue(delegator, shipmentGatewayConfigId, "maxEstimateWeight", 
                 resource, "shipment.usps.max.estimate.weight", "70");
         try {
@@ -338,7 +342,7 @@ public class UspsServices {
             maxWeight = new BigDecimal("70");
         }
 
-        List<Map<String, Object>> shippableItemInfo = UtilGenerics.checkList(context.get("shippableItemInfo"));
+        List<Map<String, Object>> shippableItemInfo = UtilGenerics.cast(context.get("shippableItemInfo"));
         List<Map<String, BigDecimal>> packages = ShipmentWorker.getPackageSplit(dctx, shippableItemInfo, maxWeight);
         boolean isOnePackage = packages.size() == 1; // use shippableWeight if there's only one package
 
@@ -358,7 +362,7 @@ public class UspsServices {
             }
             Integer[] weightPoundsOunces = convertPoundsToPoundsOunces(packageWeight);
             // for Parcel post, the weight must be at least 1 lb
-            if ("PARCEL".equals(serviceCode.toUpperCase()) && (weightPoundsOunces[0] < 1)) {
+            if ("PARCEL".equals(serviceCode.toUpperCase(Locale.getDefault())) && (weightPoundsOunces[0] < 1)) {
                 weightPoundsOunces[0] = 1;
                 weightPoundsOunces[1] = 0;
             }
@@ -479,7 +483,7 @@ public class UspsServices {
 
         List<? extends Element> detailElementList = UtilXml.childElementList(trackInfoElement, "TrackDetail");
         if (UtilValidate.isNotEmpty(detailElementList)) {
-            List<String> trackingDetailList = new LinkedList<String>();
+            List<String> trackingDetailList = new LinkedList<>();
             for (Element detailElement: detailElementList) {
                 trackingDetailList.add(UtilXml.elementValue(detailElement));
             }
@@ -1045,7 +1049,7 @@ public class UspsServices {
                 try {
                     weight = new BigDecimal(weightStr);
                 } catch (NumberFormatException nfe) {
-                    nfe.printStackTrace(); // TODO: handle exception
+                    Debug.logError(nfe, module); // TODO: handle exception
                 }
 
                 String weightUomId = shipmentPackage.getString("weightUomId");
@@ -1054,9 +1058,12 @@ public class UspsServices {
                 }
                 if (!"WT_lb".equals(weightUomId)) {
                     // attempt a conversion to pounds
-                    Map<String, Object> result = new HashMap<String, Object>();
+                    Map<String, Object> result;
                     try {
                         result = dispatcher.runSync("convertUom", UtilMisc.<String, Object>toMap("uomId", weightUomId, "uomIdTo", "WT_lb", "originalValue", weight));
+                        if (ServiceUtil.isError(result)) {
+                            return ServiceUtil.returnError(ServiceUtil.getErrorMessage(result));
+                        }
                     } catch (GenericServiceException ex) {
                         return ServiceUtil.returnError(UtilProperties.getMessage(resourceError, 
                                 "FacilityShipmentUspsWeightConversionError", 
@@ -1075,8 +1082,8 @@ public class UspsServices {
 
                 }
 
-                BigDecimal weightPounds = weight.setScale(0, BigDecimal.ROUND_FLOOR);
-                BigDecimal weightOunces = weight.multiply(new BigDecimal("16")).remainder(new BigDecimal("16")).setScale(0, BigDecimal.ROUND_CEILING);
+                BigDecimal weightPounds = weight.setScale(0, RoundingMode.FLOOR);
+                BigDecimal weightOunces = weight.multiply(new BigDecimal("16")).remainder(new BigDecimal("16")).setScale(0, RoundingMode.CEILING);
 
                 DecimalFormat df = new DecimalFormat("#");
                 UtilXml.addChildElementValue(packageElement, "Pounds", df.format(weightPounds), requestDocument);
@@ -1146,7 +1153,7 @@ public class UspsServices {
                 try {
                     postage = new BigDecimal(postageString);
                 } catch (NumberFormatException nfe) {
-                    nfe.printStackTrace(); // TODO: handle exception
+                    Debug.logError(nfe, module); // TODO: handle exception
                 }
                 actualTransportCost = actualTransportCost.add(postage);
 
@@ -1350,7 +1357,7 @@ public class UspsServices {
                 try {
                     weight = new BigDecimal(weightStr);
                 } catch (NumberFormatException nfe) {
-                    nfe.printStackTrace(); // TODO: handle exception
+                    Debug.logError(nfe, module); // TODO: handle exception
                 }
 
                 String weightUomId = shipmentPackage.getString("weightUomId");
@@ -1372,7 +1379,7 @@ public class UspsServices {
                 }
 
                 DecimalFormat df = new DecimalFormat("#");
-                UtilXml.addChildElementValue(requestElement, "WeightInOunces", df.format(weight.setScale(0, BigDecimal.ROUND_CEILING)), requestDocument);
+                UtilXml.addChildElementValue(requestElement, "WeightInOunces", df.format(weight.setScale(0, RoundingMode.CEILING)), requestDocument);
 
                 UtilXml.addChildElementValue(requestElement, "ServiceType", serviceType, requestDocument);
                 UtilXml.addChildElementValue(requestElement, "ImageType", "TIF", requestDocument);
@@ -1403,7 +1410,7 @@ public class UspsServices {
                     return ServiceUtil.returnError(UtilProperties.getMessage(resourceError, 
                             "FacilityShipmentUspsDeliveryConfirmationResponseIncompleteElementDeliveryConfirmationLabel", locale));
                 }
-                shipmentPackageRouteSeg.setBytes("labelImage", Base64.base64Decode(labelImageString.getBytes()));
+                shipmentPackageRouteSeg.setBytes("labelImage", Base64.getMimeDecoder().decode(labelImageString.getBytes(StandardCharsets.UTF_8)));
                 String trackingCode = UtilXml.childElementValue(responseElement, "DeliveryConfirmationNumber");
                 if (UtilValidate.isEmpty(trackingCode)) {
                     return ServiceUtil.returnError(UtilProperties.getMessage(resourceError, 
@@ -1444,16 +1451,15 @@ public class UspsServices {
                         shipmentRouteSegment.getString("shipmentRouteSegmentId") + "_" +
                         shipmentPackageRouteSeg.getString("shipmentPackageSeqId") + ".gif";
 
-                FileOutputStream fileOut = new FileOutputStream(outFileName);
-                fileOut.write(labelImageBytes);
-                fileOut.flush();
-                fileOut.close();
+                try (FileOutputStream fileOut = new FileOutputStream(outFileName)) {
+                    fileOut.write(labelImageBytes);
+                    fileOut.flush();
+                } catch (IOException e) {
+                    Debug.logInfo(e, module);
+                    return ServiceUtil.returnError(e.getMessage());
+                }
             }
-
         } catch (GenericEntityException e) {
-            Debug.logInfo(e, module);
-            return ServiceUtil.returnError(e.getMessage());
-        } catch (IOException e) {
             Debug.logInfo(e, module);
             return ServiceUtil.returnError(e.getMessage());
         }
@@ -1544,7 +1550,7 @@ public class UspsServices {
         for (GenericValue shipmentPackageRouteSeg : shipmentPackageRouteSegs) {
             Document packageDocument = (Document) requestDocument.cloneNode(true);
             // This is our reference and can be whatever we want.  For lack of a better alternative we'll use shipmentId:shipmentPackageSeqId:shipmentRouteSegmentId
-            String fromCustomsReference = shipmentRouteSegment.getString("shipmentId") + ":" + shipmentRouteSegment.getString("shipmentRouteSegmentId");
+            String fromCustomsReference;
             fromCustomsReference = StringUtils.join(
                     UtilMisc.toList(
                             shipmentRouteSegment.get("shipmentId"),
@@ -1613,8 +1619,8 @@ public class UspsServices {
                 }
 
                 UtilXml.addChildElementValue(itemDetail, "Description", product.getString("productName"), packageDocument);
-                UtilXml.addChildElementValue(itemDetail, "Quantity", shipmentPackageContent.getBigDecimal("quantity").setScale(0, BigDecimal.ROUND_CEILING).toPlainString(), packageDocument);
-                String packageContentValue = ShipmentWorker.getShipmentPackageContentValue(shipmentPackageContent).setScale(2, BigDecimal.ROUND_HALF_UP).toPlainString();
+                UtilXml.addChildElementValue(itemDetail, "Quantity", shipmentPackageContent.getBigDecimal("quantity").setScale(0, RoundingMode.CEILING).toPlainString(), packageDocument);
+                String packageContentValue = ShipmentWorker.getShipmentPackageContentValue(shipmentPackageContent).setScale(2, RoundingMode.HALF_UP).toPlainString();
                 UtilXml.addChildElementValue(itemDetail, "Value", packageContentValue, packageDocument);
                 BigDecimal productWeight = ProductWorker.getProductWeight(product, "WT_lbs", delegator, dispatcher);
                 Integer[] productPoundsOunces = convertPoundsToPoundsOunces(productWeight);
@@ -1644,7 +1650,7 @@ public class UspsServices {
                 return ServiceUtil.returnError(UtilProperties.getMessage(resourceError, 
                         "FacilityShipmentUspsPriorityMailLabelResponseIncompleteElementLabelImage", locale));
             }
-            shipmentPackageRouteSeg.setBytes("labelImage", Base64.base64Decode(labelImageString.getBytes()));
+            shipmentPackageRouteSeg.setBytes("labelImage", Base64.getMimeDecoder().decode(labelImageString.getBytes(StandardCharsets.UTF_8)));
             String trackingCode = UtilXml.childElementValue(responseElement, "BarcodeNumber");
             if (UtilValidate.isEmpty(trackingCode)) {
                 return ServiceUtil.returnError(UtilProperties.getMessage(resourceError, 
@@ -1687,7 +1693,7 @@ public class UspsServices {
                     "FacilityShipmentUspsConnectUrlIncomplete", locale));
         }
 
-        OutputStream os = new ByteArrayOutputStream();
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
 
         try {
             UtilXml.writeXmlDocument(requestDocument, os, "UTF-8", true, false, 0);
@@ -1698,7 +1704,7 @@ public class UspsServices {
                             UtilMisc.toMap("errorString", e.getMessage()), locale));
         }
 
-        String xmlString = os.toString();
+        String xmlString = new String(os.toByteArray(), StandardCharsets.UTF_8);
 
         Debug.logInfo("USPS XML request string: " + xmlString, module);
 
@@ -1754,9 +1760,9 @@ public class UspsServices {
     public static Integer[] convertPoundsToPoundsOunces(BigDecimal decimalPounds) {
         if (decimalPounds == null) return null;
         Integer[] poundsOunces = new Integer[2];
-        poundsOunces[0] = Integer.valueOf(decimalPounds.setScale(0, BigDecimal.ROUND_FLOOR).toPlainString());
+        poundsOunces[0] = Integer.valueOf(decimalPounds.setScale(0, RoundingMode.FLOOR).toPlainString());
         // (weight % 1) * 16 rounded up to nearest whole number
-        poundsOunces[1] = Integer.valueOf(decimalPounds.remainder(BigDecimal.ONE).multiply(new BigDecimal("16")).setScale(0, BigDecimal.ROUND_CEILING).toPlainString());
+        poundsOunces[1] = Integer.valueOf(decimalPounds.remainder(BigDecimal.ONE).multiply(new BigDecimal("16")).setScale(0, RoundingMode.CEILING).toPlainString());
         return poundsOunces;
     }
     

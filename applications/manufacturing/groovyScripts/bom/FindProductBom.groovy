@@ -17,8 +17,8 @@
  * under the License.
  */
 
-import org.apache.ofbiz.entity.util.*
-import org.apache.ofbiz.entity.condition.*
+import org.apache.ofbiz.entity.condition.EntityCondition
+import org.apache.ofbiz.entity.condition.EntityOperator
 
 condList = []
 if (parameters.productId) {
@@ -41,7 +41,7 @@ if (parameters.productAssocTypeId) {
 bomListIterator = select("productId", "internalName", "productAssocTypeId")
                     .from("ProductAndAssoc")
                     .where(condList)
-                    .orderBy("productId", "productAssocTypeId")
+                    .orderBy("productId", "productAssocTypeId").distinct()
                     .cursorScrollInsensitive()
                     .cache(true)
                     .queryIterator()

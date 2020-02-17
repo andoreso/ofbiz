@@ -111,19 +111,16 @@ public class DatabaseUtil {
         return connection;
     }
 
-    private Connection getConnection(String driverName, String connectionUrl, Properties props, String userName, String password) throws SQLException {
+    private static Connection getConnection(String driverName, String connectionUrl, Properties props, String userName,
+            String password) throws SQLException {
         // first register the JDBC driver with the DriverManager
         if (driverName != null) {
             if (DriverManager.getDriver(driverName) == null) {
                 try {
-                    Driver driver = (Driver) Class.forName(driverName, true, Thread.currentThread().getContextClassLoader()).newInstance();
+                    Driver driver = (Driver) Class.forName(driverName, true, Thread.currentThread().getContextClassLoader()).getDeclaredConstructor().newInstance();
                     DriverManager.registerDriver(driver);
-                } catch (ClassNotFoundException e) {
+                } catch (ReflectiveOperationException e) {
                     Debug.logWarning(e, "Unable to load driver [" + driverName + "]", module);
-                } catch (InstantiationException e) {
-                    Debug.logWarning(e, "Unable to instantiate driver [" + driverName + "]", module);
-                } catch (IllegalAccessException e) {
-                    Debug.logWarning(e, "Illegal access exception [" + driverName + "]", module);
                 }
             }
         }
@@ -144,12 +141,7 @@ public class DatabaseUtil {
     protected Connection getConnectionLogged(Collection<String> messages) {
         try {
             return getConnection();
-        } catch (SQLException e) {
-            String message = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(message, module);
-            if (messages != null) messages.add(message);
-            return null;
-        } catch (GenericEntityException e) {
+        } catch (SQLException | GenericEntityException e) {
             String message = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
             Debug.logError(message, module);
             if (messages != null) messages.add(message);
@@ -181,8 +173,8 @@ public class DatabaseUtil {
 
         // get ALL tables from this database
         TreeSet<String> tableNames = this.getTableNames(messages);
-        TreeSet<String> fkTableNames = tableNames == null ? null : new TreeSet<String>(tableNames);
-        TreeSet<String> indexTableNames = tableNames == null ? null : new TreeSet<String>(tableNames);
+        TreeSet<String> fkTableNames = tableNames == null ? null : new TreeSet<>(tableNames);
+        TreeSet<String> indexTableNames = tableNames == null ? null : new TreeSet<>(tableNames);
 
         if (tableNames == null) {
             String message = "Could not get table name information from the database, aborting.";
@@ -211,12 +203,12 @@ public class DatabaseUtil {
 
         timer.timerString("Before Individual Table/Column Check");
 
-        List<ModelEntity> modelEntityList = new ArrayList<ModelEntity>(modelEntities.values());
+        List<ModelEntity> modelEntityList = new ArrayList<>(modelEntities.values());
         // sort using compareTo method on ModelEntity
         Collections.sort(modelEntityList);
         int curEnt = 0;
         int totalEnt = modelEntityList.size();
-        List<ModelEntity> entitiesAdded = new LinkedList<ModelEntity>();
+        List<ModelEntity> entitiesAdded = new LinkedList<>();
         String schemaName;
         try {
             schemaName = getSchemaName(messages);
@@ -226,7 +218,7 @@ public class DatabaseUtil {
             Debug.logError(message, module);
             return;
         }
-        List<Future<CreateTableCallable>> tableFutures = new LinkedList<Future<CreateTableCallable>>();
+        List<Future<CreateTableCallable>> tableFutures = new LinkedList<>();
         for (ModelEntity entity: modelEntityList) {
             curEnt++;
 
@@ -261,37 +253,37 @@ public class DatabaseUtil {
             if (tableNames.contains(tableName)) {
                 tableNames.remove(tableName);
 
-                if (colInfo != null) {
-                    Map<String, ModelField> fieldColNames = new HashMap<String, ModelField>();
-                    Iterator<ModelField> fieldIter = entity.getFieldsIterator();
-                    while (fieldIter.hasNext()) {
-                        ModelField field = fieldIter.next();
-                        fieldColNames.put(field.getColName(), field);
-                    }
+                Map<String, ModelField> fieldColNames = new HashMap<>();
+                Iterator<ModelField> fieldIter = entity.getFieldsIterator();
+                while (fieldIter.hasNext()) {
+                    ModelField field = fieldIter.next();
+                    fieldColNames.put(field.getColName(), field);
+                }
 
-                    Map<String, ColumnCheckInfo> colMap = colInfo.get(tableName);
-                    if (colMap != null) {
-                        for (ColumnCheckInfo ccInfo: colMap.values()) {
-                            // -list all columns that do not have a corresponding field
-                            if (fieldColNames.containsKey(ccInfo.columnName)) {
-                                ModelField field = null;
+                Map<String, ColumnCheckInfo> colMap = colInfo.get(tableName);
+                if (colMap != null) {
+                    for (ColumnCheckInfo ccInfo: colMap.values()) {
+                        // -list all columns that do not have a corresponding field
+                        if (fieldColNames.containsKey(ccInfo.columnName)) {
+                            ModelField field = null;
 
-                                field = fieldColNames.remove(ccInfo.columnName);
-                                ModelFieldType modelFieldType = modelFieldTypeReader.getModelFieldType(field.getType());
+                            field = fieldColNames.remove(ccInfo.columnName);
+                            ModelFieldType modelFieldType = modelFieldTypeReader.getModelFieldType(field.getType());
 
-                                if (modelFieldType != null) {
-                                    // make sure each corresponding column is of the correct type
-                                    String fullTypeStr = modelFieldType.getSqlType();
-                                    String typeName;
-                                    int columnSize = -1;
-                                    int decimalDigits = -1;
+                            if (modelFieldType != null) {
+                                // make sure each corresponding column is of the correct type
+                                String fullTypeStr = modelFieldType.getSqlType();
+                                String typeName;
+                                int columnSize = -1;
+                                int decimalDigits = -1;
 
-                                    int openParen = fullTypeStr.indexOf('(');
-                                    int closeParen = fullTypeStr.indexOf(')');
-                                    int comma = fullTypeStr.indexOf(',');
+                                int openParen = fullTypeStr.indexOf('(');
+                                int closeParen = fullTypeStr.indexOf(')');
+                                int comma = fullTypeStr.indexOf(',');
 
-                                    if (openParen > 0 && closeParen > 0 && closeParen > openParen) {
-                                        typeName = fullTypeStr.substring(0, openParen);
+                                if (openParen > 0 && closeParen > 0 && closeParen > openParen) {
+                                    typeName = fullTypeStr.substring(0, openParen);
+                                    if (!("DATETIME".equals(typeName) || "TIME".equals(typeName))) { // for DATETIME and TIME fields the number within the parenthesis doesn't represent the column size
                                         if (comma > 0 && comma > openParen && comma < closeParen) {
                                             String csStr = fullTypeStr.substring(openParen + 1, comma);
                                             try {
@@ -306,7 +298,7 @@ public class DatabaseUtil {
                                             } catch (NumberFormatException e) {
                                                 Debug.logError(e, module);
                                             }
-                                        } else {
+                                        } else if (openParen + 1 < closeParen) {
                                             String csStr = fullTypeStr.substring(openParen + 1, closeParen);
                                             try {
                                                 columnSize = Integer.parseInt(csStr);
@@ -314,96 +306,96 @@ public class DatabaseUtil {
                                                 Debug.logError(e, module);
                                             }
                                         }
-                                    } else {
-                                        typeName = fullTypeStr;
-                                    }
-
-                                    // override the default typeName with the sqlTypeAlias if it is specified
-                                    if (UtilValidate.isNotEmpty(modelFieldType.getSqlTypeAlias())) {
-                                        typeName = modelFieldType.getSqlTypeAlias();
-                                    }
-
-                                    // NOTE: this may need a toUpperCase in some cases, keep an eye on it, okay just compare with ignore case
-                                    if (!ccInfo.typeName.equalsIgnoreCase(typeName)) {
-                                        String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" +
-                                            entity.getEntityName() + "] is of type [" + ccInfo.typeName + "] in the database, but is defined as type [" +
-                                            typeName + "] in the entity definition.";
-                                        Debug.logError(message, module);
-                                        if (messages != null) messages.add(message);
-                                    }
-                                    if (columnSize != -1 && ccInfo.columnSize != -1 && columnSize != ccInfo.columnSize && (columnSize * 3) != ccInfo.columnSize) {
-                                        String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" +
-                                            entity.getEntityName() + "] has a column size of [" + ccInfo.columnSize +
-                                            "] in the database, but is defined to have a column size of [" + columnSize + "] in the entity definition.";
-                                        Debug.logWarning(message, module);
-                                        if (messages != null) messages.add(message);
-                                        if (columnSize > ccInfo.columnSize && colWrongSize != null) {
-                                            // add item to list of wrong sized columns; only if the entity is larger
-                                            colWrongSize.add(entity.getEntityName() + "." + field.getName());
-                                        }
-                                    }
-                                    if (decimalDigits != -1 && decimalDigits != ccInfo.decimalDigits) {
-                                        String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" +
-                                            entity.getEntityName() + "] has a decimalDigits of [" + ccInfo.decimalDigits +
-                                            "] in the database, but is defined to have a decimalDigits of [" + decimalDigits + "] in the entity definition.";
-                                        Debug.logWarning(message, module);
-                                        if (messages != null) messages.add(message);
-                                    }
-
-                                    // do primary key matching check
-                                    if (checkPks && ccInfo.isPk && !field.getIsPk()) {
-                                        String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" +
-                                            entity.getEntityName() + "] IS a primary key in the database, but IS NOT a primary key in the entity definition. The primary key for this table needs to be re-created or modified so that this column is NOT part of the primary key.";
-                                        Debug.logError(message, module);
-                                        if (messages != null) messages.add(message);
-                                    }
-                                    if (checkPks && !ccInfo.isPk && field.getIsPk()) {
-                                        String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" +
-                                            entity.getEntityName() + "] IS NOT a primary key in the database, but IS a primary key in the entity definition. The primary key for this table needs to be re-created or modified to add this column to the primary key. Note that data may need to be added first as a primary key column cannot have an null values.";
-                                        Debug.logError(message, module);
-                                        if (messages != null) messages.add(message);
                                     }
                                 } else {
-                                    String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" + entity.getEntityName() +
-                                        "] has a field type name of [" + field.getType() + "] which is not found in the field type definitions";
+                                    typeName = fullTypeStr;
+                                }
+
+                                // override the default typeName with the sqlTypeAlias if it is specified
+                                if (UtilValidate.isNotEmpty(modelFieldType.getSqlTypeAlias())) {
+                                    typeName = modelFieldType.getSqlTypeAlias();
+                                }
+
+                                // NOTE: this may need a toUpperCase in some cases, keep an eye on it, okay just compare with ignore case
+                                if (!ccInfo.typeName.equalsIgnoreCase(typeName)) {
+                                    String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" +
+                                            entity.getEntityName() + "] is of type [" + ccInfo.typeName + "] in the database, but is defined as type [" +
+                                            typeName + "] in the entity definition.";
+                                    Debug.logError(message, module);
+                                    if (messages != null) messages.add(message);
+                                }
+                                if (columnSize != -1 && ccInfo.columnSize != -1 && columnSize != ccInfo.columnSize && (columnSize * 3) != ccInfo.columnSize) {
+                                    String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" +
+                                            entity.getEntityName() + "] has a column size of [" + ccInfo.columnSize +
+                                            "] in the database, but is defined to have a column size of [" + columnSize + "] in the entity definition.";
+                                    Debug.logWarning(message, module);
+                                    if (messages != null) messages.add(message);
+                                    if (columnSize > ccInfo.columnSize && colWrongSize != null) {
+                                        // add item to list of wrong sized columns; only if the entity is larger
+                                        colWrongSize.add(entity.getEntityName() + "." + field.getName());
+                                    }
+                                }
+                                if (decimalDigits != -1 && decimalDigits != ccInfo.decimalDigits) {
+                                    String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" +
+                                            entity.getEntityName() + "] has a decimalDigits of [" + ccInfo.decimalDigits +
+                                            "] in the database, but is defined to have a decimalDigits of [" + decimalDigits + "] in the entity definition.";
+                                    Debug.logWarning(message, module);
+                                    if (messages != null) messages.add(message);
+                                }
+
+                                // do primary key matching check
+                                if (checkPks && ccInfo.isPk && !field.getIsPk()) {
+                                    String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" +
+                                            entity.getEntityName() + "] IS a primary key in the database, but IS NOT a primary key in the entity definition. The primary key for this table needs to be re-created or modified so that this column is NOT part of the primary key.";
+                                    Debug.logError(message, module);
+                                    if (messages != null) messages.add(message);
+                                }
+                                if (checkPks && !ccInfo.isPk && field.getIsPk()) {
+                                    String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" +
+                                            entity.getEntityName() + "] IS NOT a primary key in the database, but IS a primary key in the entity definition. The primary key for this table needs to be re-created or modified to add this column to the primary key. Note that data may need to be added first as a primary key column cannot have an null values.";
                                     Debug.logError(message, module);
                                     if (messages != null) messages.add(message);
                                 }
                             } else {
-                                String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" + entity.getEntityName() + "] exists in the database but has no corresponding field" + ((checkPks && ccInfo.isPk) ? " (and it is a PRIMARY KEY COLUMN)" : "");
-                                Debug.logWarning(message, module);
+                                String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" + entity.getEntityName() +
+                                        "] has a field type name of [" + field.getType() + "] which is not found in the field type definitions";
+                                Debug.logError(message, module);
                                 if (messages != null) messages.add(message);
                             }
-                        }
-
-                        // -display message if number of table columns does not match number of entity fields
-                        if (colMap.size() != entity.getFieldsSize()) {
-                            String message = "Entity [" + entity.getEntityName() + "] has " + entity.getFieldsSize() + " fields but table [" + tableName + "] has " + colMap.size() + " columns.";
+                        } else {
+                            String message = "Column [" + ccInfo.columnName + "] of table [" + tableName + "] of entity [" + entity.getEntityName() + "] exists in the database but has no corresponding field" + ((checkPks && ccInfo.isPk) ? " (and it is a PRIMARY KEY COLUMN)" : "");
                             Debug.logWarning(message, module);
                             if (messages != null) messages.add(message);
                         }
                     }
 
-                    // -list all fields that do not have a corresponding column
-                    for (ModelField field : fieldColNames.values()) {
-                        String message = "Field [" + field.getName() + "] of entity [" + entity.getEntityName() + "] is missing its corresponding column [" + field.getColName() + "]" + (field.getIsPk() ? " (and it is a PRIMARY KEY FIELD)" : "");
-
+                    // -display message if number of table columns does not match number of entity fields
+                    if (colMap.size() != entity.getFieldsSize()) {
+                        String message = "Entity [" + entity.getEntityName() + "] has " + entity.getFieldsSize() + " fields but table [" + tableName + "] has " + colMap.size() + " columns.";
                         Debug.logWarning(message, module);
                         if (messages != null) messages.add(message);
+                    }
+                }
 
-                        if (addMissing) {
-                            // add the column
-                            String errMsg = addColumn(entity, field);
+                // -list all fields that do not have a corresponding column
+                for (ModelField field : fieldColNames.values()) {
+                    String message = "Field [" + field.getName() + "] of entity [" + entity.getEntityName() + "] is missing its corresponding column [" + field.getColName() + "]" + (field.getIsPk() ? " (and it is a PRIMARY KEY FIELD)" : "");
 
-                            if (UtilValidate.isNotEmpty(errMsg)) {
-                                message = "Could not add column [" + field.getColName() + "] to table [" + tableName + "]: " + errMsg;
-                                Debug.logError(message, module);
-                                if (messages != null) messages.add(message);
-                            } else {
-                                message = "Added column [" + field.getColName() + "] to table [" + tableName + "]" + (field.getIsPk() ? " (NOTE: this is a PRIMARY KEY FIELD, but the primary key was not updated automatically (not considered a safe operation), be sure to fill in any needed data and re-create the primary key)" : "");
-                                Debug.logImportant(message, module);
-                                if (messages != null) messages.add(message);
-                            }
+                    Debug.logWarning(message, module);
+                    if (messages != null) messages.add(message);
+
+                    if (addMissing) {
+                        // add the column
+                        String errMsg = addColumn(entity, field);
+
+                        if (UtilValidate.isNotEmpty(errMsg)) {
+                            message = "Could not add column [" + field.getColName() + "] to table [" + tableName + "]: " + errMsg;
+                            Debug.logError(message, module);
+                            if (messages != null) messages.add(message);
+                        } else {
+                            message = "Added column [" + field.getColName() + "] to table [" + tableName + "]" + (field.getIsPk() ? " (NOTE: this is a PRIMARY KEY FIELD, but the primary key was not updated automatically (not considered a safe operation), be sure to fill in any needed data and re-create the primary key)" : "");
+                            Debug.logImportant(message, module);
+                            if (messages != null) messages.add(message);
                         }
                     }
                 }
@@ -434,10 +426,11 @@ public class DatabaseUtil {
         // for each newly added table, add fk indices
         if (datasourceInfo.getUseForeignKeyIndices()) {
             int totalFkIndices = 0;
-            List<Future<AbstractCountingCallable>> fkIndicesFutures = new LinkedList<Future<AbstractCountingCallable>>();
+            List<Future<AbstractCountingCallable>> fkIndicesFutures = new LinkedList<>();
             for (ModelEntity curEntity: entitiesAdded) {
                 if (curEntity.getRelationsOneSize() > 0) {
                     fkIndicesFutures.add(executor.submit(new AbstractCountingCallable(curEntity, modelEntities) {
+                        @Override
                         public AbstractCountingCallable call() throws Exception {
                             count = createForeignKeyIndices(entity, datasourceInfo.getConstraintNameClipLength(), messages);
                             return this;
@@ -463,10 +456,11 @@ public class DatabaseUtil {
         // for each newly added table, add declared indexes
         if (datasourceInfo.getUseIndices()) {
             int totalDis = 0;
-            List<Future<AbstractCountingCallable>> disFutures = new LinkedList<Future<AbstractCountingCallable>>();
+            List<Future<AbstractCountingCallable>> disFutures = new LinkedList<>();
             for (ModelEntity curEntity: entitiesAdded) {
                 if (curEntity.getIndexesSize() > 0) {
                     disFutures.add(executor.submit(new AbstractCountingCallable(curEntity,  modelEntities) {
+                    @Override
                     public AbstractCountingCallable call() throws Exception {
                         count = createDeclaredIndices(entity, messages);
                         return this;
@@ -701,12 +695,10 @@ public class DatabaseUtil {
                     }
 
                     // show index key references that exist but are unknown
-                    if (tableIndexList != null) {
-                        for (String indexLeft: tableIndexList) {
-                            String message = "Unknown Index " + indexLeft + " found in table " + entity.getTableName(datasourceInfo);
-                            Debug.logImportant(message, module);
-                            if (messages != null) messages.add(message);
-                        }
+                    for (String indexLeft: tableIndexList) {
+                        String message = "Unknown Index " + indexLeft + " found in table " + entity.getTableName(datasourceInfo);
+                        Debug.logImportant(message, module);
+                        if (messages != null) messages.add(message);
                     }
                 }
             }
@@ -731,12 +723,12 @@ public class DatabaseUtil {
         // go through each table and make a ModelEntity object, add to list
         // for each entity make corresponding ModelField objects
         // then print out XML for the entities/fields
-        List<ModelEntity> newEntList = new LinkedList<ModelEntity>();
+        List<ModelEntity> newEntList = new LinkedList<>();
 
         boolean isCaseSensitive = getIsCaseSensitive(messages);
 
         // iterate over the table names is alphabetical order
-        for (String tableName: new TreeSet<String>(colInfo.keySet())) {
+        for (String tableName: new TreeSet<>(colInfo.keySet())) {
             Map<String, ColumnCheckInfo> colMap = colInfo.get(tableName);
             ModelEntity newEntity = new ModelEntity(tableName, colMap, modelFieldTypeReader, isCaseSensitive);
             newEntList.add(newEntity);
@@ -748,50 +740,24 @@ public class DatabaseUtil {
 
     private String getSchemaName(Collection<String> messages) throws SQLException {
         String schemaName;
-        Connection connection = null;
-
-        try {
-            connection = getConnectionLogged(messages);
+        try (Connection connection = getConnectionLogged(messages)) {
             DatabaseMetaData dbData = this.getDatabaseMetaData(connection, messages);
             schemaName = getSchemaName(dbData);
             return schemaName;
         }
-        finally {
-            if (connection != null) {
-                try {
-                    connection.close();
-                } catch (SQLException e) {
-                    Debug.logError(e, module);
-                }
-            }
-        }
     }
 
     private boolean getIsCaseSensitive(Collection<String> messages) {
-        Connection connection = null;
-
-        try {
-            connection = getConnectionLogged(messages);
-            boolean isCaseSensitive = false;
+        boolean isCaseSensitive = false;
+        try (Connection connection = getConnectionLogged(messages)) {
             DatabaseMetaData dbData = this.getDatabaseMetaData(connection, messages);
             if (dbData != null) {
-                try {
-                    isCaseSensitive = dbData.supportsMixedCaseIdentifiers();
-                } catch (SQLException e) {
-                    Debug.logError(e, "Error getting db meta data about case sensitive", module);
-                }
+                isCaseSensitive = dbData.supportsMixedCaseIdentifiers();
             }
-            return isCaseSensitive;
+        } catch (SQLException e) {
+            Debug.logError(e, "Error getting db meta data about case sensitive", module);
         }
-        finally {
-            if (connection != null) {
-                try {
-                    connection.close();
-                } catch (SQLException e) {
-                    Debug.logError(e, module);
-                }
-            }
-        }
+        return isCaseSensitive;
     }
 
     public DatabaseMetaData getDatabaseMetaData(Connection connection, Collection<String> messages) {
@@ -814,7 +780,7 @@ public class DatabaseUtil {
         return dbData;
     }
 
-    private static final List<Detection> detections = new ArrayList<Detection>();
+    private static final List<Detection> detections = new ArrayList<>();
     private static final String goodFormatStr;
     private static final String badFormatStr;
 
@@ -827,7 +793,7 @@ public class DatabaseUtil {
         protected Detection(String name, boolean required, String methodName, Object... params) throws NoSuchMethodException {
             this.name = name;
             this.required = required;
-            Class[] paramTypes = new Class[params.length];
+            Class<?>[] paramTypes = new Class<?>[params.length];
             for (int i = 0; i < params.length; i++) {
                 Class<?> paramType = params[i].getClass();
                 if (paramType == Integer.class) {
@@ -918,7 +884,6 @@ public class DatabaseUtil {
                     Object result = detection.method.invoke(dbData, detection.params);
                     Debug.logInfo(String.format(goodFormatStr, detection.name, result, requiredFlag), module);
                 } catch (Exception e) {
-                    e.printStackTrace();
                     Debug.logVerbose(e, module);
                     Debug.logWarning(String.format(badFormatStr, detection.name, requiredFlag), module);
                 }
@@ -960,7 +925,7 @@ public class DatabaseUtil {
         if (Debug.infoOn()) Debug.logInfo("Getting Table Info From Database", module);
 
         // get ALL tables from this database
-        TreeSet<String> tableNames = new TreeSet<String>();
+        TreeSet<String> tableNames = new TreeSet<>();
         ResultSet tableSet = null;
 
         String lookupSchemaName = null;
@@ -1055,8 +1020,9 @@ public class DatabaseUtil {
 
     private AbstractCountingCallable createPrimaryKeyFetcher(final DatabaseMetaData dbData, final String lookupSchemaName, final boolean needsUpperCase, final Map<String, Map<String, ColumnCheckInfo>> colInfo, final Collection<String> messages, final String curTable) {
         return new AbstractCountingCallable(null, null) {
+            @Override
             public AbstractCountingCallable call() throws Exception {
-                Debug.logVerbose("Fetching primary keys for " + curTable, module);
+                if (Debug.verboseOn()) Debug.logVerbose("Fetching primary keys for " + curTable, module);
                 ResultSet rsPks = dbData.getPrimaryKeys(null, lookupSchemaName, curTable);
                 count = checkPrimaryKeyInfo(rsPks, lookupSchemaName, needsUpperCase, colInfo, messages);
                 return this;
@@ -1067,7 +1033,7 @@ public class DatabaseUtil {
     private Map<String, Map<String, ColumnCheckInfo>> getColumnInfo(Set<String> tableNames, boolean getPks, Collection<String> messages, ExecutorService executor) {
         // if there are no tableNames, don't even try to get the columns
         if (tableNames.size() == 0) {
-            return new HashMap<String, Map<String, ColumnCheckInfo>>();
+            return new HashMap<>();
         }
 
         Connection connection = null;
@@ -1097,7 +1063,7 @@ public class DatabaseUtil {
 
             if (Debug.infoOn()) Debug.logInfo("Getting Column Info From Database", module);
 
-            Map<String, Map<String, ColumnCheckInfo>> colInfo = new HashMap<String, Map<String, ColumnCheckInfo>>();
+            Map<String, Map<String, ColumnCheckInfo>> colInfo = new HashMap<>();
             try {
                 String lookupSchemaName = getSchemaName(dbData);
                 boolean needsUpperCase = false;
@@ -1152,7 +1118,7 @@ public class DatabaseUtil {
 
                             Map<String, ColumnCheckInfo> tableColInfo = colInfo.get(ccInfo.tableName);
                             if (tableColInfo == null) {
-                                tableColInfo = new HashMap<String, ColumnCheckInfo>();
+                                tableColInfo = new HashMap<>();
                                 colInfo.put(ccInfo.tableName, tableColInfo);
                             }
                             tableColInfo.put(ccInfo.columnName, ccInfo);
@@ -1177,15 +1143,13 @@ public class DatabaseUtil {
                     int pkCount = 0;
 
                     // first try getting all at once for databases that support that and can generally perform WAY better, if that fails get one at a time so it will at least work
-                    try {
-                        ResultSet rsPks = dbData.getPrimaryKeys(null, lookupSchemaName, null);
+                    try (ResultSet rsPks = dbData.getPrimaryKeys(null, lookupSchemaName, null)) {
                         pkCount += checkPrimaryKeyInfo(rsPks, lookupSchemaName, needsUpperCase, colInfo, messages);
                     } catch (Exception e1) {
                         Debug.logInfo("Error getting primary key info from database with null tableName, will try other means: " + e1.toString(), module);
                     }
                     if (pkCount == 0) {
-                        try {
-                            ResultSet rsPks = dbData.getPrimaryKeys(null, lookupSchemaName, "%");
+                        try (ResultSet rsPks = dbData.getPrimaryKeys(null, lookupSchemaName, "%")) {
                             pkCount += checkPrimaryKeyInfo(rsPks, lookupSchemaName, needsUpperCase, colInfo, messages);
                         } catch (Exception e1) {
                             Debug.logInfo("Error getting primary key info from database with % tableName, will try other means: " + e1.toString(), module);
@@ -1193,7 +1157,7 @@ public class DatabaseUtil {
                     }
                     if (pkCount == 0) {
                         Debug.logInfo("Searching in " + tableNames.size() + " tables for primary key fields ...", module);
-                        List<Future<AbstractCountingCallable>> pkFetcherFutures = new LinkedList<Future<AbstractCountingCallable>>();
+                        List<Future<AbstractCountingCallable>> pkFetcherFutures = new LinkedList<>();
                         for (String curTable: tableNames) {
                             curTable = curTable.substring(curTable.indexOf('.') + 1); //cut off schema name
                             pkFetcherFutures.add(executor.submit(createPrimaryKeyFetcher(dbData, lookupSchemaName, needsUpperCase, colInfo, messages, curTable)));
@@ -1228,7 +1192,6 @@ public class DatabaseUtil {
 
     public int checkPrimaryKeyInfo(ResultSet rsPks, String lookupSchemaName, boolean needsUpperCase, Map<String, Map<String, ColumnCheckInfo>> colInfo, Collection<String> messages) throws SQLException {
         int pkCount = 0;
-        try {
             while (rsPks.next()) {
                 pkCount++;
                 try {
@@ -1263,15 +1226,6 @@ public class DatabaseUtil {
                     continue;
                 }
             }
-        } finally {
-            try {
-                rsPks.close();
-            } catch (SQLException sqle) {
-                String message = "Unable to close ResultSet for primary key list, continuing anyway... Error was:" + sqle.toString();
-                Debug.logError(message, module);
-                if (messages != null) messages.add(message);
-            }
-        }
         return pkCount;
     }
 
@@ -1316,7 +1270,7 @@ public class DatabaseUtil {
 
         if (Debug.infoOn()) Debug.logInfo("Getting Foreign Key (Reference) Info From Database", module);
 
-        Map<String, Map<String, ReferenceCheckInfo>> refInfo = new HashMap<String, Map<String, ReferenceCheckInfo>>();
+        Map<String, Map<String, ReferenceCheckInfo>> refInfo = new HashMap<>();
 
         try {
             // ResultSet rsCols = dbData.getCrossReference(null, null, null, null, null, null);
@@ -1373,7 +1327,7 @@ public class DatabaseUtil {
 
                     Map<String, ReferenceCheckInfo> tableRefInfo = refInfo.get(rcInfo.fkTableName);
                     if (tableRefInfo == null) {
-                        tableRefInfo = new HashMap<String, ReferenceCheckInfo>();
+                        tableRefInfo = new HashMap<>();
                         refInfo.put(rcInfo.fkTableName, tableRefInfo);
                         if (Debug.verboseOn()) Debug.logVerbose("Adding new Map for table: " + rcInfo.fkTableName, module);
                     }
@@ -1450,7 +1404,7 @@ public class DatabaseUtil {
 
         if (Debug.infoOn()) Debug.logInfo("Getting Index Info From Database", module);
 
-        Map<String, Set<String>> indexInfo = new HashMap<String, Set<String>>();
+        Map<String, Set<String>> indexInfo = new HashMap<>();
         try {
             int totalIndices = 0;
             String lookupSchemaName = getSchemaName(dbData);
@@ -1495,7 +1449,7 @@ public class DatabaseUtil {
 
                         Set<String> tableIndexList = indexInfo.get(tableName);
                         if (tableIndexList == null) {
-                            tableIndexList = new TreeSet<String>();
+                            tableIndexList = new TreeSet<>();
                             indexInfo.put(tableName, tableIndexList);
                             if (Debug.verboseOn()) Debug.logVerbose("Adding new Map for table: " + tableName, module);
                         }
@@ -1554,6 +1508,7 @@ public class DatabaseUtil {
             this.tableName = tableName;
         }
 
+        @Override
         public CreateTableCallable call() throws Exception {
             String errMsg = createTable(entity, modelEntities, false);
             if (UtilValidate.isNotEmpty(errMsg)) {
@@ -1585,7 +1540,7 @@ public class DatabaseUtil {
     private abstract class AbstractCountingCallable implements Callable<AbstractCountingCallable> {
         protected final ModelEntity entity;
         protected final Map<String, ModelEntity> modelEntities;
-        protected final List<String> messages = new LinkedList<String>();
+        protected final List<String> messages = new LinkedList<>();
         protected int count;
 
         protected AbstractCountingCallable(ModelEntity entity, Map<String, ModelEntity> modelEntities) {
@@ -1595,7 +1550,7 @@ public class DatabaseUtil {
 
         protected int updateData(Collection<String> messages) {
             if (messages != null && UtilValidate.isNotEmpty(this.messages)) {
-                messages.addAll(messages);
+                this.messages.addAll(messages);
             }
             return count;
         }
@@ -1611,19 +1566,6 @@ public class DatabaseUtil {
         }
         if (entity instanceof ModelViewEntity) {
             return "ERROR: Cannot create table for a view entity";
-        }
-
-        Connection connection = null;
-        try {
-            connection = getConnection();
-        } catch (SQLException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
-        } catch (GenericEntityException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
         }
 
         StringBuilder sqlBuf = new StringBuilder("CREATE TABLE ");
@@ -1728,18 +1670,16 @@ public class DatabaseUtil {
         }
 
         if (Debug.verboseOn()) Debug.logVerbose("[createTable] sql=" + sqlBuf.toString(), module);
-        try (Statement stmt = connection.createStatement()) {
+        try (Connection connection = getConnection(); Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(sqlBuf.toString());
         } catch (SQLException e) {
-            return "SQL Exception while executing the following:\n" + sqlBuf.toString() + "\nError was: " + e.toString();
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                Debug.logError(e, module);
-            }
+            String errMsg = "SQL Exception while executing the following:\n" + sqlBuf.toString() + "\nError was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
+        } catch (GenericEntityException e) {
+            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
         }
         return null;
     }
@@ -1758,11 +1698,6 @@ public class DatabaseUtil {
             return;
         }
 
-        Connection connection = getConnectionLogged(messages);
-        if (connection == null) {
-            return;
-        }
-
         String message = "Deleting table for entity [" + entity.getEntityName() + "]";
         Debug.logImportant(message, module);
         if (messages != null) messages.add(message);
@@ -1770,20 +1705,12 @@ public class DatabaseUtil {
         StringBuilder sqlBuf = new StringBuilder("DROP TABLE ");
         sqlBuf.append(entity.getTableName(datasourceInfo));
         if (Debug.verboseOn()) Debug.logVerbose("[deleteTable] sql=" + sqlBuf.toString(), module);
-        try (Statement stmt = connection.createStatement()) {
+        try (Connection connection = getConnectionLogged(messages); Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(sqlBuf.toString());
         } catch (SQLException e) {
             String errMsg = "SQL Exception while executing the following:\n" + sqlBuf.toString() + "\nError was: " + e.toString();
             Debug.logError(errMsg, module);
             if (messages != null) messages.add(errMsg);
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                Debug.logError(e, module);
-            }
         }
     }
 
@@ -1792,20 +1719,6 @@ public class DatabaseUtil {
             return "ModelEntity or ModelField where null, cannot add column";
         if (entity instanceof ModelViewEntity) {
             return "ERROR: Cannot add column for a view entity";
-        }
-
-        Connection connection = null;
-
-        try {
-            connection = getConnection();
-        } catch (SQLException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
-        } catch (GenericEntityException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
         }
 
         ModelFieldType type = modelFieldTypeReader.getModelFieldType(field.getType());
@@ -1837,7 +1750,7 @@ public class DatabaseUtil {
 
         String sql = sqlBuf.toString();
         if (Debug.infoOn()) Debug.logInfo("[addColumn] sql=" + sql, module);
-        try (Statement  stmt = connection.createStatement()) {
+        try (Connection connection = getConnection(); Statement  stmt = connection.createStatement()) {
             stmt.executeUpdate(sql);
         } catch (SQLException e) {
             // if that failed try the alternate syntax real quick
@@ -1864,20 +1777,20 @@ public class DatabaseUtil {
 
             String sql2 = sql2Buf.toString();
             if (Debug.infoOn()) Debug.logInfo("[addColumn] sql failed, trying sql2=" + sql2, module);
-            try (Statement  stmt = connection.createStatement()) {
+            try (Connection connection = getConnection(); Statement  stmt = connection.createStatement()) {
                 stmt.executeUpdate(sql2);
             } catch (SQLException e2) {
                 // if this also fails report original error, not this error...
-                return "SQL Exception while executing the following:\n" + sql + "\nError was: " + e.toString();
+                return "SQL Exception while executing the following:\n" + sql + "\nError was: " + e2.toString();
+            } catch (GenericEntityException e2) {
+                String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e2.toString();
+                Debug.logError(e2, errMsg, module);
+                return errMsg;
             }
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                Debug.logError(e, module);
-            }
+        } catch (GenericEntityException e) {
+            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
         }
         return null;
     }
@@ -1887,20 +1800,6 @@ public class DatabaseUtil {
             return "ModelEntity or ModelField where null, cannot rename column";
         if (entity instanceof ModelViewEntity) {
             return "ERROR: Cannot rename column for a view entity";
-        }
-
-        Connection connection = null;
-
-        try {
-            connection = getConnection();
-        } catch (SQLException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
-        } catch (GenericEntityException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
         }
 
         ModelFieldType type = modelFieldTypeReader.getModelFieldType(field.getType());
@@ -1918,18 +1817,16 @@ public class DatabaseUtil {
 
         String sql = sqlBuf.toString();
         if (Debug.infoOn()) Debug.logInfo("[renameColumn] sql=" + sql, module);
-        try (Statement stmt = connection.createStatement()) { 
+        try (Connection connection = getConnection(); Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(sql);
         } catch (SQLException e) {
-            return "SQL Exception while executing the following:\n" + sql + "\nError was: " + e.toString();
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                Debug.logError(e, module);
-            }
+            String errMsg = "SQL Exception while executing the following:\n" + sql + "\nError was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
+        } catch (GenericEntityException e) {
+            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
         }
         return null;
     }
@@ -1952,12 +1849,6 @@ public class DatabaseUtil {
             return;
         }
 
-        // need connection
-        Connection connection = getConnectionLogged(messages);
-        if (connection == null) {
-            return;
-        }
-
         // copy the data from old to new
         StringBuilder sqlBuf1 = new StringBuilder("UPDATE ");
         sqlBuf1.append(entity.getTableName(datasourceInfo));
@@ -1968,7 +1859,7 @@ public class DatabaseUtil {
 
         String sql1 = sqlBuf1.toString();
         if (Debug.infoOn()) Debug.logInfo("[moveData] sql=" + sql1, module);
-        try (Statement stmt = connection.createStatement()) { 
+        try (Connection connection = getConnectionLogged(messages); Statement stmt = connection.createStatement()) {
             int changed = stmt.executeUpdate(sql1);
             if (Debug.infoOn()) Debug.logInfo("[moveData] " + changed + " records updated", module);
         } catch (SQLException e) {
@@ -1976,20 +1867,6 @@ public class DatabaseUtil {
             if (messages != null)
                 messages.add(thisMsg);
             Debug.logError(thisMsg, module);
-            return;
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                Debug.logError(e, module);
-            }
-        }
-
-        // fresh connection
-        connection = getConnectionLogged(messages);
-        if (connection == null) {
             return;
         }
 
@@ -2001,7 +1878,7 @@ public class DatabaseUtil {
 
         String sql2 = sqlBuf2.toString();
         if (Debug.infoOn()) Debug.logInfo("[dropColumn] sql=" + sql2, module);
-        try (Statement stmt = connection.createStatement()) {
+        try (Connection connection = getConnectionLogged(messages); Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(sql2);
         } catch (SQLException e) {
             String thisMsg = "SQL Exception while executing the following:\n" + sql2 + "\nError was: " + e.toString();
@@ -2009,14 +1886,6 @@ public class DatabaseUtil {
                 messages.add(thisMsg);
             Debug.logError(thisMsg, module);
             return;
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                Debug.logError(e, module);
-            }
         }
     }
 
@@ -2026,7 +1895,7 @@ public class DatabaseUtil {
             return;
         }
 
-        if (messages == null) messages = new ArrayList<String>();
+        if (messages == null) messages = new ArrayList<>();
 
         for (String fieldInfo: fieldsWrongSize) {
             String entityName = fieldInfo.substring(0, fieldInfo.indexOf('.'));
@@ -2038,7 +1907,7 @@ public class DatabaseUtil {
         }
     }
 
-    private String makeTempFieldName(ModelField field) {
+    private static String makeTempFieldName(ModelField field) {
         String tempName = "tmp_" + field.getName();
         if (tempName.length() > 30) {
             tempName = tempName.substring(0, 30);
@@ -2146,20 +2015,6 @@ public class DatabaseUtil {
     }
 
     public String createForeignKey(ModelEntity entity, ModelRelation modelRelation, ModelEntity relModelEntity, int constraintNameClipLength, String fkStyle, boolean useFkInitiallyDeferred) {
-        Connection connection = null;
-
-        try {
-            connection = getConnection();
-        } catch (SQLException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
-        } catch (GenericEntityException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
-        }
-
         // now add constraint clause
         StringBuilder sqlBuf = new StringBuilder("ALTER TABLE ");
         sqlBuf.append(entity.getTableName(datasourceInfo));
@@ -2171,18 +2026,16 @@ public class DatabaseUtil {
         sqlBuf.append(fkConstraintClause);
 
         if (Debug.verboseOn()) Debug.logVerbose("[createForeignKey] sql=" + sqlBuf.toString(), module);
-        try (Statement stmt = connection.createStatement()) {
+        try (Connection connection = getConnection(); Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(sqlBuf.toString());
         } catch (SQLException e) {
-            return "SQL Exception while executing the following:\n" + sqlBuf.toString() + "\nError was: " + e.toString();
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                Debug.logError(e, module);
-            }
+            String errMsg = "SQL Exception while executing the following:\n" + sqlBuf.toString() + "\nError was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
+        } catch (GenericEntityException e) {
+            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
         }
         return null;
     }
@@ -2312,20 +2165,6 @@ public class DatabaseUtil {
     }
 
     public String deleteForeignKey(ModelEntity entity, ModelRelation modelRelation, ModelEntity relModelEntity, int constraintNameClipLength) {
-        Connection connection = null;
-
-        try {
-            connection = getConnection();
-        } catch (SQLException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
-        } catch (GenericEntityException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
-        }
-
         String relConstraintName = makeFkConstraintName(modelRelation, constraintNameClipLength);
 
         // now add constraint clause
@@ -2339,18 +2178,16 @@ public class DatabaseUtil {
         sqlBuf.append(relConstraintName);
 
         if (Debug.verboseOn()) Debug.logVerbose("[deleteForeignKey] sql=" + sqlBuf.toString(), module);
-        try (Statement stmt = connection.createStatement()) {
+        try (Connection connection = getConnection(); Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(sqlBuf.toString());
         } catch (SQLException e) {
-            return "SQL Exception while executing the following:\n" + sqlBuf.toString() + "\nError was: " + e.toString();
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                Debug.logError(e, module);
-            }
+            String errMsg = "SQL Exception while executing the following:\n" + sqlBuf.toString() + "\nError was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
+        } catch (GenericEntityException e) {
+            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
         }
         return null;
     }
@@ -2358,7 +2195,7 @@ public class DatabaseUtil {
     /* ====================================================================== */
     /* ====================================================================== */
     public void createPrimaryKey(ModelEntity entity, boolean usePkConstraintNames, int constraintNameClipLength, List<String> messages) {
-        if (messages == null) messages = new ArrayList<String>();
+        if (messages == null) messages = new ArrayList<>();
         String err = createPrimaryKey(entity, usePkConstraintNames, constraintNameClipLength);
         if (UtilValidate.isNotEmpty(err)) {
             messages.add(err);
@@ -2384,15 +2221,6 @@ public class DatabaseUtil {
         String message;
         if (entity.getPksSize() > 0) {
             message = "Creating primary key for entity [" + entity.getEntityName() + "]";
-            Connection connection = null;
-
-            try {
-                connection = getConnection();
-            } catch (SQLException e) {
-                return "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            } catch (GenericEntityException e) {
-                return "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            }
 
             // now add constraint clause
             StringBuilder sqlBuf = new StringBuilder("ALTER TABLE ");
@@ -2410,18 +2238,12 @@ public class DatabaseUtil {
             sqlBuf.append(")");
 
             if (Debug.verboseOn()) Debug.logVerbose("[createPrimaryKey] sql=" + sqlBuf.toString(), module);
-            try (Statement stmt = connection.createStatement()) {
+            try (Connection connection = getConnection(); Statement stmt = connection.createStatement()) {
                 stmt.executeUpdate(sqlBuf.toString());
             } catch (SQLException e) {
                 return "SQL Exception while executing the following:\n" + sqlBuf.toString() + "\nError was: " + e.toString();
-            } finally {
-                try {
-                    if (connection != null) {
-                        connection.close();
-                    }
-                } catch (SQLException e) {
-                    Debug.logError(e, module);
-                }
+            } catch (GenericEntityException e) {
+                return "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
             }
         } else {
             message = "No primary-key defined for table [" + entity.getEntityName() + "]";
@@ -2432,7 +2254,7 @@ public class DatabaseUtil {
     }
 
     public void deletePrimaryKey(ModelEntity entity, boolean usePkConstraintNames, int constraintNameClipLength, List<String> messages) {
-        if (messages == null) messages = new ArrayList<String>();
+        if (messages == null) messages = new ArrayList<>();
         String err = deletePrimaryKey(entity, usePkConstraintNames, constraintNameClipLength);
         if (UtilValidate.isNotEmpty(err)) {
             messages.add(err);
@@ -2458,19 +2280,6 @@ public class DatabaseUtil {
         String message;
         if (entity.getPksSize() > 0) {
             message = "Deleting primary key for entity [" + entity.getEntityName() + "]";
-            Connection connection = null;
-            try {
-                connection = getConnection();
-            } catch (SQLException e) {
-                String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-                Debug.logError(e, errMsg, module);
-                return errMsg;
-            } catch (GenericEntityException e) {
-                String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-                Debug.logError(e, errMsg, module);
-                return errMsg;
-            }
-
             // now add constraint clause
             StringBuilder sqlBuf = new StringBuilder("ALTER TABLE ");
             sqlBuf.append(entity.getTableName(datasourceInfo));
@@ -2488,20 +2297,16 @@ public class DatabaseUtil {
             }
 
             if (Debug.verboseOn()) Debug.logVerbose("[deletePrimaryKey] sql=" + sqlBuf.toString(), module);
-            try (Statement stmt = connection.createStatement()) {
+            try (Connection connection = getConnection(); Statement stmt = connection.createStatement()) {
                 stmt.executeUpdate(sqlBuf.toString());
             } catch (SQLException e) {
                 String errMsg = "SQL Exception while executing the following:\n" + sqlBuf.toString() + "\nError was: " + e.toString();
                 Debug.logError(e, errMsg, module);
                 return errMsg;
-            } finally {
-                try {
-                    if (connection != null) {
-                        connection.close();
-                    }
-                } catch (SQLException e) {
-                    Debug.logError(e, module);
-                }
+            } catch (GenericEntityException e) {
+                String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
+                Debug.logError(e, errMsg, module);
+                return errMsg;
             }
         } else {
             message = "No primary-key defined for table [" + entity.getEntityName() + "]";
@@ -2553,35 +2358,19 @@ public class DatabaseUtil {
     }
 
     public String createDeclaredIndex(ModelEntity entity, ModelIndex modelIndex) {
-        Connection connection = null;
+        String createIndexSql = makeIndexClause(entity, modelIndex);
+        if (Debug.verboseOn()) Debug.logVerbose("[createForeignKeyIndex] index sql=" + createIndexSql, module);
 
-        try {
-            connection = getConnection();
+        try (Connection connection = getConnection(); Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(createIndexSql);
         } catch (SQLException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
+            String errMsg = "SQL Exception while executing the following:\n" + createIndexSql + "\nError was: " + e.toString();
             Debug.logError(e, errMsg, module);
             return errMsg;
         } catch (GenericEntityException e) {
             String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
             Debug.logError(e, errMsg, module);
             return errMsg;
-        }
-
-        String createIndexSql = makeIndexClause(entity, modelIndex);
-        if (Debug.verboseOn()) Debug.logVerbose("[createForeignKeyIndex] index sql=" + createIndexSql, module);
-
-        try (Statement stmt = connection.createStatement()) {
-            stmt.executeUpdate(createIndexSql);
-        } catch (SQLException e) {
-            return "SQL Exception while executing the following:\n" + createIndexSql + "\nError was: " + e.toString();
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                Debug.logError(e, module);
-            }
         }
         return null;
     }
@@ -2621,7 +2410,7 @@ public class DatabaseUtil {
     }
 
     public void deleteDeclaredIndices(ModelEntity entity, List<String> messages) {
-        if (messages == null) messages = new ArrayList<String>();
+        if (messages == null) messages = new ArrayList<>();
         String err = deleteDeclaredIndices(entity);
         if (UtilValidate.isNotEmpty(err)) {
             messages.add(err);
@@ -2660,19 +2449,6 @@ public class DatabaseUtil {
     }
 
     public String deleteDeclaredIndex(ModelEntity entity, ModelIndex modelIndex) {
-        Connection connection = null;
-        try {
-            connection = getConnection();
-        } catch (SQLException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
-        } catch (GenericEntityException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
-        }
-
         // TODO: also remove the constraing if this was a unique index, in most databases dropping the index does not drop the constraint
 
         StringBuilder indexSqlBuf = new StringBuilder("DROP INDEX ");
@@ -2687,18 +2463,16 @@ public class DatabaseUtil {
         String deleteIndexSql = indexSqlBuf.toString();
         if (Debug.verboseOn()) Debug.logVerbose("[deleteDeclaredIndex] index sql=" + deleteIndexSql, module);
 
-        try (Statement stmt = connection.createStatement()) {
+        try (Connection connection = getConnection(); Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(deleteIndexSql);
         } catch (SQLException e) {
-            return "SQL Exception while executing the following:\n" + deleteIndexSql + "\nError was: " + e.toString();
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                Debug.logError(e, module);
-            }
+            String errMsg = "SQL Exception while executing the following:\n" + deleteIndexSql + "\nError was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
+        } catch (GenericEntityException e) {
+            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
         }
         return null;
     }
@@ -2750,19 +2524,6 @@ public class DatabaseUtil {
     }
 
     public String createForeignKeyIndex(ModelEntity entity, ModelRelation modelRelation, int constraintNameClipLength) {
-        Connection connection = null;
-        try {
-            connection = getConnection();
-        } catch (SQLException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
-        } catch (GenericEntityException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
-        }
-
         String createIndexSql = makeFkIndexClause(entity, modelRelation, constraintNameClipLength);
         if (UtilValidate.isEmpty(createIndexSql)) {
             return "Error creating foreign key index clause, see log for details";
@@ -2770,18 +2531,16 @@ public class DatabaseUtil {
 
         if (Debug.verboseOn()) Debug.logVerbose("[createForeignKeyIndex] index sql=" + createIndexSql, module);
 
-        try (Statement stmt = connection.createStatement()) {
+        try (Connection connection = getConnection(); Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(createIndexSql);
         } catch (SQLException e) {
-            return "SQL Exception while executing the following:\n" + createIndexSql + "\nError was: " + e.toString();
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                Debug.logError(e, module);
-            }
+            String errMsg = "SQL Exception while executing the following:\n" + createIndexSql + "\nError was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
+        } catch (GenericEntityException e) {
+            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
         }
         return null;
     }
@@ -2818,7 +2577,7 @@ public class DatabaseUtil {
     }
 
     public void deleteForeignKeyIndices(ModelEntity entity, List<String> messages) {
-        if (messages == null) messages = new ArrayList<String>();
+        if (messages == null) messages = new ArrayList<>();
         String err = deleteForeignKeyIndices(entity, datasourceInfo.getConstraintNameClipLength());
         if (UtilValidate.isNotEmpty(err)) {
             messages.add(err);
@@ -2860,19 +2619,6 @@ public class DatabaseUtil {
     }
 
     public String deleteForeignKeyIndex(ModelEntity entity, ModelRelation modelRelation, int constraintNameClipLength) {
-        Connection connection = null;
-        try {
-            connection = getConnection();
-        } catch (SQLException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
-        } catch (GenericEntityException e) {
-            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            return errMsg;
-        }
-
         StringBuilder indexSqlBuf = new StringBuilder("DROP INDEX ");
         String relConstraintName = makeFkConstraintName(modelRelation, constraintNameClipLength);
 
@@ -2890,18 +2636,16 @@ public class DatabaseUtil {
 
         if (Debug.verboseOn()) Debug.logVerbose("[deleteForeignKeyIndex] index sql=" + deleteIndexSql, module);
 
-        try (Statement stmt = connection.createStatement()) {
+        try (Connection connection = getConnection(); Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(deleteIndexSql);
         } catch (SQLException e) {
-            return "SQL Exception while executing the following:\n" + deleteIndexSql + "\nError was: " + e.toString();
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                Debug.logError(e, module);
-            }
+            String errMsg = "SQL Exception while executing the following:\n" + deleteIndexSql + "\nError was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
+        } catch (GenericEntityException e) {
+            String errMsg = "Unable to establish a connection with the database for helperName [" + this.helperInfo.getHelperFullName() + "]... Error was: " + e.toString();
+            Debug.logError(e, errMsg, module);
+            return errMsg;
         }
         return null;
     }
@@ -2934,10 +2678,7 @@ public class DatabaseUtil {
             return;
         }
 
-        Connection connection = null;
-
-        try {
-            connection = getConnectionLogged(messages);
+        try (Connection connection = getConnectionLogged(messages)) {
             if (connection == null) {
                 return;
             }
@@ -3014,14 +2755,8 @@ public class DatabaseUtil {
                     Debug.logError(errMsg, module);
                 }
             }
-        } finally {
-            try {
-                if (connection != null) {
-                    connection.close();
-                }
-            } catch (SQLException e) {
-                Debug.logError(e, module);
-            }
+        } catch (SQLException e) {
+            Debug.logError(e, module);
         }
     }
 

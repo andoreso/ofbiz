@@ -43,7 +43,7 @@ public class SequenceUtil {
 
     public static final String module = SequenceUtil.class.getName();
 
-    private final ConcurrentMap<String, SequenceBank> sequences = new ConcurrentHashMap<String, SequenceBank>();
+    private final ConcurrentMap<String, SequenceBank> sequences = new ConcurrentHashMap<>();
     private final GenericHelperInfo helperInfo;
     private final String tableName;
     private final String nameColName;
@@ -250,12 +250,12 @@ public class SequenceUtil {
                             Debug.logWarning(sqle, "Error closing statement in sequence util", module);
                         }
                         try {
-                            if (connection != null) connection.close();
+                            connection.close();
                         } catch (SQLException sqle) {
                             Debug.logWarning(sqle, "Error closing connection in sequence util", module);
                         }
                     }
-                } catch (Exception e) {
+                } catch (SQLException | GenericEntityException  e) {
                     // reset the sequence fields and return (note: it would be better to throw an exception)
                     curSeqId = 0;
                     maxSeqId = 0;

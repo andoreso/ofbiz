@@ -20,12 +20,12 @@ package org.apache.ofbiz.webtools.labelmanager;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URL;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.FileUtil;
 import org.apache.ofbiz.base.util.UtilGenerics;
@@ -36,6 +36,7 @@ import org.apache.ofbiz.base.util.UtilXml;
 import org.apache.ofbiz.base.util.cache.UtilCache;
 import org.apache.ofbiz.service.DispatchContext;
 import org.apache.ofbiz.service.ServiceUtil;
+import org.jsoup.parser.Parser;
 import org.w3c.dom.Comment;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -55,15 +56,16 @@ public class SaveLabelsToXmlFile {
         }
         String key = (String) context.get("key");
         String keyComment = (String) context.get("keyComment");
-        String update_label = (String) context.get("update_label");
+        String updateLabel = (String) context.get("update_label");
         String confirm = (String) context.get("confirm");
         String removeLabel = (String) context.get("removeLabel");
         List<String> localeNames = UtilGenerics.cast(context.get("localeNames"));
         List<String> localeValues = UtilGenerics.cast(context.get("localeValues"));
         List<String> localeComments = UtilGenerics.cast(context.get("localeComments"));
         String apacheLicenseText = null;
+        URL apache2Header = SaveLabelsToXmlFile.class.getResource("APACHE2_HEADER_FOR_XML");
         try {
-            apacheLicenseText = FileUtil.readString("UTF-8", FileUtil.getFile("component://webtools/config/APACHE2_HEADER_FOR_XML"));
+            apacheLicenseText = FileUtil.readString("UTF-8", FileUtil.getFile(apache2Header.getPath()));
         } catch (IOException e) {
             Debug.logWarning(e, "Unable to read Apache License text file", module);
         }
@@ -88,7 +90,7 @@ public class SaveLabelsToXmlFile {
                 } else if (UtilValidate.isNotEmpty(confirm)) {
                     LabelInfo label = labels.get(key + LabelManagerFactory.keySeparator + fileName);
                     // Update a Label
-                    if (update_label.equalsIgnoreCase("Y")) {
+                    if ("Y".equalsIgnoreCase(updateLabel)) {
                         if (UtilValidate.isNotEmpty(label)) {
                             factory.updateLabelValue(localeNames, localeValues, localeComments, label, key, keyComment, fileName);
                         }
@@ -118,9 +120,9 @@ public class SaveLabelsToXmlFile {
                         continue;
                     }
                     Element propertyElem = UtilXml.addChildElement(resourceElem, "property", resourceDocument);
-                    propertyElem.setAttribute("key", StringEscapeUtils.unescapeHtml(labelInfo.getLabelKey()));
+                    propertyElem.setAttribute("key", Parser.unescapeEntities(labelInfo.getLabelKey(), true));
                     if (UtilValidate.isNotEmpty(labelInfo.getLabelKeyComment())) {
-                        Comment labelKeyComment = resourceDocument.createComment(StringEscapeUtils.unescapeHtml(labelInfo.getLabelKeyComment()));
+                        Comment labelKeyComment = resourceDocument.createComment(Parser.unescapeEntities(labelInfo.getLabelKeyComment(), true));
                         Node parent = propertyElem.getParentNode();
                         parent.insertBefore(labelKeyComment, propertyElem);
                     }
@@ -131,11 +133,11 @@ public class SaveLabelsToXmlFile {
                             valueString = labelValue.getLabelValue();
                         }
                         if (UtilValidate.isNotEmpty(valueString)) {
-                            valueString = StringEscapeUtils.unescapeHtml(valueString);
+                            valueString = Parser.unescapeEntities(valueString, true);
                             Element valueElem = UtilXml.addChildElementValue(propertyElem, "value", valueString, resourceDocument);
                             valueElem.setAttribute("xml:lang", localeFound);
                             if (UtilValidate.isNotEmpty(labelValue.getLabelComment())) {
-                                Comment labelComment = resourceDocument.createComment(StringEscapeUtils.unescapeHtml(labelValue.getLabelComment()));
+                                Comment labelComment = resourceDocument.createComment(Parser.unescapeEntities(labelValue.getLabelComment(), true));
                                 Node parent = valueElem.getParentNode();
                                 parent.insertBefore(labelComment, valueElem);
                             }

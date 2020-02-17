@@ -34,7 +34,6 @@ import org.apache.ofbiz.base.util.GeneralRuntimeException;
 import org.apache.ofbiz.base.util.StringUtil;
 import org.apache.ofbiz.base.util.UtilCodec;
 import org.apache.ofbiz.base.util.UtilHttp;
-import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.base.util.cache.UtilCache;
 import org.apache.ofbiz.content.content.ContentWorker;
@@ -80,6 +79,7 @@ public class CategoryContentWrapper implements ContentWrapper {
         this.mimeTypeId = EntityUtilProperties.getPropertyValue("content", "defaultMimeType", "text/html; charset=utf-8", (Delegator) request.getAttribute("delegator"));
     }
 
+    @Override
     public StringUtil.StringWrapper get(String prodCatContentTypeId, String encoderType) {
         return StringUtil.makeStringWrapper(getProductCategoryContentAsText(productCategory, prodCatContentTypeId, locale, mimeTypeId, productCategory.getDelegator(), dispatcher, encoderType));
     }
@@ -111,9 +111,7 @@ public class CategoryContentWrapper implements ContentWrapper {
                 outString = outString == null? "" : outString;
             }
             outString = encoder.sanitize(outString, null);
-            if (categoryContentCache != null) {
-                categoryContentCache.put(cacheKey, outString);
-            }
+            categoryContentCache.put(cacheKey, outString);
             return outString;
         } catch (GeneralException e) {
             Debug.logError(e, "Error rendering CategoryContent, inserting empty String", module);
@@ -145,28 +143,11 @@ public class CategoryContentWrapper implements ContentWrapper {
             throw new GeneralRuntimeException("Unable to find a delegator to use!");
         }
 
-        List<GenericValue> categoryContentList = EntityQuery.use(delegator).from("ProductCategoryContent").where("productCategoryId", productCategoryId, "prodCatContentTypeId", prodCatContentTypeId).orderBy("-fromDate").cache(cache).queryList();
-        categoryContentList = EntityUtil.filterByDate(categoryContentList);
-        
-        GenericValue categoryContent = null;
-        String sessionLocale = locale.toString();
-        String fallbackLocale = UtilProperties.getFallbackLocale().toString();
-        if ( sessionLocale == null ) sessionLocale = fallbackLocale;
-        // look up all content found for locale
-        for( GenericValue currentContent: categoryContentList ) {
-            GenericValue content = EntityQuery.use(delegator).from("Content").where("contentId", currentContent.getString("contentId")).cache(cache).queryOne();
-            if ( sessionLocale.equals(content.getString("localeString")) ) {
-              // valid locale found
-              categoryContent = currentContent;
-              break;
-            } else if ( fallbackLocale.equals(content.getString("localeString")) ) {
-              // fall back to default locale
-              categoryContent = currentContent;
-            }
-        }
+        List<GenericValue> categoryContentList = EntityQuery.use(delegator).from("ProductCategoryContent").where("productCategoryId", productCategoryId, "prodCatContentTypeId", prodCatContentTypeId).orderBy("-fromDate").cache(cache).filterByDate().queryList();
+        GenericValue categoryContent = EntityUtil.getFirst(categoryContentList);
         if (categoryContent != null) {
             // when rendering the category content, always include the Product Category and ProductCategoryContent records that this comes from
-            Map<String, Object> inContext = new HashMap<String, Object>();
+            Map<String, Object> inContext = new HashMap<>();
             inContext.put("productCategory", productCategory);
             inContext.put("categoryContent", categoryContent);
             ContentWorker.renderContentAsText(dispatcher, categoryContent.getString("contentId"), outWriter, inContext, locale, mimeTypeId, null, null, cache);

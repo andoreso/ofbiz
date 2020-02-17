@@ -19,6 +19,8 @@
 
 package org.apache.ofbiz.entity.condition;
 
+import static org.apache.ofbiz.entity.condition.EntityConditionUtils.getField;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +66,7 @@ public class EntityFieldValue extends EntityConditionValue {
         this.fieldName = fieldName;
         this.entityAlias = entityAlias;
         if (UtilValidate.isNotEmpty(entityAliasStack)) {
-            this.entityAliasStack = new LinkedList<String>();
+            this.entityAliasStack = new LinkedList<>();
             this.entityAliasStack.addAll(entityAliasStack);
         }
         this.modelViewEntity = modelViewEntity;
@@ -93,20 +95,26 @@ public class EntityFieldValue extends EntityConditionValue {
     @Override
     public int hashCode() {
         int hash = fieldName.hashCode();
-        if (this.entityAlias != null) hash |= this.entityAlias.hashCode();
-        if (this.entityAliasStack != null) hash |= this.entityAliasStack.hashCode();
-        if (this.modelViewEntity != null) hash |= this.modelViewEntity.hashCode();
+        if (this.entityAlias != null) {
+            hash |= this.entityAlias.hashCode();
+        }
+        if (this.entityAliasStack != null) {
+            hash |= this.entityAliasStack.hashCode();
+        }
+        if (this.modelViewEntity != null) {
+            hash |= this.modelViewEntity.hashCode();
+        }
         return hash;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof EntityFieldValue)) return false;
+        if (!(obj instanceof EntityFieldValue)) {
+            return false;
+        }
         EntityFieldValue otherValue = (EntityFieldValue) obj;
-        if (!fieldName.equals(otherValue.fieldName)) return false;
-        if (UtilMisc.compare(this.entityAlias, otherValue.entityAlias) != 0) return false;
-        if (UtilMisc.compare(this.entityAliasStack, otherValue.entityAliasStack) != 0) return false;
-        return true;
+        return fieldName.equals(otherValue.fieldName) && !(UtilMisc.compare(this.entityAlias, otherValue.entityAlias) != 0)
+                && !(UtilMisc.compare(this.entityAliasStack, otherValue.entityAliasStack) != 0);
     }
 
     @Override
@@ -115,9 +123,8 @@ public class EntityFieldValue extends EntityConditionValue {
             if (this.entityAlias != null) {
                 ModelEntity memberModelEntity = modelViewEntity.getMemberModelEntity(entityAlias);
                 return getField(memberModelEntity, fieldName);
-            } else {
-                return getField(modelViewEntity, fieldName);
             }
+            return getField(modelViewEntity, fieldName);
         }
         return getField(modelEntity, fieldName);
     }
@@ -166,6 +173,46 @@ public class EntityFieldValue extends EntityConditionValue {
         }
     }
 
+    private static String getColName(Map<String, String> tableAliases, ModelEntity modelEntity, String fieldName,
+            boolean includeTableNamePrefix, Datasource datasourceInfo) {
+        if (modelEntity == null) {
+            return fieldName;
+        }
+        return getColName(tableAliases, modelEntity, getField(modelEntity, fieldName), fieldName,
+                includeTableNamePrefix, datasourceInfo);
+    }
+
+    private static String getColName(Map<String, String> tableAliases, ModelEntity modelEntity, ModelField modelField,
+            String fieldName, boolean includeTableNamePrefix, Datasource datasourceInfo) {
+        if (modelEntity == null || modelField == null) {
+            return fieldName;
+        }
+
+        // If this is a view entity and we are configured to alias the views, use the alias here
+        // instead of the composite (i.e. table.column) field name.
+        if (datasourceInfo != null && datasourceInfo.getAliasViewColumns() && modelEntity instanceof ModelViewEntity) {
+            ModelViewEntity modelViewEntity = (ModelViewEntity) modelEntity;
+            ModelAlias modelAlias = modelViewEntity.getAlias(fieldName);
+            if (modelAlias != null) {
+                return modelAlias.getColAlias();
+            }
+        }
+
+        String colName = getColName(modelField, fieldName);
+        if (includeTableNamePrefix && datasourceInfo != null) {
+            String tableName = modelEntity.getTableName(datasourceInfo);
+            if (tableAliases.containsKey(tableName)) {
+                tableName = tableAliases.get(tableName);
+            }
+            colName = tableName + "." + colName;
+        }
+        return colName;
+    }
+
+    private static String getColName(ModelField modelField, String fieldName) {
+        return (modelField == null) ? fieldName : modelField.getColValue();
+    }
+
     @Override
     public void validateSql(ModelEntity modelEntity) throws GenericModelException {
         ModelField field = getModelField(modelEntity);
@@ -181,19 +228,8 @@ public class EntityFieldValue extends EntityConditionValue {
         }
         if (map instanceof GenericEntity.NULL) {
             return null;
-        } else {
-            return map.get(fieldName);
         }
-    }
-
-    @Override
-    public void visit(EntityConditionVisitor visitor) {
-        visitor.acceptEntityFieldValue(this);
-    }
-
-    @Override
-    public void accept(EntityConditionVisitor visitor) {
-        visitor.acceptEntityFieldValue(this);
+        return map.get(fieldName);
     }
 
     @Override

@@ -52,6 +52,11 @@ under the License.
                                 <if-has-permission permission="MARKETING" action="_VIEW"/>
                             </condition>
                             <widgets>
+                                <container style="button-bar">
+                                    <link text="${uiLabelMap.MarketingTrackingCodeCreate}" target="/EditTrackingCode" style="buttontext create">
+                                        <parameter param-name="DONE_PAGE" from-field="donePage"/>
+                                    </link>
+                                </container>
                                 <decorator-section-include name="body"/>
                             </widgets>
                             <fail-widgets>
@@ -118,12 +123,7 @@ under the License.
                 <decorator-screen name="CommonTrackingCodeDecorator">
                     <decorator-section name="body">
                         <screenlet title="${uiLabelMap.PageTitleListTrackingCode}">
-                            <container style="button-bar">
-                                <link text="${uiLabelMap.MarketingTrackingCodeCreate}" target="/EditTrackingCode" style="buttontext create">
-                                    <parameter param-name="DONE_PAGE" from-field="donePage"/>
-                                </link>
-                            </container>
-                            <include-form name="ListTrackingCode" location="component://marketing/widget/TrackingCodeForms.xml"/>
+                            <include-grid name="ListTrackingCode" location="component://marketing/widget/TrackingCodeForms.xml"/>
                         </screenlet>
                     </decorator-section>
                 </decorator-screen>
@@ -182,7 +182,7 @@ under the License.
 
                 <!-- parameters for pagination -->
                 <set field="viewIndex" from-field="parameters.VIEW_INDEX" type="Integer" default-value="0"/>
-                <property-to-field resource="widget" property="widget.form.defaultViewSize" field="viewSizeDefaultValue"/>
+                <set field="viewSizeDefaultValue" value="${groovy: modelTheme.getDefaultViewSize()}" type="Integer"/>
                 <set field="viewSize" from-field="parameters.VIEW_SIZE" type="Integer" default-value="${viewSizeDefaultValue}"/>
 
                 <set field="donePage" from-field="parameters.DONE_PAGE" default-value="/marketing/control/ListTrackingCode"/>
@@ -193,7 +193,7 @@ under the License.
                 <decorator-screen name="CommonTrackingCodeDecorator">
                     <decorator-section name="body">
                         <screenlet title="${uiLabelMap.PageTitleListTrackingCodeOrdersFor} ${uiLabelMap.MarketingTrackingCodeTrackingCodeId}=${trackingCodeId}">
-                            <include-form name="ListTrackingCodeOrders" location="component://marketing/widget/TrackingCodeForms.xml"/>
+                            <include-grid name="ListTrackingCodeOrders" location="component://marketing/widget/TrackingCodeForms.xml"/>
                         </screenlet>
                     </decorator-section>
                 </decorator-screen>
@@ -246,6 +246,7 @@ under the License.
             </widgets>
         </section>
     </screen>
+    
     <screen name="ListTrackingCodeVisits">
         <section>
             <actions>
@@ -255,7 +256,7 @@ under the License.
 
                 <!-- parameters for pagination -->
                 <set field="viewIndex" from-field="parameters.VIEW_INDEX" type="Integer" default-value="0"/>
-                <property-to-field resource="widget" property="widget.form.defaultViewSize" field="viewSizeDefaultValue"/>
+                <set field="viewSizeDefaultValue" value="${groovy: modelTheme.getDefaultViewSize()}" type="Integer"/>
                 <set field="viewSize" from-field="parameters.VIEW_SIZE" type="Integer" default-value="${viewSizeDefaultValue}"/>
 
                 <set field="donePage" from-field="parameters.DONE_PAGE" default-value="/marketing/control/ListTrackingCode"/>
@@ -301,7 +302,7 @@ under the License.
                 <set field="titleProperty" value="PageTitleLookupVisit"/>
                 <set field="trackingCodeTabButtonItem" value="TrackingCode"/>
                 <set field="labelTitleProperty" value="PageTitleLookupVisit"/>
-                <set field="title" value="${uiLabelMap.PageTitleLookupVisit}"/>
+                <set field="title" from-field="uiLabelMap.PageTitleLookupVisit"/>
                 <set field="entityName" value="CommunicationEvent"/>
             </actions>
             <widgets>
@@ -310,7 +311,7 @@ under the License.
                         <include-form name="LookupVisit" location="component://marketing/widget/TrackingCodeForms.xml"/>
                     </decorator-section>
                     <decorator-section name="search-results">
-                        <include-form name="ListLookupVisit" location="component://marketing/widget/TrackingCodeForms.xml"/>
+                        <include-grid name="ListLookupVisit" location="component://marketing/widget/TrackingCodeForms.xml"/>
                     </decorator-section>
                 </decorator-screen>
             </widgets>
@@ -322,7 +323,7 @@ under the License.
                 <set field="titleProperty" value="PageTitleLookupTrackingCode"/>
                 <set field="trackingCodeTabButtonItem" value="TrackingCode"/>
                 <set field="labelTitleProperty" value="PageTitleLookupTrackingCode"/>
-                <set field="title" value="${uiLabelMap.PageTitleLookupTrackingCode}"/>
+                <set field="title" from-field="uiLabelMap.PageTitleLookupTrackingCode"/>
                 <set field="entityName" value="TrackingCode"/>
             </actions>
             <widgets>
@@ -331,7 +332,7 @@ under the License.
                         <include-form name="LookupTrackingCode" location="component://marketing/widget/TrackingCodeForms.xml"/>
                     </decorator-section>
                     <decorator-section name="search-results">
-                        <include-form name="ListLookupTrackingCode" location="component://marketing/widget/TrackingCodeForms.xml"/>
+                        <include-grid name="ListLookupTrackingCode" location="component://marketing/widget/TrackingCodeForms.xml"/>
                     </decorator-section>
                 </decorator-screen>
             </widgets>
@@ -391,13 +392,13 @@ under the License.
             <widgets>
                 <decorator-screen name="CommonTrackingCodeDecorator">
                     <decorator-section name="body">
+                        <container style="button-bar">
+                            <link text="${uiLabelMap.MarketingTrackingCodeTypeCreate}" target="/EditTrackingCodeType" style="buttontext create">
+                                <parameter param-name="DONE_PAGE" from-field="donePage"/>
+                            </link>
+                        </container>
                         <screenlet title="${uiLabelMap.PageTitleListTrackingCodeType}">
-                            <container style="button-bar">
-                                <link text="${uiLabelMap.MarketingTrackingCodeTypeCreate}" target="/EditTrackingCodeType" style="buttontext create">
-                                    <parameter param-name="DONE_PAGE" from-field="donePage"/>
-                                </link>
-                            </container>
-                            <include-form name="ListTrackingCodeType" location="component://marketing/widget/TrackingCodeForms.xml"/>
+                            <include-grid name="ListTrackingCodeType" location="component://marketing/widget/TrackingCodeForms.xml"/>
                         </screenlet>
                     </decorator-section>
                 </decorator-screen>
@@ -410,7 +411,7 @@ under the License.
                 <set field="titleProperty" value="PageTitleLookupTrackingCodeType"/>
                 <set field="trackingCodeTabButtonItem" value="TrackingCodeType"/>
                 <set field="labelTitleProperty" value="PageTitleLookupTrackingCodeType"/>
-                <set field="title" value="${uiLabelMap.PageTitleLookupTrackingCodeType}"/>
+                <set field="title" from-field="uiLabelMap.PageTitleLookupTrackingCodeType"/>
                 <set field="entityName" value="TrackingCodeType"/>
             </actions>
             <widgets>
@@ -419,7 +420,7 @@ under the License.
                         <include-form name="LookupTrackingCodeType" location="component://marketing/widget/TrackingCodeForms.xml"/>
                     </decorator-section>
                     <decorator-section name="search-results">
-                        <include-form name="ListLookupTrackingCodeType" location="component://marketing/widget/TrackingCodeForms.xml"/>
+                        <include-grid name="ListLookupTrackingCodeType" location="component://marketing/widget/TrackingCodeForms.xml"/>
                     </decorator-section>
                 </decorator-screen>
             </widgets>

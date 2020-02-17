@@ -46,15 +46,18 @@ public class RenderContentAndSubContent implements TemplateTransformModel {
 
     public static final String module = RenderContentAndSubContent.class.getName();
 
+    @Override
     @SuppressWarnings("unchecked")
-    public Writer getWriter(final Writer out, Map args) {
+    public Writer getWriter(Writer out, @SuppressWarnings("rawtypes") Map args) {
         final Environment env = Environment.getCurrentEnvironment();
         final LocalDispatcher dispatcher = FreeMarkerWorker.getWrappedObject("dispatcher", env);
         final HttpServletRequest request = FreeMarkerWorker.getWrappedObject("request", env);
         final Map<String, Object> envMap = FreeMarkerWorker.createEnvironmentMap(env);
         final MapStack<String> templateRoot = MapStack.create();
-        ((MapStack)templateRoot).push(envMap);
-        if (Debug.verboseOn()) Debug.logVerbose("in RenderContentAndSubContent, contentId(0):" + templateRoot.get("contentId"), module);
+        templateRoot.push(envMap);
+        if (Debug.verboseOn()) {
+            Debug.logVerbose("in RenderContentAndSubContent, contentId(0):" + templateRoot.get("contentId"), module);
+        }
         FreeMarkerWorker.getSiteParameters(request, templateRoot);
         FreeMarkerWorker.overrideWithArgs(templateRoot, args);
 
@@ -84,8 +87,12 @@ public class RenderContentAndSubContent implements TemplateTransformModel {
                     locale = UtilMisc.ensureLocale(localeObject);
                 }
 
-                if (Debug.verboseOn()) Debug.logVerbose("in RenderContentAndSubContent, contentId(2):" + templateRoot.get("contentId"), module);
-                if (Debug.verboseOn()) Debug.logVerbose("in RenderContentAndSubContent, subContentId(2):" + templateRoot.get("subContentId"), module);
+                if (Debug.verboseOn()) {
+                    Debug.logVerbose("in RenderContentAndSubContent, contentId(2):" + templateRoot.get("contentId"), module);
+                }
+                if (Debug.verboseOn()) {
+                    Debug.logVerbose("in RenderContentAndSubContent, subContentId(2):" + templateRoot.get("subContentId"), module);
+                }
                     try {
                         String contentId = (String)templateRoot.get("contentId");
                         String mapKey = (String)templateRoot.get("mapKey");

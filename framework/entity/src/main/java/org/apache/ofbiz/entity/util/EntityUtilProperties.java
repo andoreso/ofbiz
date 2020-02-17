@@ -40,6 +40,7 @@ import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.base.util.collections.ResourceBundleMapWrapper;
 import org.apache.ofbiz.entity.Delegator;
+import org.apache.ofbiz.entity.DelegatorFactory;
 import org.apache.ofbiz.entity.GenericEntityException;
 import org.apache.ofbiz.entity.GenericValue;
 
@@ -47,7 +48,7 @@ import org.apache.ofbiz.entity.GenericValue;
 public final class EntityUtilProperties implements Serializable {
 
     public final static String module = EntityUtilProperties.class.getName();
-    
+
     private EntityUtilProperties () {}
 
     private static Map<String, String> getSystemPropertyValue(String resource, String name, Delegator delegator) {
@@ -56,8 +57,6 @@ public final class EntityUtilProperties implements Serializable {
         results.put("value", "");
 
         if (UtilValidate.isEmpty(resource) || UtilValidate.isEmpty(name)) {
-            results.put("isExistInDb", "N");
-            results.put("value", "");
             return results;
         }
         resource = resource.replace(".properties", "");
@@ -71,15 +70,9 @@ public final class EntityUtilProperties implements Serializable {
                 //property exists in database
                 results.put("isExistInDb", "Y");
                 results.put("value", (systemProperty.getString("systemPropertyValue") != null) ? systemProperty.getString("systemPropertyValue") : "");
-                return results;
-            } else {
-                //property does not exists in database
-                results.put("isExistInDb", "N");
-                results.put("value", "");
-                return results;
             }
-        } catch (Exception e) {
-            Debug.logInfo("Could not get a system property for " + name + " : " + e.getMessage(), module);
+        } catch (GenericEntityException e) {
+            Debug.logError("Could not get a system property for " + name + " : " + e.getMessage(), module);
         }
         return results;
     }
@@ -99,6 +92,27 @@ public final class EntityUtilProperties implements Serializable {
     }
 
     public static String getPropertyValue(String resource, String name, String defaultValue, Delegator delegator) {
+        Map<String, String> propMap = getSystemPropertyValue(resource, name, delegator);
+        if ("Y".equals(propMap.get("isExistInDb"))) {
+            String s = propMap.get("value");
+            return (UtilValidate.isEmpty(s)) ? defaultValue : s;
+        } else {
+            return UtilProperties.getPropertyValue(resource, name, defaultValue);
+        }
+    }
+    
+    public static String getPropertyValueFromDelegatorName(String resource, String name, String defaultValue, String delegatorName) {
+        Delegator delegator = DelegatorFactory.getDelegator(delegatorName);
+        if (delegator == null) { // This should not happen, but in case...
+            Debug.logError("Could not get a delegator. Using the 'default' delegator", module);
+            // this will be the common case for now as the delegator isn't available where we want to do this
+            // we'll cheat a little here and assume the default delegator
+            delegator = DelegatorFactory.getDelegator("default");
+            Debug.logError("Could not get a delegator. Using the 'default' delegator", module);
+            if (delegator == null) {
+                Debug.logError("Could not get a system property for " + name + ". Reason: the delegator is null", module);
+            }
+        }
         Map<String, String> propMap = getSystemPropertyValue(resource, name, delegator);
         if ("Y".equals(propMap.get("isExistInDb"))) {
             String s = propMap.get("value");
@@ -153,6 +167,26 @@ public final class EntityUtilProperties implements Serializable {
         }
     }
 
+    public static String getPropertyValueFromDelegatorName(String resource, String name, String delegatorName) {
+        Delegator delegator = DelegatorFactory.getDelegator(delegatorName);
+        if (delegator == null) { // This should not happen, but in case...
+            Debug.logError("Could not get a delegator. Using the 'default' delegator", module);
+            // this will be the common case for now as the delegator isn't available where we want to do this
+            // we'll cheat a little here and assume the default delegator
+            delegator = DelegatorFactory.getDelegator("default");
+            Debug.logError("Could not get a delegator. Using the 'default' delegator", module);
+            if (delegator == null) {
+                Debug.logError("Could not get a system property for " + name + ". Reason: the delegator is null", module);
+            }
+        }
+        Map<String, String> propMap = getSystemPropertyValue(resource, name, delegator);
+        if ("Y".equals(propMap.get("isExistInDb"))) {
+            return propMap.get("value");
+        } else {
+            return UtilProperties.getPropertyValue(resource, name);
+        }
+    }
+
     public static Properties getProperties(String resource) {
         return UtilProperties.getProperties(resource);
     }
@@ -168,6 +202,7 @@ public final class EntityUtilProperties implements Serializable {
             gvList = EntityQuery.use(delegator)
                     .from("SystemProperty")
                     .where("systemResourceId", resourceName)
+                    .cache()
                     .queryList();
             if (UtilValidate.isNotEmpty(gvList)) {
                 for (Iterator<GenericValue> i = gvList.iterator(); i.hasNext();) {
@@ -211,13 +246,9 @@ public final class EntityUtilProperties implements Serializable {
         return UtilProperties.getSplitPropertyValue(url, name);
     }
 
-     public static void setPropertyValue(String resource, String name, String value) {
-         UtilProperties.setPropertyValue(resource, name, value);
-     }
-
-      public static void setPropertyValueInMemory(String resource, String name, String value) {
-          UtilProperties.setPropertyValueInMemory(resource, name, value);
-      }
+    public static void setPropertyValueInMemory(String resource, String name, String value) {
+        UtilProperties.setPropertyValueInMemory(resource, name, value);
+    }
 
     public static String setPropertyValue(Delegator delegator, String resourceName, String name, String value) {
         GenericValue gv = null;

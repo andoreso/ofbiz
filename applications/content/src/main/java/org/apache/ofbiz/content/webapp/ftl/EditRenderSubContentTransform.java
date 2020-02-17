@@ -75,8 +75,9 @@ public class EditRenderSubContentTransform implements TemplateTransformModel {
         return FreeMarkerWorker.getArg(args, key, ctx);
     }
 
+    @Override
     @SuppressWarnings("unchecked")
-    public Writer getWriter(final Writer out, Map args) {
+    public Writer getWriter(Writer out, @SuppressWarnings("rawtypes") Map args) {
         final StringBuilder buf = new StringBuilder();
         final Environment env = Environment.getCurrentEnvironment();
         Map<String, Object> ctx = FreeMarkerWorker.getWrappedObject("context", env);
@@ -96,7 +97,7 @@ public class EditRenderSubContentTransform implements TemplateTransformModel {
         final Delegator delegator = FreeMarkerWorker.getWrappedObject("delegator", env);
         final GenericValue userLogin = FreeMarkerWorker.getWrappedObject("userLogin", env);
         GenericValue subContentDataResourceViewTemp = FreeMarkerWorker.getWrappedObject("subContentDataResourceView", env);
-        
+
         ctx.put("mapKey", mapKey);
         ctx.put("subDataResourceTypeIdTemp", subDataResourceTypeIdTemp);
         ctx.put("contentId", contentId);
@@ -175,7 +176,7 @@ public class EditRenderSubContentTransform implements TemplateTransformModel {
             @Override
             public void close() throws IOException {
                 String wrappedFTL = buf.toString();
-                if (editTemplate != null && editTemplate.equalsIgnoreCase("true")) {
+                if (editTemplate != null && "true".equalsIgnoreCase(editTemplate)) {
                     if (UtilValidate.isNotEmpty(wrapTemplateId)) {
                         templateContext.put("wrappedFTL", wrappedFTL);
                         templateContext.put("webSiteId", webSiteId);
@@ -193,12 +194,9 @@ public class EditRenderSubContentTransform implements TemplateTransformModel {
 
                         try {
                             ContentWorker.renderContentAsText(dispatcher, wrapTemplateId, out, templateRoot, locale, mimeTypeId, null, null, false);
-                        } catch (IOException e) {
+                        } catch (IOException | GeneralException e) {
                             Debug.logError(e, "Error rendering content" + e.getMessage(), module);
                             throw new IOException("Error rendering content" + e.toString());
-                        } catch (GeneralException e2) {
-                            Debug.logError(e2, "Error rendering content" + e2.getMessage(), module);
-                            throw new IOException("Error rendering content" + e2.toString());
                         }
 
                         FreeMarkerWorker.getWrappedObject("context", env);

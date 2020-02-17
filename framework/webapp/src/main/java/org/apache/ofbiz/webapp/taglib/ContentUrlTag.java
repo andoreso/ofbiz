@@ -19,14 +19,15 @@
 package org.apache.ofbiz.webapp.taglib;
 
 import java.io.IOException;
+
 import javax.servlet.http.HttpServletRequest;
 
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.UtilMisc;
 import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.UtilValidate;
-import org.apache.ofbiz.webapp.website.WebSiteWorker;
 import org.apache.ofbiz.entity.GenericValue;
+import org.apache.ofbiz.webapp.website.WebSiteWorker;
 
 /**
  * ContentUrlTag - Creates a URL string prepending the content prefix from url.properties
@@ -53,8 +54,7 @@ public class ContentUrlTag {
             return;
         }
         GenericValue webSite = WebSiteWorker.getWebSite(request);
-        String forwardedProto = request.getHeader("X-Forwarded-Proto");
-        boolean isForwardedSecure = UtilValidate.isNotEmpty(forwardedProto) && "HTTPS".equals(forwardedProto.toUpperCase());
+        boolean isForwardedSecure = "HTTPS".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
         boolean isSecure = request.isSecure() || isForwardedSecure;
         appendContentPrefix(webSite, isSecure, urlBuffer);
     }

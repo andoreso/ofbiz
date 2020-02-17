@@ -45,7 +45,7 @@ under the License.
                 <td>${item.returnId}</td>
                 <td>${item.returnItemSeqId}</td>
                 <td>${item.productId?default("Not Found")}</td>
-                <td>${item.unitCost?default(0)?string("##0.00")}</td>
+                <td><@ofbizAmount amount=item.unitCost?default(0)/></td>
                 <td>${item.quantityAccepted?string.number}</td>
               </tr>
             </#list>
@@ -187,7 +187,7 @@ under the License.
                             <select name="statusId_o_${rowCount}" size='1' id = "statusId_o_${rowCount}">
                               <option value="INV_RETURNED">${uiLabelMap.ProductReturned}</option>
                               <option value="INV_AVAILABLE">${uiLabelMap.ProductAvailable}</option>
-                              <option value="INV_NS_DEFECTIVE" <#if returnItem.returnReasonId?default("") == "RTN_DEFECTIVE_ITEM">Selected</#if>>${uiLabelMap.ProductDefective}</option>
+                              <option value="INV_NS_DEFECTIVE" <#if "RTN_DEFECTIVE_ITEM" == returnItem.returnReasonId?default("")>Selected</#if>>${uiLabelMap.ProductDefective}</option>
                             </select>
                           </td>
                           <#if serializedInv?has_content>
@@ -204,7 +204,7 @@ under the License.
                           </#if>
                           <td align="right" nowrap="nowrap" class="label">${uiLabelMap.ProductPerUnitPrice}</td>
                           <td align="right">
-                            <input type='text' name='unitCost_o_${rowCount}' size='6' value='${unitCost?default(0)?string("##0.00")}' />
+                            <input type='text' name='unitCost_o_${rowCount}' size='6' value='<@ofbizAmount amount=unitCost?default(0)/>' />
                           </td>
                         </tr>
                       </table>
@@ -268,7 +268,7 @@ under the License.
         </#if>
     </div>
 </div>
-<script language="JavaScript" type="text/javascript">
+<script type="application/javascript">
     function setInventoryItemStatus(selection,index) {
         var statusId = "statusId_o_" + index;
         jObjectStatusId = jQuery("#" + statusId);

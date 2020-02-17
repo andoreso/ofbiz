@@ -26,7 +26,6 @@ under the License.
             <actions>
                 <set field="titleProperty" value="OrderReports"/>
                 <set field="headerItem" value="reports"/>
-                <property-map resource="BirtUiLabels" map-name="uiLabelMap" global="true"/>
             </actions>
             <widgets>
                 <decorator-screen name="main-decorator" location="${parameters.mainDecoratorLocation}">
@@ -225,7 +224,7 @@ under the License.
                     <select-field field-name="productId"/>
                     <select-field field-name="internalName"/>
                     <select-field field-name="quantityOrdered"/>
-                    <select-field field-name="unitPrice"/>
+                    <select-field field-name="amount"/>
                     <order-by field-name="storeName"/>
                     <order-by field-name="internalName"/>
                 </entity-condition>
@@ -244,8 +243,8 @@ under the License.
             <actions>
                 <set field="titleProperty" value="OrderReportOpenOrderItems"/>
                 <set field="headerItem" value="reports"/>
-                <set field="viewSize" value="${parameters.VIEW_SIZE}" default-value="20" type="Integer"/>
-                <set field="viewIndex" value="${parameters.VIEW_INDEX}" default-value="0" type="Integer"/>
+                <set field="viewSize" from-field="parameters.VIEW_SIZE" default-value="20" type="Integer"/>
+                <set field="viewIndex" from-field="parameters.VIEW_INDEX" default-value="0" type="Integer"/>
                 <set field="fromOrderDate" from-field="parameters.fromOrderDate" type="Timestamp"/>
                 <set field="thruOrderDate" from-field="parameters.thruOrderDate" type="Timestamp"/>
                 <script location="component://order/groovyScripts/reports/OpenOrderItemsReport.groovy"/>

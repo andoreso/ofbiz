@@ -32,7 +32,7 @@ import org.w3c.dom.Element;
 /**
  * Implements the &lt;field-to-list&gt; element.
  * 
- * @see <a href="https://cwiki.apache.org/confluence/display/OFBADMIN/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Referenc</a>
+ * @see <a href="https://cwiki.apache.org/confluence/display/OFBIZ/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Referenc</a>
  */
 public final class FieldToList extends MethodOperation {
 
@@ -58,7 +58,7 @@ public final class FieldToList extends MethodOperation {
         if (fieldVal != null) {
             List<Object> toList = listFma.get(methodContext.getEnvMap());
             if (toList == null) {
-                toList = new LinkedList<Object>();
+                toList = new LinkedList<>();
                 listFma.put(methodContext.getEnvMap(), toList);
             }
             toList.add(fieldVal);

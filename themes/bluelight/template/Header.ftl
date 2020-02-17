@@ -32,14 +32,18 @@ under the License.
     <#if layoutSettings.shortcutIcon?has_content>
       <#assign shortcutIcon = layoutSettings.shortcutIcon/>
     <#elseif layoutSettings.VT_SHORTCUT_ICON?has_content>
-      <#assign shortcutIcon = layoutSettings.VT_SHORTCUT_ICON.get(0)/>
+      <#assign shortcutIcon = layoutSettings.VT_SHORTCUT_ICON   />
     </#if>
     <#if shortcutIcon?has_content>
-      <link rel="shortcut icon" href="<@ofbizContentUrl>${StringUtil.wrapString(shortcutIcon)}</@ofbizContentUrl>" />
+        <link rel="shortcut icon" href="<@ofbizContentUrl>${StringUtil.wrapString(shortcutIcon)+".ico"}</@ofbizContentUrl>" type="image/x-icon">
+        <link rel="icon" href="<@ofbizContentUrl>${StringUtil.wrapString(shortcutIcon)+".png"}</@ofbizContentUrl>" type="image/png">
+        <link rel="icon" sizes="32x32" href="<@ofbizContentUrl>${StringUtil.wrapString(shortcutIcon)+"-32.png"}</@ofbizContentUrl>" type="image/png">
+        <link rel="icon" sizes="64x64" href="<@ofbizContentUrl>${StringUtil.wrapString(shortcutIcon)+"-64.png"}</@ofbizContentUrl>" type="image/png">
+        <link rel="icon" sizes="96x96" href="<@ofbizContentUrl>${StringUtil.wrapString(shortcutIcon)+"-96.png"}</@ofbizContentUrl>" type="image/png">
     </#if>
     <#if layoutSettings.VT_HDR_JAVASCRIPT?has_content>
         <#list layoutSettings.VT_HDR_JAVASCRIPT as javaScript>
-            <script src="<@ofbizContentUrl>${StringUtil.wrapString(javaScript)}</@ofbizContentUrl>" type="text/javascript"></script>
+            <script src="<@ofbizContentUrl>${StringUtil.wrapString(javaScript)}</@ofbizContentUrl>" type="application/javascript"></script>
         </#list>
     </#if>
     <#if layoutSettings.javaScripts?has_content>
@@ -49,7 +53,7 @@ under the License.
       <#list layoutSettings.javaScripts as javaScript>
         <#if javaScriptsSet.contains(javaScript)>
           <#assign nothing = javaScriptsSet.remove(javaScript)/>
-          <script src="<@ofbizContentUrl>${StringUtil.wrapString(javaScript)}</@ofbizContentUrl>" type="text/javascript"></script>
+          <script src="<@ofbizContentUrl>${StringUtil.wrapString(javaScript)}</@ofbizContentUrl>" type="application/javascript"></script>
         </#if>
       </#list>
     </#if>
@@ -65,13 +69,13 @@ under the License.
             <link rel="stylesheet" href="<@ofbizContentUrl>${StringUtil.wrapString(styleSheet)}</@ofbizContentUrl>" type="text/css"/>
         </#list>
     </#if>
-    <#if layoutSettings.rtlStyleSheets?has_content && langDir == "rtl">
+    <#if layoutSettings.rtlStyleSheets?has_content && "rtl" == langDir>
         <#--layoutSettings.rtlStyleSheets is a list of rtl style sheets.-->
         <#list layoutSettings.rtlStyleSheets as styleSheet>
             <link rel="stylesheet" href="<@ofbizContentUrl>${StringUtil.wrapString(styleSheet)}</@ofbizContentUrl>" type="text/css"/>
         </#list>
     </#if>
-    <#if layoutSettings.VT_RTL_STYLESHEET?has_content && langDir == "rtl">
+    <#if layoutSettings.VT_RTL_STYLESHEET?has_content && "rtl" == langDir>
         <#list layoutSettings.VT_RTL_STYLESHEET as styleSheet>
             <link rel="stylesheet" href="<@ofbizContentUrl>${StringUtil.wrapString(styleSheet)}</@ofbizContentUrl>" type="text/css"/>
         </#list>
@@ -82,7 +86,7 @@ under the License.
         </#list>
     </#if>
     <#if layoutSettings.WEB_ANALYTICS?has_content>
-      <script language="JavaScript" type="text/javascript">
+      <script type="application/javascript">
         <#list layoutSettings.WEB_ANALYTICS as webAnalyticsConfig>
           ${StringUtil.wrapString(webAnalyticsConfig.webAnalyticsCode!)}
         </#list>
@@ -113,6 +117,7 @@ under the License.
 </#if>
 
 <body>
+  <#include "component://common-theme/template/ImpersonateBanner.ftl"/>
   <div id="wait-spinner" style="display:none">
     <div id="wait-spinner-image"></div>
   </div>
@@ -124,7 +129,7 @@ under the License.
     </div>
     <div id="masthead">
       <ul>
-        <#if (userPreferences.COMPACT_HEADER)?default("N") == "Y">
+        <#if "Y" == (userPreferences.COMPACT_HEADER)?default("N")>
             <#if shortcutIcon?has_content>
                 <#if organizationLogoLinkURL?has_content>
                     <li><a href="<@ofbizUrl>${logoLinkURL}</@ofbizUrl>"><img alt="${layoutSettings.companyName}" src="<@ofbizContentUrl>${StringUtil.wrapString(organizationLogoLinkURL)}</@ofbizContentUrl>" height="16px" width="16px"></a></li>
@@ -138,7 +143,7 @@ under the License.
           <#elseif layoutSettings.commonHeaderImageUrl??>
             <#assign headerImageUrl = layoutSettings.commonHeaderImageUrl>
           <#elseif layoutSettings.VT_HDR_IMAGE_URL??>
-            <#assign headerImageUrl = layoutSettings.VT_HDR_IMAGE_URL.get(0)>
+            <#assign headerImageUrl = layoutSettings.VT_HDR_IMAGE_URL>
           </#if>
           <#if headerImageUrl??>
                 <#if organizationLogoLinkURL?has_content>
@@ -188,11 +193,11 @@ under the License.
             </#if>
             <#--if webSiteId?? && requestAttributes._CURRENT_VIEW_?? && helpTopic??-->
             <#if parameters.componentName?? && requestAttributes._CURRENT_VIEW_?? && helpTopic??>
-              <#include "component://common/template/includes/HelpLink.ftl" />
-              <li><a class="help-link <#if pageAvail?has_content> alert</#if>" href="javascript:lookup_popup1('showHelp?helpTopic=${helpTopic}&amp;portalPageId=${parameters.portalPageId!}','help' ,500,500);" title="${uiLabelMap.CommonHelp}"></a></li>
+              <#include "component://common-theme/template/includes/HelpLink.ftl" />
+              <li><a class="help-link <#if pageAvail?has_content> alert</#if>" href="javascript:lookup_popup1('showHelp?helpTopic=${helpTopic}&amp;portalPageId=${(parameters.portalPageId!)?html}','help' ,500,500);" title="${uiLabelMap.CommonHelp}"></a></li>
             </#if>
             <#if userLogin??>
-              <#if (userPreferences.COMPACT_HEADER)?default("N") == "Y">
+              <#if "Y" == (userPreferences.COMPACT_HEADER)?default("N")>
                 <li class="collapsed"><a href="javascript:document.setUserPreferenceCompactHeaderN.submit()">&nbsp;&nbsp;</a>
                 <form name="setUserPreferenceCompactHeaderN" method="post" action="<@ofbizUrl>setUserPreference</@ofbizUrl>">
                     <input type="hidden" name="userPrefGroupTypeId" value="GLOBAL_PREFERENCES"/>

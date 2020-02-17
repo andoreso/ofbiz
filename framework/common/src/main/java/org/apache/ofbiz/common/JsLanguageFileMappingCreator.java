@@ -20,8 +20,10 @@
 package org.apache.ofbiz.common;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
+
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,6 +39,8 @@ import org.apache.ofbiz.base.util.template.FreeMarkerWorker;
 import org.apache.ofbiz.service.DispatchContext;
 import org.apache.ofbiz.service.ServiceUtil;
 
+import freemarker.template.TemplateException;
+
 // Use the createJsLanguageFileMapping service to create or update the JsLanguageFilesMapping.java. You will still need to compile thereafter
 
 public class JsLanguageFileMappingCreator {
@@ -48,24 +52,26 @@ public class JsLanguageFileMappingCreator {
         String encoding = (String) context.get("encoding"); // default value: UTF-8
 
         List<Locale> localeList = UtilMisc.availableLocales();
-        Map<String, Object> jQueryLocaleFile = new LinkedHashMap<String, Object>();
-        Map<String, String> dateJsLocaleFile = new LinkedHashMap<String, String>();
-        Map<String, String> validationLocaleFile = new LinkedHashMap<String, String>();
-        Map<String, String> dateTimePickerLocaleFile = new LinkedHashMap<String, String>();
+        Map<String, Object> jQueryLocaleFile = new LinkedHashMap<>();
+        Map<String, String> dateJsLocaleFile = new LinkedHashMap<>();
+        Map<String, String> validationLocaleFile = new LinkedHashMap<>();
+        Map<String, String> dateTimePickerLocaleFile = new LinkedHashMap<>();
+        Map<String, String> select2LocaleFile = new LinkedHashMap<>();
 
         // setup some variables to locate the js files
-        String componentRoot = "component://images/webapp";
-        String jqueryUiLocaleRelPath = "/images/jquery/ui/i18n/";
-        String dateJsLocaleRelPath = "/images/jquery/plugins/datejs/";
-        String validateRelPath = "/images/jquery/plugins/validate/localization/";
-        String dateTimePickerJsLocaleRelPath = "/images/jquery/plugins/datetimepicker/localization/";
+        String componentRoot = "component://common-theme/webapp";
+        String jqueryUiLocaleRelPath = "/common/js/jquery/ui/i18n/";
+        String dateJsLocaleRelPath = "/common/js/jquery/plugins/datejs/";
+        String validateRelPath = "/common/js/jquery/plugins/validate/localization/";
+        String dateTimePickerJsLocaleRelPath = "/common/js/jquery/plugins/datetimepicker/i18n/";
+        String select2LocaleRelPath = "/common/js/jquery/plugins/select2/js/i18n/";
         String jsFilePostFix = ".js";
         String dateJsLocalePrefix = "date-";
         String validateLocalePrefix = "messages_";
-        String jqueryUiLocalePrefix = "jquery.ui.datepicker-";
+        String jqueryUiLocalePrefix = "datepicker-";
         String dateTimePickerPrefix = "jquery-ui-timepicker-";
         String defaultLocaleDateJs = "en-US";
-        String defaultLocaleJquery = "en"; // Beware to keep the OFBiz specific jquery.ui.datepicker-en.js file when upgrading...
+        String defaultLocaleJquery = "en"; // Beware to keep the OFBiz specific datepicker-en.js file when upgrading...
 
         for (Locale locale : localeList) {
             String displayCountry = locale.toString();
@@ -93,7 +99,7 @@ public class JsLanguageFileMappingCreator {
                 fileUrl = dateJsLocaleRelPath + dateJsLocalePrefix + modifiedDisplayCountry + jsFilePostFix;
             } else {
                 // Try to guess a language
-                String tmpLocale = strippedLocale + "-" + strippedLocale.toUpperCase();
+                String tmpLocale = strippedLocale + "-" + strippedLocale.toUpperCase(Locale.getDefault());
                 fileName = componentRoot + dateJsLocaleRelPath + dateJsLocalePrefix + tmpLocale + jsFilePostFix;
                 file = FileUtil.getFile(fileName);
                 if (file.exists()) {
@@ -176,16 +182,38 @@ public class JsLanguageFileMappingCreator {
                 }
             }
             dateTimePickerLocaleFile.put(displayCountry, fileUrl);
+
+            /*
+             * Try to open the Select 2 language file
+             */
+            fileName = componentRoot + select2LocaleRelPath + strippedLocale + jsFilePostFix;
+            file = FileUtil.getFile(fileName);
+
+            if (file.exists()) {
+                fileUrl = select2LocaleRelPath + strippedLocale + jsFilePostFix;
+            } else {
+                // Try to guess a language
+                fileName = componentRoot + select2LocaleRelPath + modifiedDisplayCountry + jsFilePostFix;
+                file = FileUtil.getFile(fileName);
+                if (file.exists()) {
+                    fileUrl = select2LocaleRelPath + modifiedDisplayCountry + jsFilePostFix;
+                } else {
+                    // use default language en as fallback
+                    fileUrl = select2LocaleRelPath + defaultLocaleJquery + jsFilePostFix;
+                }
+            }
+            select2LocaleFile.put(displayCountry, fileUrl);
         }
 
         // check the template file
-        String template = "framework/common/template/JsLanguageFilesMapping.ftl";
-        String output = "framework/common/src/org/apache/ofbiz/common/JsLanguageFilesMapping.java";
-        Map<String, Object> mapWrapper = new HashMap<String, Object>();
+        String template = "themes/common-theme/template/JsLanguageFilesMapping.ftl";
+        String output = "framework/common/src/main/java/org/apache/ofbiz/common/JsLanguageFilesMapping.java";
+        Map<String, Object> mapWrapper = new HashMap<>();
         mapWrapper.put("datejs", dateJsLocaleFile);
         mapWrapper.put("jquery", jQueryLocaleFile);
         mapWrapper.put("validation", validationLocaleFile);
         mapWrapper.put("dateTime", dateTimePickerLocaleFile);
+        mapWrapper.put("select2", select2LocaleFile);
 
         // some magic to create a new java file: render it as FTL
         Writer writer = new StringWriter();
@@ -195,7 +223,7 @@ public class JsLanguageFileMappingCreator {
             File file = new File(output);
             FileUtils.writeStringToFile(file, writer.toString(), encoding);
         }
-        catch (Exception e) {
+        catch (IOException | TemplateException e) {
             Debug.logError(e, module);
             return ServiceUtil.returnError(UtilProperties.getMessage("CommonUiLabels", "CommonOutputFileCouldNotBeCreated", UtilMisc.toMap("errorString", e.getMessage()), (Locale)context.get("locale")));
         }

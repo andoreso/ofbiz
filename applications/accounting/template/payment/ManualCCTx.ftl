@@ -18,8 +18,8 @@ under the License.
 -->
 
     <#-- reference number -->
-    <#if txType?default("") == "PRDS_PAY_CREDIT" || txType?default("") == "PRDS_PAY_CAPTURE" || 
-         txType?default("") == "PRDS_PAY_RELEASE" || txType?default("") == "PRDS_PAY_REFUND">
+    <#if "PRDS_PAY_CREDIT" == txType?default("") || "PRDS_PAY_CAPTURE" == txType?default("") ||
+         "PRDS_PAY_RELEASE" == txType?default("") || "PRDS_PAY_REFUND" == txType?default("")>
       ${setRequestAttribute("validTx", "true")}
       <#assign validTx = true>
       <tr><td colspan="3"><hr /></td></tr>
@@ -41,30 +41,30 @@ under the License.
       </tr>
     </#if>
     <#-- manual credit card information -->
-    <#if txType?default("") == "PRDS_PAY_RELEASE">
+    <#if "PRDS_PAY_RELEASE" == txType?default("")>
       <tr><td>
       ${setRequestAttribute("validTx", "true")}
-      <script language="JavaScript" type="text/javascript">
+      <script type="application/javascript">
       <!-- //
         document.manualTxForm.action = "<@ofbizUrl>processReleaseTransaction</@ofbizUrl>";
       // -->
       </script>
       </td></tr>
     </#if>
-    <#if txType?default("") == "PRDS_PAY_REFUND">
+    <#if "PRDS_PAY_REFUND" == txType?default("")>
       <tr><td>
       ${setRequestAttribute("validTx", "true")}
-      <script language="JavaScript" type="text/javascript">
+      <script type="application/javascript">
       <!-- //
         document.manualTxForm.action = "<@ofbizUrl>processRefundTransaction</@ofbizUrl>";
       // -->
       </script>
       </td></tr>
     </#if>
-    <#if txType?default("") == "PRDS_PAY_CREDIT" || txType?default("") == "PRDS_PAY_AUTH">
+    <#if "PRDS_PAY_CREDIT" == txType?default("") || "PRDS_PAY_AUTH" == txType?default("")>
       <tr><td>
       ${setRequestAttribute("validTx", "true")}
-      <script language="JavaScript" type="text/javascript">
+      <script type="application/javascript">
       <!-- //
         document.manualTxForm.action = "<@ofbizUrl>processManualCcTx</@ofbizUrl>";
       // -->

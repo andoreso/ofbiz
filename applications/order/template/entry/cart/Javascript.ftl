@@ -16,7 +16,7 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 -->
-<script language="JavaScript" type="text/javascript">
+<script type="application/javascript">
 function removeSelected() {
     var cform = document.cartform;
     cform.removeSelected.value = true;
@@ -31,7 +31,7 @@ function gwAll(e) {
     var cform = document.cartform;
     var len = cform.elements.length;
     var selectedValue = e.value;
-    if (selectedValue == "") {
+    if ("" == selectedValue) {
         return;
     }
 
@@ -41,7 +41,7 @@ function gwAll(e) {
         var element = cform.elements[i];
         var ename = element.name;
         var sname = ename.substring(0,16);
-        if (sname == "option^GIFT_WRAP") {
+        if ("option^GIFT_WRAP" == sname) {
             var options = element.options;
             var olen = options.length;
             var matching = -1;
@@ -67,7 +67,7 @@ function quicklookup_popup(element) {
     obj_lookupwindow.focus();
 }
 function quicklookup(element) {
-    <#if shoppingCart.getOrderType() == "PURCHASE_ORDER">
+    <#if "PURCHASE_ORDER" == shoppingCart.getOrderType()>
     window.location='<@ofbizUrl>LookupBulkAddSupplierProducts</@ofbizUrl>?productId='+element.value;
     <#else>
     window.location='<@ofbizUrl>LookupBulkAddProducts</@ofbizUrl>?productId='+element.value;

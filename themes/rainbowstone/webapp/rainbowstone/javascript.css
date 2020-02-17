@@ -777,7 +777,7 @@ button.ui-button::-moz-focus-inner {
 }
 
 .ui-progressbar .ui-progressbar-value {
-    margin: -1px;
+    margin: -10px;
     height: 100%;
 }
 
@@ -1888,7 +1888,7 @@ body .ui-tooltip {
 
 /* Calendar Button and Image */
 .view-calendar button {
-    background: url(images/cal.gif) no-repeat !important;
+    background: url(/images/cal.gif) no-repeat !important;
     display: inline-block;
     border: none;
     vertical-align: middle;

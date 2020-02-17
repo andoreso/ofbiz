@@ -18,12 +18,16 @@
  *******************************************************************************/
 package org.apache.ofbiz.order.test;
 
+import java.util.Locale;
+
+import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.UtilMisc;
 import org.apache.ofbiz.entity.GenericValue;
-import org.apache.ofbiz.service.testtools.OFBizTestCase;
 import org.apache.ofbiz.order.finaccount.FinAccountHelper;
+import org.apache.ofbiz.service.testtools.OFBizTestCase;
 
 public class FinAccountTest extends OFBizTestCase {
+    public static final String module = FinAccountTest.class.getName();
     public FinAccountTest(String name) {
         super(name);
     }
@@ -33,7 +37,7 @@ public class FinAccountTest extends OFBizTestCase {
         GenericValue account;
 
         finAccountCode = FinAccountHelper.getNewFinAccountCode(20, delegator);
-        System.err.printf("finAccountCode=%s\n", finAccountCode);
+        Debug.logInfo("finAccountCode=%s%n", module, finAccountCode);
         assertNotNull(finAccountCode);
 
         account = FinAccountHelper.getFinAccountFromCode(finAccountCode, delegator);
@@ -44,10 +48,10 @@ public class FinAccountTest extends OFBizTestCase {
         account = FinAccountHelper.getFinAccountFromCode(finAccountCode, delegator);
         assertNotNull(account);
         assertEquals(finAccountCode, account.get("finAccountCode"));
-        account = FinAccountHelper.getFinAccountFromCode(finAccountCode.toUpperCase(), delegator);
+        account = FinAccountHelper.getFinAccountFromCode(finAccountCode.toUpperCase(Locale.getDefault()), delegator);
         assertNotNull(account);
         assertEquals(finAccountCode, account.get("finAccountCode"));
-        account = FinAccountHelper.getFinAccountFromCode(finAccountCode.toLowerCase(), delegator);
+        account = FinAccountHelper.getFinAccountFromCode(finAccountCode.toLowerCase(Locale.getDefault()), delegator);
         assertNotNull(account);
         assertEquals(finAccountCode, account.get("finAccountCode"));
 

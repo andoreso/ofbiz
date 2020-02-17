@@ -40,7 +40,7 @@ under the License.
             <#list invoiceIds as invoiceId>
               <li>
                 ${uiLabelMap.CommonNbr}<a href="/accounting/control/invoiceOverview?invoiceId=${invoiceId}${StringUtil.wrapString(externalKeyParam)}" target="_blank" class="buttontext">${invoiceId}</a>
-                (<a href="/accounting/control/invoice.pdf?invoiceId=${invoiceId}${StringUtil.wrapString(externalKeyParam)}" target="_blank" class="buttontext">PDF</a>)
+                (<a href="/accounting/control/invoice.pdf?invoiceId=${invoiceId}${StringUtil.wrapString(externalKeyParam)}" target="_blank" class="buttontext">${uiLabelMap.CommonPdf}</a>)
               </li>
             </#list>
           </ul>
@@ -140,14 +140,14 @@ under the License.
               <td valign="top">
                 <span class="label">${uiLabelMap.ProductCarrierShipmentMethod}</span>
                 <br />
-                <#if carrier == "USPS">
+                <#if "USPS" == carrier>
                   <#assign color = "red">
-                <#elseif carrier == "UPS">
+                <#elseif "UPS" == carrier>
                   <#assign color = "green">
                 <#else>
                   <#assign color = "black">
                 </#if>
-                <#if carrier != "_NA_">
+                <#if "_NA_" != carrier>
                   <font color="${color}">${carrier}</font>
                   &nbsp;
                 </#if>
@@ -208,10 +208,10 @@ under the License.
                 <#assign readyToVerify = verifyPickSession.getReadyToVerifyQuantity(orderId,orderItemSeqId)>
                 <#assign orderItemQuantity = orderItem.getBigDecimal("quantity")>
                 <#assign verifiedQuantity = 0.000000>
-                <#assign shipments = delegator.findByAnd("Shipment", Static["org.apache.ofbiz.base.util.UtilMisc"].toMap("primaryOrderId", orderItem.getString("orderId"), "statusId", "SHIPMENT_PICKED"), null, false)/>
+                <#assign shipments = EntityQuery.use(delegator).from("Shipment").where("primaryOrderId", orderItem.getString("orderId")!, "statusId", "SHIPMENT_PICKED").queryList()!/>
                 <#if (shipments?has_content)>
                   <#list shipments as shipment>
-                    <#assign itemIssuances = delegator.findByAnd("ItemIssuance", Static["org.apache.ofbiz.base.util.UtilMisc"].toMap("shipmentId", shipment.getString("shipmentId"), "orderItemSeqId", orderItemSeqId), null, false)/>
+                    <#assign itemIssuances = EntityQuery.use(delegator).from("ItemIssuance").where("shipmentId", shipment.getString("shipmentId")!, "orderItemSeqId", orderItemSeqId!).queryList()!/>
                     <#if itemIssuances?has_content>
                       <#list itemIssuances as itemIssuance>
                         <#assign verifiedQuantity = verifiedQuantity + itemIssuance.getBigDecimal("quantity")>
@@ -267,7 +267,7 @@ under the License.
                   <#if workOrderItemFulfillment?has_content>
                     <#assign workEffort = workOrderItemFulfillment.getRelatedOne("WorkEffort", false)/>
                     <#if workEffort?has_content>
-                      <#assign workEffortTask = Static["org.apache.ofbiz.entity.util.EntityUtil"].getFirst(delegator.findByAnd("WorkEffort", Static["org.apache.ofbiz.base.util.UtilMisc"].toMap("workEffortParentId", workEffort.workEffortId), null, false))/>
+                      <#assign workEffortTask = EntityQuery.use(delegator).from("WorkEffort").where("workEffortParentId", workEffort.workEffortId!).queryFirst()!/>
                       <#if workEffortTask?has_content>
                         <#assign workEffortInventoryAssigns = workEffortTask.getRelated("WorkEffortInventoryAssign", null, null, false)/>
                         <#if workEffortInventoryAssigns?has_content>
@@ -302,7 +302,7 @@ under the License.
             </tr>
             <tr>
               <td colspan="12" align="right">
-                <#if isShowVerifyItemButton == "true">
+                <#if "true" == isShowVerifyItemButton>
                   <input type="submit" value="${uiLabelMap.ProductVerify}&nbsp;${uiLabelMap.OrderItems}"/>
                 </#if>
                 &nbsp;
@@ -341,7 +341,7 @@ under the License.
                 <td>&nbsp;</td>
               </tr>
               <#list pickRows as pickRow>
-                <#if (pickRow.getOrderId()!).equals(orderId)>
+                <#if (pickRow.getOrderId()! == orderId)>
                   <tr>
                     <td>${pickRow.getOrderItemSeqId()!}</td>
                     <td>${pickRow.getProductId()!}</td>
@@ -360,16 +360,16 @@ under the License.
     </form>
   </#if>
   <#if orderId?has_content>
-    <script language="javascript" type="text/javascript">
+    <script type="application/javascript">
       document.singlePickForm.productId.focus();
     </script>
   <#else>
-    <script language="javascript" type="text/javascript">
+    <script type="application/javascript">
       document.selectOrderForm.orderId.focus();
     </script>
   </#if>
   <#if shipmentId?has_content>
-    <script language="javascript" type="text/javascript">
+    <script type="application/javascript">
       document.selectOrderForm.orderId.focus();
     </script>
   </#if>

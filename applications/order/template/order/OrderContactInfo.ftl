@@ -18,13 +18,13 @@ under the License.
 -->
 
 <#macro updateOrderContactMech orderHeader contactMechTypeId contactMechList contactMechPurposeTypeId contactMechAddress>
-  <#if (!orderHeader.statusId.equals("ORDER_COMPLETED")) && !(orderHeader.statusId.equals("ORDER_REJECTED")) && !(orderHeader.statusId.equals("ORDER_CANCELLED"))>
+  <#if ("ORDER_COMPLETED" != orderHeader.statusId) && ("ORDER_REJECTED" != orderHeader.statusId) && ("ORDER_CANCELLED" != orderHeader.statusId)>
     <form name="updateOrderContactMech" method="post" action="<@ofbizUrl>updateOrderContactMech</@ofbizUrl>">
       <input type="hidden" name="orderId" value="${orderId!}" />
       <input type="hidden" name="contactMechPurposeTypeId" value="${contactMechPurpose.contactMechPurposeTypeId!}" />
       <input type="hidden" name="oldContactMechId" value="${contactMech.contactMechId!}" />
       <select name="contactMechId">
-        <#if contactMech.contactMechTypeId == "POSTAL_ADDRESS">
+        <#if "POSTAL_ADDRESS" == contactMech.contactMechTypeId>
           <option value="${contactMechAddress.contactMechId}">${(contactMechAddress.address1)?default("")} - ${contactMechAddress.city?default("")}</option>
           <option value="${contactMechAddress.contactMechId}"></option>
           <#list contactMechList as contactMech>
@@ -36,7 +36,7 @@ under the License.
               </#if>
             </#list>
           </#list>
-        <#elseif contactMech.contactMechTypeId == "TELECOM_NUMBER">
+        <#elseif "TELECOM_NUMBER" == contactMech.contactMechTypeId>
           <option value="${contactMechAddress.contactMechId}">${contactMechAddress.countryCode!} <#if contactMechAddress.areaCode??>${contactMechAddress.areaCode}-</#if>${contactMechAddress.contactNumber}</option>
           <option value="${contactMechAddress.contactMechId}"></option>
           <#list contactMechList as contactMech>
@@ -48,7 +48,7 @@ under the License.
                </#if>
              </#list>
           </#list>
-        <#elseif contactMech.contactMechTypeId == "EMAIL_ADDRESS">
+        <#elseif "EMAIL_ADDRESS" == contactMech.contactMechTypeId>
           <option value="${contactMechAddress.contactMechId}">${(contactMechAddress.infoString)?default("")}</option>
           <option value="${contactMechAddress.contactMechId}"></option>
           <#list contactMechList as contactMech>
@@ -73,11 +73,10 @@ under the License.
       <br class="clear"/>
     </div>
     <div class="screenlet-body">
-      <table class="basic-table" cellspacing='0'>
+      <table class="basic-table form-table" cellspacing='0'>
         <tr>
-          <td align="right" valign="top" width="19%"><span class="label">&nbsp;${uiLabelMap.CommonName}</span></td>
-          <td width="1%">&nbsp;</td>
-          <td valign="top" width="80%">
+          <td class="label"><span class="label">&nbsp;${uiLabelMap.CommonName}</span></td>
+          <td>
             <div>
               <#if displayParty?has_content>
                 <#assign displayPartyNameResult = dispatcher.runSync("getPartyNameForDate", Static["org.apache.ofbiz.base.util.UtilMisc"].toMap("partyId", displayParty.partyId, "compareDate", orderHeader.orderDate, "userLogin", userLogin))/>
@@ -102,18 +101,30 @@ under the License.
               </#if>
             </div>
           </td>
+          <#if orderHeader.orderTypeId == "PURCHASE_ORDER" && displayParty?has_content>
+            <#assign supplierContactMech = EntityQuery.use(delegator).from("PartyContactMechPurpose").where("partyId", displayParty.partyId, "contactMechPurposeTypeId", "BILLING_LOCATION").queryFirst()!>
+            <#if supplierContactMech?has_content>
+              <#assign supplierAddress = EntityQuery.use(delegator).from("PostalAddress").where("contactMechId", supplierContactMech.contactMechId).queryOne()!>
+              <td class="label"><span class="label">&nbsp;${uiLabelMap.OrderAddress}</span></td>
+              <td>
+                <div>
+                  ${setContextField("postalAddress", supplierAddress)}
+                  ${screens.render("component://party/widget/partymgr/PartyScreens.xml#postalAddressHtmlFormatter")}
+                </div>
+              </td>
+            </#if>
+          </#if>
         </tr>
         <#list orderContactMechValueMaps as orderContactMechValueMap>
           <#assign contactMech = orderContactMechValueMap.contactMech>
           <#assign contactMechPurpose = orderContactMechValueMap.contactMechPurposeType>
-          <tr><td colspan="3"><hr /></td></tr>
+          <tr><td colspan="4"><hr /></td></tr>
           <tr>
-            <td align="right" valign="top" width="19%">
+            <td class="label">
               <span class="label">&nbsp;${contactMechPurpose.get("description",locale)}</span>
             </td>
-            <td width="1%">&nbsp;</td>
-            <td valign="top" width="80%">
-              <#if contactMech.contactMechTypeId == "POSTAL_ADDRESS">
+            <td>
+              <#if "POSTAL_ADDRESS" == contactMech.contactMechTypeId>
                 <#assign postalAddress = orderContactMechValueMap.postalAddress>
                 <#if postalAddress?has_content>
                   <div>
@@ -122,18 +133,18 @@ under the License.
                   </div>
                   <@updateOrderContactMech orderHeader=orderHeader! contactMechTypeId=contactMech.contactMechTypeId contactMechList=postalContactMechList! contactMechPurposeTypeId=contactMechPurpose.contactMechPurposeTypeId! contactMechAddress=postalAddress! />
                 </#if>
-              <#elseif contactMech.contactMechTypeId == "TELECOM_NUMBER">
+              <#elseif "TELECOM_NUMBER" == contactMech.contactMechTypeId>
                 <#assign telecomNumber = orderContactMechValueMap.telecomNumber>
                 <div>
                   ${telecomNumber.countryCode!}
                   <#if telecomNumber.areaCode??>${telecomNumber.areaCode}-</#if>${telecomNumber.contactNumber}
-                  <#if !telecomNumber.countryCode?? || telecomNumber.countryCode == "011" || telecomNumber.countryCode == "1">
+                  <#if !telecomNumber.countryCode?? || "011" == telecomNumber.countryCode || "1" == telecomNumber.countryCode>
                     <a target="_blank" href="${uiLabelMap.CommonLookupAnywhoLink}" class="buttontext">${uiLabelMap.CommonLookupAnywho}</a>
                    <a target="_blank" href="${uiLabelMap.CommonLookupWhitepagesTelNumberLink}" class="buttontext">${uiLabelMap.CommonLookupWhitepages}</a>
                   </#if>
                 </div>
                 <@updateOrderContactMech orderHeader=orderHeader! contactMechTypeId=contactMech.contactMechTypeId contactMechList=telecomContactMechList! contactMechPurposeTypeId=contactMechPurpose.contactMechPurposeTypeId! contactMechAddress=telecomNumber! />
-              <#elseif contactMech.contactMechTypeId == "EMAIL_ADDRESS">
+              <#elseif "EMAIL_ADDRESS" == contactMech.contactMechTypeId>
                 <div>
                   ${contactMech.infoString}
                   <#if security.hasEntityPermission("ORDERMGR", "_SEND_CONFIRMATION", session)>
@@ -143,7 +154,7 @@ under the License.
                   </#if>
                 </div>
                 <@updateOrderContactMech orderHeader=orderHeader! contactMechTypeId=contactMech.contactMechTypeId contactMechList=emailContactMechList! contactMechPurposeTypeId=contactMechPurpose.contactMechPurposeTypeId! contactMechAddress=contactMech! />
-              <#elseif contactMech.contactMechTypeId == "WEB_ADDRESS">
+              <#elseif "WEB_ADDRESS" == contactMech.contactMechTypeId>
                 <div>
                   ${contactMech.infoString}
                   <#assign openString = contactMech.infoString>

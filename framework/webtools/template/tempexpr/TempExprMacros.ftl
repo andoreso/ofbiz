@@ -20,10 +20,10 @@ under the License.
 <#--
 To use these macros in your template, insert the following line in
 your template file:
-<#include "component://common/template/includes/empExprMacros.ftl"/>
+<#include "component://common-theme/template/includes/empExprMacros.ftl"/>
 -->
 
-<#include "component://common/template/includes/CommonMacros.ftl"/>
+<#include "component://common-theme/template/includes/CommonMacros.ftl"/>
 
 <#assign
   occurrenceList = Static["org.apache.ofbiz.service.calendar.ExpressionUiHelper"].getOccurrenceList()
@@ -36,13 +36,13 @@ your template file:
   <tr>
     <td class="label">${uiLabelMap.CommonFrom}</td>
     <td>
-      <@DateField formName=formName fieldName="date1" fieldValue=fromDate/>
+      <@DateField formName=formName fieldName="dateRange1" fieldValue=fromDate/>
     </td>
   </tr>
   <tr>
     <td class="label">${uiLabelMap.CommonTo}</td>
     <td>
-      <@DateField formName=formName fieldName="date2" fieldValue=toDate/>
+      <@DateField formName=formName fieldName="dateRange2" fieldValue=toDate/>
     </td>
   </tr>
 </#macro>
@@ -104,7 +104,7 @@ your template file:
   <tr>
     <td class="label">${uiLabelMap.CommonFrom}</td>
     <td>
-      <@DateField formName=formName fieldName="date1" fieldValue=fromDate/>
+      <@DateField formName=formName fieldName="dateFreq1" fieldValue=fromDate/>
     </td>
   </tr>
   <tr>

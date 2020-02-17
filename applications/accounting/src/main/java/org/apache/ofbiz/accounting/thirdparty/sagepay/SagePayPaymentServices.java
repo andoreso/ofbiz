@@ -51,7 +51,7 @@ public class SagePayPaymentServices {
         Debug.logInfo("SagePay - Entered buildCustomerBillingInfo", module);
         Debug.logInfo("SagePay buildCustomerBillingInfo context : " + context, module);
 
-        Map<String, String> billingInfo = new HashMap<String, String>();
+        Map<String, String> billingInfo = new HashMap<>();
 
         String orderId = null;
         BigDecimal processAmount = null;
@@ -130,7 +130,11 @@ public class SagePayPaymentServices {
         }
 
         billingInfo.put("orderId", orderId);
-        billingInfo.put("amount", processAmount.toString());
+        if(processAmount != null){
+            billingInfo.put("amount", processAmount.toString());
+        } else {
+            billingInfo.put("amount", "");
+        }
         billingInfo.put("currency", currency);
         billingInfo.put("description", orderId);
         billingInfo.put("cardNumber", cardNumber);
@@ -156,7 +160,7 @@ public class SagePayPaymentServices {
         GenericValue orderPaymentPreference = (GenericValue) context.get("orderPaymentPreference");
         
         if (orderPaymentPreference == null) {
-            response = ServiceUtil.returnError(UtilProperties.getMessage(resource, "AccountingSagePayOrderPaymenPreferenceIsNull", UtilMisc.toMap("orderId", orderId, "orderPaymentPreference", orderPaymentPreference), locale));
+            response = ServiceUtil.returnError(UtilProperties.getMessage(resource, "AccountingSagePayOrderPaymenPreferenceIsNull", UtilMisc.toMap("orderId", orderId, "orderPaymentPreference", null), locale));
         } else {
             response = processCardAuthorisationPayment(dctx, context);
         }

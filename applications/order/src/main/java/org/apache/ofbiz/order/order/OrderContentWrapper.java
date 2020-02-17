@@ -76,6 +76,7 @@ public class OrderContentWrapper implements ContentWrapper {
         this.mimeTypeId = EntityUtilProperties.getPropertyValue("content", "defaultMimeType", "text/html; charset=utf-8", (Delegator) request.getAttribute("delegator"));
     }
 
+    @Override
     public StringUtil.StringWrapper get(String orderContentTypeId, String encoderType) {
         return StringUtil.makeStringWrapper(getOrderContentAsText(order, orderContentTypeId, locale, mimeTypeId, order.getDelegator(), dispatcher, encoderType));
     }
@@ -96,7 +97,7 @@ public class OrderContentWrapper implements ContentWrapper {
          */
         UtilCodec.SimpleEncoder encoder = UtilCodec.getEncoder(encoderType);
 
-        String orderItemSeqId = (order.getEntityName().equals("OrderItem")? order.getString("orderItemSeqId"): "_NA_");
+        String orderItemSeqId = ("OrderItem".equals(order.getEntityName())? order.getString("orderItemSeqId"): "_NA_");
 
         String cacheKey = orderContentTypeId + SEPARATOR + locale + SEPARATOR + mimeTypeId + SEPARATOR + order.get("orderId") + SEPARATOR + orderItemSeqId + SEPARATOR + encoderType + SEPARATOR + delegator;
         try {
@@ -108,19 +109,11 @@ public class OrderContentWrapper implements ContentWrapper {
             Writer outWriter = new StringWriter();
             getOrderContentAsText(null, null, order, orderContentTypeId, locale, mimeTypeId, delegator, dispatcher, outWriter, false);
             String outString = outWriter.toString();
-            if (UtilValidate.isEmpty(outString)) {
-                outString = outString == null? "" : outString;
-            }
             outString = encoder.sanitize(outString, null);
-            if (orderContentCache != null) {
-                orderContentCache.put(cacheKey, outString);
-            }
+            orderContentCache.put(cacheKey, outString);
             return outString;
 
-        } catch (GeneralException e) {
-            Debug.logError(e, "Error rendering OrderContent, inserting empty String", module);
-            return "";
-        } catch (IOException e) {
+        } catch (GeneralException | IOException e) {
             Debug.logError(e, "Error rendering OrderContent, inserting empty String", module);
             return "";
         }
@@ -135,7 +128,7 @@ public class OrderContentWrapper implements ContentWrapper {
             orderId = order.getString("orderId");
         }
         if (orderItemSeqId == null && order != null) {
-            orderItemSeqId = (order.getEntityName().equals("OrderItem")? order.getString("orderItemSeqId"): "_NA_");
+            orderItemSeqId = ("OrderItem".equals(order.getEntityName())? order.getString("orderItemSeqId"): "_NA_");
         }
 
         if (delegator == null && order != null) {
@@ -154,7 +147,7 @@ public class OrderContentWrapper implements ContentWrapper {
                 .cache(cache).filterByDate().queryFirst();
         if (orderContent != null) {
             // when rendering the order content, always include the OrderHeader/OrderItem and OrderContent records that this comes from
-            Map<String, Object> inContext = new HashMap<String, Object>();
+            Map<String, Object> inContext = new HashMap<>();
             inContext.put("order", order);
             inContext.put("orderContent", orderContent);
             ContentWorker.renderContentAsText(dispatcher, orderContent.getString("contentId"), outWriter, inContext, locale, mimeTypeId, null, null, cache);

@@ -34,7 +34,7 @@ import org.w3c.dom.Element;
 /**
  * Implements the &lt;request-parameters-to-list&gt; element.
  * 
- * @see <a href="https://cwiki.apache.org/confluence/display/OFBADMIN/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
+ * @see <a href="https://cwiki.apache.org/confluence/display/OFBIZ/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
  */
 public final class RequestParametersToList extends MethodOperation {
 
@@ -83,7 +83,7 @@ public final class RequestParametersToList extends MethodOperation {
             if (parameterValues != null) {
                 List<String> valueList = listFma.get(methodContext.getEnvMap());
                 if (valueList == null) {
-                    valueList = new LinkedList<String>();
+                    valueList = new LinkedList<>();
                     listFma.put(methodContext.getEnvMap(), valueList);
                 }
                 for (int i = 0; i < parameterValues.length; i++) {

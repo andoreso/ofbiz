@@ -72,7 +72,7 @@ public final class SqlJdbcUtil {
     public static final String module = SqlJdbcUtil.class.getName();
 
     private static final int CHAR_BUFFER_SIZE = 4096;
-    private static Map<String, Integer> fieldTypeMap = new HashMap<String, Integer>();
+    private static Map<String, Integer> fieldTypeMap = new HashMap<>();
     static {
         fieldTypeMap.put("java.lang.String", 1);
         fieldTypeMap.put("String", 1);
@@ -141,7 +141,7 @@ public final class SqlJdbcUtil {
                 // view-link and already be in the big join; SO keep a set of all aliases
                 // in the join so far and if the left entity alias isn't there yet, and this
                 // isn't the first one, throw an exception
-                Set<String> joinedAliasSet = new TreeSet<String>();
+                Set<String> joinedAliasSet = new TreeSet<>();
 
                 // TODO: at view-link read time make sure they are ordered properly so that each
                 // left hand alias after the first view-link has already been linked before
@@ -193,6 +193,7 @@ public final class SqlJdbcUtil {
 
                     StringBuilder condBuffer = new StringBuilder();
 
+                    ModelViewEntity.ViewEntityCondition viewEntityCondition = viewLink.getViewEntityCondition();
                     for (int j = 0; j < viewLink.getKeyMapsSize(); j++) {
                         ModelKeyMap keyMap = viewLink.getKeyMap(j);
                         ModelField linkField = linkEntity.getField(keyMap.getFieldName());
@@ -218,17 +219,14 @@ public final class SqlJdbcUtil {
                         condBuffer.append(".");
                         condBuffer.append(relLinkField.getColName());
                     }
-                    if (condBuffer.length() == 0) {
+                    if (condBuffer.length() == 0 && viewEntityCondition == null) {
                         throw new GenericModelException("No view-link/join key-maps found for the " + viewLink.getEntityAlias() + " and the " + viewLink.getRelEntityAlias() + " member-entities of the " + modelViewEntity.getEntityName() + " view-entity.");
                     }
 
-                    ModelViewEntity.ViewEntityCondition viewEntityCondition = viewLink.getViewEntityCondition();
                     if (viewEntityCondition != null) {
                         EntityCondition whereCondition = viewEntityCondition.getWhereCondition(modelFieldTypeReader, null);
-                        if (whereCondition != null) {
-                            condBuffer.append(" AND ");
-                            condBuffer.append(whereCondition.makeWhereString(modelEntity, null, datasourceInfo));
-                        }
+                        if (condBuffer.length() > 0) condBuffer.append(" AND ");
+                        condBuffer.append(whereCondition.makeWhereString(modelEntity, null, datasourceInfo));
                     }
 
                     restOfStatement.append(condBuffer.toString());
@@ -465,9 +463,9 @@ public final class SqlJdbcUtil {
             sql.append(makeFromClause(modelEntity, modelFieldTypeReader, datasourceInfo));
             String viewWhereClause = makeViewWhereClause(modelEntity, datasourceInfo.getJoinStyle());
             ModelViewEntity modelViewEntity = (ModelViewEntity)modelEntity;
-            List<EntityCondition> whereConditions = new LinkedList<EntityCondition>();
-            List<EntityCondition> havingConditions = new LinkedList<EntityCondition>();
-            List<String> orderByList = new LinkedList<String>();
+            List<EntityCondition> whereConditions = new LinkedList<>();
+            List<EntityCondition> havingConditions = new LinkedList<>();
+            List<String> orderByList = new LinkedList<>();
 
             modelViewEntity.populateViewEntityConditionInformation(modelFieldTypeReader, whereConditions, havingConditions, orderByList, null);
             String viewConditionClause;
@@ -571,11 +569,14 @@ public final class SqlJdbcUtil {
         }
 
         ModelEntity model = entity.getModelEntity();
-        String encryptionKeyName = entity.getEntityName();
-        if (curField.getEncryptMethod().isEncrypted() && model instanceof ModelViewEntity) {
+        while (curField.getEncryptMethod().isEncrypted() && model instanceof ModelViewEntity) {
             ModelViewEntity modelView = (ModelViewEntity) model;
-            encryptionKeyName = modelView.getAliasedEntity(modelView.getAlias(curField.getName()).getEntityAlias(), entity.getDelegator().getModelReader()).getEntityName();
+            String entityName = modelView.getAliasedEntity(
+                    modelView.getAlias(curField.getName()).getEntityAlias(), entity.getDelegator().getModelReader()
+            ).getEntityName();
+            model = entity.getDelegator().getModelEntity(entityName);
         }
+        String encryptionKeyName = model.getEntityName();
 
         // ----- Try out the new handler code -----
 
@@ -640,7 +641,7 @@ public final class SqlJdbcUtil {
                         }
                     } else {
                         String value = rs.getString(ind);
-                        if (value instanceof String && curField.getEncryptMethod().isEncrypted()) {
+                        if (curField.getEncryptMethod().isEncrypted()) {
                             value = (String) entity.getDelegator().decryptFieldValue(encryptionKeyName, curField.getEncryptMethod(), value);
                         }
                         entity.dangerousSetNoCheckButFast(curField, value);
@@ -715,7 +716,7 @@ public final class SqlJdbcUtil {
                     if (rs.wasNull()) {
                         entity.dangerousSetNoCheckButFast(curField, null);
                     } else {
-                        entity.dangerousSetNoCheckButFast(curField, Integer.valueOf(intValue));
+                        entity.dangerousSetNoCheckButFast(curField, intValue);
                     }
                     break;
 
@@ -724,7 +725,7 @@ public final class SqlJdbcUtil {
                     if (rs.wasNull()) {
                         entity.dangerousSetNoCheckButFast(curField, null);
                     } else {
-                        entity.dangerousSetNoCheckButFast(curField, Long.valueOf(longValue));
+                        entity.dangerousSetNoCheckButFast(curField, longValue);
                     }
                     break;
 
@@ -733,7 +734,7 @@ public final class SqlJdbcUtil {
                     if (rs.wasNull()) {
                         entity.dangerousSetNoCheckButFast(curField, null);
                     } else {
-                        entity.dangerousSetNoCheckButFast(curField, Float.valueOf(floatValue));
+                        entity.dangerousSetNoCheckButFast(curField, floatValue);
                     }
                     break;
 
@@ -742,7 +743,7 @@ public final class SqlJdbcUtil {
                     if (rs.wasNull()) {
                         entity.dangerousSetNoCheckButFast(curField, null);
                     } else {
-                        entity.dangerousSetNoCheckButFast(curField, Double.valueOf(doubleValue));
+                        entity.dangerousSetNoCheckButFast(curField, doubleValue);
                     }
                     break;
 
@@ -760,7 +761,7 @@ public final class SqlJdbcUtil {
                     if (rs.wasNull()) {
                         entity.dangerousSetNoCheckButFast(curField, null);
                     } else {
-                        entity.dangerousSetNoCheckButFast(curField, Boolean.valueOf(booleanValue));
+                        entity.dangerousSetNoCheckButFast(curField, booleanValue);
                     }
                     break;
                 }
@@ -963,7 +964,7 @@ public final class SqlJdbcUtil {
         if (val == null) {
             throw new GenericNotImplementedException("Java type " + fieldType + " not currently supported. Sorry.");
         }
-        return val.intValue();
+        return val;
     }
 
     public static void addValueSingle(StringBuffer buffer, ModelField field, Object value, List<EntityConditionParam> params) {
@@ -996,7 +997,8 @@ public final class SqlJdbcUtil {
     public static void addValue(StringBuilder buffer, ModelField field, Object value, List<EntityConditionParam> params) {
         if (value instanceof Collection<?>) {
             buffer.append("(");
-            Iterator<Object> it = UtilGenerics.checkCollection(value).iterator();
+            Collection<Object> coll = UtilGenerics.cast(value);
+            Iterator<Object> it = coll.iterator();
             while (it.hasNext()) {
                 Object thisValue = it.next();
                 addValueSingle(buffer, field, thisValue, params);

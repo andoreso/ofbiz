@@ -21,16 +21,18 @@ package org.apache.ofbiz.service;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 
 import javax.wsdl.Definition;
 import javax.wsdl.Part;
-import javax.wsdl.WSDLException;
 import javax.xml.namespace.QName;
 
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.ObjectType;
 import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.UtilValidate;
+import org.apache.ofbiz.base.util.string.FlexibleStringExpander;
 
 /**
  * Generic Service Model Parameter
@@ -77,7 +79,7 @@ public class ModelParam implements Serializable {
     public List<ModelParamValidator> validators;
 
     /** Default value */
-    private String defaultValue = null;
+    private FlexibleStringExpander defaultValue = null;
 
     /** Is this Parameter required or optional? Default to false, or required */
     public boolean optional = false;
@@ -108,7 +110,9 @@ public class ModelParam implements Serializable {
         this.stringMapPrefix = param.stringMapPrefix;
         this.stringListSuffix = param.stringListSuffix;
         this.validators = param.validators;
-        if (param.defaultValue != null) this.setDefaultValue(param.defaultValue);
+        if (param.defaultValue != null) {
+            this.setDefaultValue(param.defaultValue.getOriginal());
+        }
         this.optional = param.optional;
         this.overrideOptional = param.overrideOptional;
         this.formDisplay = param.formDisplay;
@@ -128,9 +132,8 @@ public class ModelParam implements Serializable {
     public String getPrimaryFailMessage(Locale locale) {
         if (UtilValidate.isNotEmpty(validators)) {
             return validators.get(0).getFailMessage(locale);
-        } else {
-            return null;
         }
+        return null;
     }
 
     public String getShortDisplayDescription() {
@@ -166,22 +169,26 @@ public class ModelParam implements Serializable {
     }
 
     public boolean isIn() {
-        return "IN".equals(this.mode) || "INOUT".equals(this.mode);
+        return ModelService.IN_PARAM.equals(this.mode) || ModelService.IN_OUT_PARAM.equals(this.mode);
     }
 
     public boolean isOut() {
-        return "OUT".equals(this.mode) || "INOUT".equals(this.mode);
+        return ModelService.OUT_PARAM.equals(this.mode) || ModelService.IN_OUT_PARAM.equals(this.mode);
     }
 
     public boolean isOptional() {
         return this.optional;
     }
 
-    public Object getDefaultValue() {
+    public FlexibleStringExpander getDefaultValue() {
+        return this.defaultValue;
+    }
+
+    public Object getDefaultValue(Map<String, Object> context) {
         Object defaultValueObj = null;
         if (this.type != null) {
             try {
-                defaultValueObj = ObjectType.simpleTypeConvert(this.defaultValue, this.type, null, null, false);
+                defaultValueObj = ObjectType.simpleTypeOrObjectConvert(this.defaultValue.expandString(context), this.type, null, null, false);
             } catch (Exception e) {
                 Debug.logWarning(e, "Service attribute [" + name + "] default value could not be converted to type [" + type + "]: " + e.toString(), module);
             }
@@ -195,18 +202,33 @@ public class ModelParam implements Serializable {
         return defaultValueObj;
     }
     public void setDefaultValue(String defaultValue) {
-        this.defaultValue = defaultValue;
+        this.defaultValue = FlexibleStringExpander.getInstance(defaultValue);
         if (this.defaultValue != null) {
             this.optional = true;
         }
         if (Debug.verboseOn()) Debug.logVerbose("Default value for attribute [" + this.name + "] set to [" + this.defaultValue + "]", module);
     }
     public void copyDefaultValue(ModelParam param) {
-        this.setDefaultValue(param.defaultValue);
+        this.setDefaultValue(param.defaultValue.getOriginal());
     }
 
     public boolean equals(ModelParam model) {
         return model.name.equals(this.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(allowHtml, defaultValue, description, entityName, fieldName, entityName,
+                fieldName, formDisplay, formLabel, internal, mode, name, optional, overrideFormDisplay,
+                overrideOptional, requestAttributeName, stringListSuffix, stringMapPrefix, type, validators);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof ModelParam)) {
+            return false;
+        }
+        return equals((ModelParam) obj);
     }
 
     @Override
@@ -227,19 +249,20 @@ public class ModelParam implements Serializable {
         buf.append(allowHtml).append("::");
         buf.append(defaultValue).append("::");
         buf.append(internal);
-        if (validators != null)
+        if (validators != null) {
             buf.append(validators.toString()).append("::");
+        }
         return buf.toString();
     }
 
-    public Part getWSDLPart(Definition def) throws WSDLException {
+    public Part getWSDLPart(Definition def) {
         Part part = def.createPart();
         part.setName(this.name);
         part.setTypeName(new QName(ModelService.TNS, this.java2wsdlType()));
         return part;
     }
 
-    protected String java2wsdlType() throws WSDLException {
+    protected String java2wsdlType() {
         if (ObjectType.instanceOf(java.lang.Character.class, this.type)) {
             return "std-String";
         } else if (ObjectType.instanceOf(java.lang.String.class, this.type)) {
@@ -283,8 +306,6 @@ public class ModelParam implements Serializable {
         } else {
             return "cus-obj";
         }
-
-        //throw new WSDLException(WSDLException.OTHER_ERROR, "Service cannot be described with WSDL (" + this.name + " / " + this.type + ")");
     }
 
     static class ModelParamValidator implements Serializable {
@@ -313,10 +334,9 @@ public class ModelParam implements Serializable {
         public String getFailMessage(Locale locale) {
             if (failMessage != null) {
                 return this.failMessage;
-            } else {
-                if (failResource != null && failProperty != null) {
-                    return UtilProperties.getMessage(failResource, failProperty, locale);
-                }
+            }
+            if (failResource != null && failProperty != null) {
+                return UtilProperties.getMessage(failResource, failProperty, locale);
             }
             return null;
         }

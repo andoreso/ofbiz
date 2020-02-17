@@ -21,7 +21,6 @@ package org.apache.ofbiz.product.test;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -51,25 +50,25 @@ public class StockMovesTest extends OFBizTestCase {
     }
 
     public void testStockMoves() throws Exception {
-        Map<String, Object> fsmnCtx = new HashMap<String, Object>();
+        Map<String, Object> fsmnCtx = new HashMap<>();
         Map<?,?> stockMoveHandled = null;
-        List<?> warningList = new LinkedList();
+        List<?> warningList;
 
         fsmnCtx.put("facilityId", "WebStoreWarehouse");
         fsmnCtx.put("userLogin", userLogin);
         Map<String, Object> respMap1 = dispatcher.runSync("findStockMovesNeeded", fsmnCtx);
-        stockMoveHandled = UtilGenerics.checkMap(respMap1.get("stockMoveHandled"));
-        warningList = UtilGenerics.checkList(respMap1.get("warningMessageList"));
+        stockMoveHandled = UtilGenerics.cast(respMap1.get("stockMoveHandled"));
+        warningList = UtilGenerics.cast(respMap1.get("warningMessageList"));
         assertNull(warningList);
 
         if (stockMoveHandled != null) {
             fsmnCtx.put("stockMoveHandled", stockMoveHandled);
         }
         Map<String, Object> respMap2 = dispatcher.runSync("findStockMovesRecommended", fsmnCtx);
-        warningList = UtilGenerics.checkList(respMap2.get("warningMessageList"));
+        warningList = UtilGenerics.cast(respMap2.get("warningMessageList"));
         assertNull(warningList);
 
-        Map<String, Object> ppsmCtx = new HashMap<String, Object>();
+        Map<String, Object> ppsmCtx = new HashMap<>();
         ppsmCtx.put("productId", "GZ-2644");
         ppsmCtx.put("facilityId", "WebStoreWarehouse");
         ppsmCtx.put("locationSeqId","TLTLTLUL01");

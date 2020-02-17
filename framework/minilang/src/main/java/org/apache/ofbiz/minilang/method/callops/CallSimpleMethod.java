@@ -43,7 +43,7 @@ import org.w3c.dom.Element;
 /**
  * Implements the &lt;call-simple-method&gt; element.
  * 
- * @see <a href="https://cwiki.apache.org/confluence/display/OFBADMIN/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
+ * @see <a href="https://cwiki.apache.org/confluence/display/OFBIZ/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
  */
 public final class CallSimpleMethod extends MethodOperation {
 
@@ -82,7 +82,7 @@ public final class CallSimpleMethod extends MethodOperation {
             if (!"function".equals(this.scope)) {
                 MiniLangValidate.handleError("Inline scope cannot include <result-to-field> elements.", simpleMethod, element);
             }
-            List<ResultToField> resultToFieldList = new ArrayList<ResultToField>(resultToFieldElements.size());
+            List<ResultToField> resultToFieldList = new ArrayList<>(resultToFieldElements.size());
             for (Element resultToFieldElement : resultToFieldElements) {
                 resultToFieldList.add(new ResultToField(resultToFieldElement, simpleMethod));
             }
@@ -103,15 +103,16 @@ public final class CallSimpleMethod extends MethodOperation {
         }
         MethodContext localContext = methodContext;
         if ("function".equals(this.scope)) {
-            Map<String, Object> localEnv = new HashMap<String, Object>();
+            Map<String, Object> localEnv = new HashMap<>();
             localEnv.putAll(methodContext.getEnvMap());
             localEnv.remove(this.simpleMethod.getEventResponseCodeName());
             localEnv.remove(this.simpleMethod.getServiceResponseMessageName());
             localContext = new MethodContext(localEnv, methodContext.getLoader(), methodContext.getMethodType());
         }
         String returnVal = simpleMethodToCall.exec(localContext);
-        if (Debug.verboseOn())
-            Debug.logVerbose("Called simple-method named [" + this.methodName + "] in resource [" + this.xmlResource + "], returnVal is [" + returnVal + "]", module);
+        if (Debug.verboseOn()) {
+             Debug.logVerbose("Called simple-method named [" + this.methodName + "] in resource [" + this.xmlResource + "], returnVal is [" + returnVal + "]", module);
+        }
         if (simpleMethodToCall.getDefaultErrorCode().equals(returnVal)) {
             if (methodContext.getMethodType() == MethodContext.EVENT) {
                 methodContext.putEnv(simpleMethod.getEventResponseCodeName(), simpleMethod.getDefaultErrorCode());

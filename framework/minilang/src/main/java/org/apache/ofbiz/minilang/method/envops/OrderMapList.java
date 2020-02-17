@@ -37,7 +37,7 @@ import org.w3c.dom.Element;
 /**
  * Implements the &lt;order-map-list&gt; element.
  * 
- * @see <a href="https://cwiki.apache.org/confluence/display/OFBADMIN/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Referenc</a>
+ * @see <a href="https://cwiki.apache.org/confluence/display/OFBIZ/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Referenc</a>
  */
 public final class OrderMapList extends MethodOperation {
 
@@ -56,7 +56,7 @@ public final class OrderMapList extends MethodOperation {
         listFma = FlexibleMapAccessor.getInstance(element.getAttribute("list"));
         List<? extends Element> orderByElements = UtilXml.childElementList(element, "order-by");
         if (orderByElements.size() > 0) {
-            List<FlexibleMapAccessor<String>> orderByList = new ArrayList<FlexibleMapAccessor<String>>(orderByElements.size());
+            List<FlexibleMapAccessor<String>> orderByList = new ArrayList<>(orderByElements.size());
             for (Element orderByElement : orderByElements) {
                 FlexibleMapAccessor<String> fma = FlexibleMapAccessor.getInstance(orderByElement.getAttribute("field"));
                 orderByList.add(fma);

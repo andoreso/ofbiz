@@ -35,7 +35,7 @@ import org.w3c.dom.Element;
 /**
  * Implements the &lt;if-empty&gt; element.
  * 
- * @see <a href="https://cwiki.apache.org/confluence/display/OFBADMIN/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
+ * @see <a href="https://cwiki.apache.org/confluence/display/OFBIZ/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
  */
 public final class EmptyCondition extends MethodOperation implements Conditional {
 
@@ -101,6 +101,7 @@ public final class EmptyCondition extends MethodOperation implements Conditional
         }
     }
 
+    @Override
     public void prettyPrint(StringBuilder messageBuffer, MethodContext methodContext) {
         messageBuffer.append("empty[");
         messageBuffer.append(fieldFma);
@@ -125,6 +126,7 @@ public final class EmptyCondition extends MethodOperation implements Conditional
             return new EmptyCondition(element, simpleMethod);
         }
 
+        @Override
         public EmptyCondition createMethodOperation(Element element, SimpleMethod simpleMethod) throws MiniLangException {
             return new EmptyCondition(element, simpleMethod);
         }

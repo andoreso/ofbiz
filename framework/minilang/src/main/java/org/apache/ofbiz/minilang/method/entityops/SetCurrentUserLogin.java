@@ -31,7 +31,7 @@ import org.w3c.dom.Element;
 /**
  * Implements the &lt;set-current-user-login&gt; element.
  * 
- * @see <a href="https://cwiki.apache.org/confluence/display/OFBADMIN/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
+ * @see <a href="https://cwiki.apache.org/confluence/display/OFBIZ/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
  */
 public final class SetCurrentUserLogin extends MethodOperation {
 
@@ -55,7 +55,7 @@ public final class SetCurrentUserLogin extends MethodOperation {
         if (userLogin == null) {
             throw new MiniLangRuntimeException("Entity value not found with name: " + valueFma, this);
         }
-        methodContext.setUserLogin(userLogin, this.simpleMethod.getUserLoginEnvName());
+        methodContext.setUserLogin(userLogin, SimpleMethod.getUserLoginEnvName());
         return true;
     }
 

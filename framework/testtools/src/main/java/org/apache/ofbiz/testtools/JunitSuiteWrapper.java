@@ -21,15 +21,15 @@ package org.apache.ofbiz.testtools;
 import java.util.LinkedList;
 import java.util.List;
 
-import junit.framework.Test;
-import junit.framework.TestSuite;
-
 import org.apache.ofbiz.base.component.ComponentConfig;
 import org.apache.ofbiz.base.config.GenericConfigException;
 import org.apache.ofbiz.base.config.ResourceHandler;
 import org.apache.ofbiz.base.util.Debug;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+
+import junit.framework.Test;
+import junit.framework.TestSuite;
 
 /**
  * Use this class in a JUnit test runner to prepare the TestSuite.
@@ -38,7 +38,7 @@ public class JunitSuiteWrapper {
 
     public static final String module = JunitSuiteWrapper.class.getName();
 
-    protected List<ModelTestSuite> modelTestSuiteList = new LinkedList<ModelTestSuite>();
+    protected List<ModelTestSuite> modelTestSuiteList = new LinkedList<>();
 
     public JunitSuiteWrapper(String componentName, String suiteName, String testCase) {
         for (ComponentConfig.TestSuiteInfo testSuiteInfo: ComponentConfig.getAllTestSuiteInfos(componentName)) {
@@ -79,7 +79,7 @@ public class JunitSuiteWrapper {
     }
 
     public List<Test> getAllTestList() {
-        List<Test> allTestList = new LinkedList<Test>();
+        List<Test> allTestList = new LinkedList<>();
 
         for (ModelTestSuite modelTestSuite: this.modelTestSuiteList) {
             for (Test tst: modelTestSuite.getTestList()) {

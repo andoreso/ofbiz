@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
+import com.ibm.icu.util.Calendar
 import org.apache.ofbiz.accounting.util.UtilAccounting
 import org.apache.ofbiz.base.util.UtilDateTime
 import org.apache.ofbiz.base.util.UtilNumber
@@ -29,7 +29,7 @@ if (parameters.get('ApplicationDecorator|organizationPartyId')) {
     onlyIncludePeriodTypeIdList.add("FISCAL_YEAR")
     customTimePeriodResults = runService('findCustomTimePeriods', [findDate : UtilDateTime.nowTimestamp(), organizationPartyId : parameters.get('ApplicationDecorator|organizationPartyId'), onlyIncludePeriodTypeIdList : onlyIncludePeriodTypeIdList, userLogin : userLogin])
     customTimePeriodList = customTimePeriodResults.customTimePeriodList
-    if (UtilValidate.isNotEmpty(customTimePeriodList)) {
+    if (customTimePeriodList) {
         context.timePeriod = customTimePeriodList.first().customTimePeriodId
     }
     decimals = UtilNumber.getBigDecimalScale("ledger.decimals")
@@ -49,7 +49,7 @@ if (parameters.get('ApplicationDecorator|organizationPartyId')) {
         currentTimePeriod = from("CustomTimePeriod").where("customTimePeriodId", parameters.timePeriod).queryOne()
         previousTimePeriodResult = runService('getPreviousTimePeriod', [customTimePeriodId : parameters.timePeriod, userLogin : userLogin])
         previousTimePeriod = previousTimePeriodResult.previousTimePeriod
-        if (UtilValidate.isNotEmpty(previousTimePeriod)) {
+        if (previousTimePeriod) {
             glAccountHistory = from("GlAccountHistory").where("customTimePeriodId", previousTimePeriod.customTimePeriodId, "glAccountId", parameters.glAccountId, "organizationPartyId", parameters.get('ApplicationDecorator|organizationPartyId')).queryOne()
             if (glAccountHistory && glAccountHistory.endingBalance != null) {
                 context.openingBalance = glAccountHistory.endingBalance

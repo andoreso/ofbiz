@@ -19,31 +19,27 @@
 
 // The only required parameter is "productionRunId".
 
-import java.util.*
-import org.apache.ofbiz.entity.*
-import org.apache.ofbiz.entity.util.EntityUtil
-import org.apache.ofbiz.base.util.*
-import org.apache.ofbiz.base.util.Debug
+import org.apache.ofbiz.entity.GenericValue
+import org.apache.ofbiz.base.util.UtilMisc
 import org.apache.ofbiz.base.util.UtilValidate
-import org.apache.ofbiz.manufacturing.jobshopmgt.ProductionRun
 
 delegator = request.getAttribute("delegator")
 
 productionRunId = request.getParameter("productionRunId")
-if (UtilValidate.isEmpty(productionRunId)) {
+if (!productionRunId) {
     productionRunId = request.getParameter("workEffortId")
 }
-if (UtilValidate.isNotEmpty(productionRunId)) {
+if (productionRunId) {
 
-    GenericValue productionRun = delegator.findOne("WorkEffort", UtilMisc.toMap("workEffortId", productionRunId), false)
-    if (UtilValidate.isNotEmpty(productionRun)) {
+    GenericValue productionRun = from("WorkEffort").where("workEffortId", productionRunId).queryOne();
+    if (productionRun) {
         // If this is a task, get the parent production run
         if (productionRun.getString("workEffortTypeId") != null && "PROD_ORDER_TASK".equals(productionRun.getString("workEffortTypeId"))) {
-            productionRun = delegator.findOne("WorkEffort", UtilMisc.toMap("workEffortId", productionRun.getString("workEffortParentId")), false)
+            productionRun = from("WorkEffort").where("workEffortId", productionRun.getString("workEffortParentId")).queryOne();
         }
     }
 
-    if (UtilValidate.isEmpty(productionRun)) {
+    if (!productionRun) {
         return "error"
     }
     if ("PRUN_CREATED".equals(productionRun.getString("currentStatusId")) ||

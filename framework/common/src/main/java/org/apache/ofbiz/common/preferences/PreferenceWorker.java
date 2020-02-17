@@ -52,7 +52,7 @@ public final class PreferenceWorker {
     private static final String DEFAULT_UID = "_NA_";
 
     private PreferenceWorker () {}
-    
+
     /**
      * Add a UserPreference GenericValue to a Map.
      * @param rec GenericValue to convert
@@ -66,7 +66,7 @@ public final class PreferenceWorker {
             // default to String
             userPrefMap.put(rec.getString("userPrefTypeId"), rec.getString("userPrefValue"));
         } else {
-            userPrefMap.put(rec.getString("userPrefTypeId"), ObjectType.simpleTypeConvert(rec.get("userPrefValue"), prefDataType, null, null, false));
+            userPrefMap.put(rec.getString("userPrefTypeId"), ObjectType.simpleTypeOrObjectConvert(rec.get("userPrefValue"), prefDataType, null, null, false));
         }
         return userPrefMap;
     }
@@ -87,7 +87,7 @@ public final class PreferenceWorker {
         if (userLogin != null) {
             String userLoginId = userLogin.getString("userLoginId");
             String userLoginIdArg = (String) context.get(LOGINID_PARAMETER_NAME); // is an optional parameters which defaults to the logged on user
-            if (userLoginIdArg == null || (userLoginIdArg != null && userLoginId.equals(userLoginIdArg))) {
+            if (userLoginIdArg == null || userLoginId.equals(userLoginIdArg)) {
                 hasPermission = true; // users can copy to their own preferences
             } else {
                 Security security = ctx.getSecurity();
@@ -133,7 +133,7 @@ public final class PreferenceWorker {
      * @return user preference map
      */
     public static Map<String, Object> createUserPrefMap(GenericValue rec) throws GeneralException {
-        return addPrefToMap(rec, new LinkedHashMap<String, Object>());
+        return addPrefToMap(rec, new LinkedHashMap<>());
     }
 
     /**
@@ -143,7 +143,7 @@ public final class PreferenceWorker {
      * @return user preference map
      */
     public static Map<String, Object> createUserPrefMap(List<GenericValue> recList) throws GeneralException {
-        Map<String, Object> userPrefMap =  new LinkedHashMap<String, Object>();
+        Map<String, Object> userPrefMap =  new LinkedHashMap<>();
         if (recList != null) {
             for (GenericValue value: recList) {
                 addPrefToMap(value, userPrefMap);
@@ -253,7 +253,7 @@ public final class PreferenceWorker {
      * @return field map
      */
     public static Map<String, Object> toFieldMap(String userLoginId, String userPrefTypeId, String userPrefGroupTypeId, Object userPrefValue) throws GeneralException {
-        Map<String, Object> fieldMap = UtilMisc.toMap("userLoginId", userLoginId, "userPrefTypeId", userPrefTypeId, "userPrefValue", ObjectType.simpleTypeConvert(userPrefValue, "String", null, null, false));
+        Map<String, Object> fieldMap = UtilMisc.toMap("userLoginId", userLoginId, "userPrefTypeId", userPrefTypeId, "userPrefValue", ObjectType.simpleTypeOrObjectConvert(userPrefValue, "String", null, null, false));
         if (UtilValidate.isNotEmpty(userPrefGroupTypeId)) {
             fieldMap.put("userPrefGroupTypeId", userPrefGroupTypeId);
         }

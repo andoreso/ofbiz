@@ -18,10 +18,10 @@
  *******************************************************************************/
 package org.apache.ofbiz.base.util;
 
+import java.net.Socket;
 import java.security.Principal;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
-import java.net.Socket;
 
 import javax.net.ssl.X509KeyManager;
 
@@ -43,13 +43,16 @@ public class AliasKeyManager implements X509KeyManager {
     }
 
     // this is where the customization comes in
+    @Override
     public String chooseClientAlias(String[] keyTypes, Principal[] issuers, Socket socket) {
         for (String keyType: keyTypes) {
             String[] aliases = keyManager.getClientAliases(keyType, null); // ignoring the issuers
             if (aliases != null && aliases.length > 0) {
                 for (String alias: aliases) {
                     if (this.alias.equals(alias)) {
-                        if (Debug.verboseOn()) Debug.logVerbose("chooseClientAlias for keyType [" + keyType + "] got alias " + this.alias, module);
+                        if (Debug.verboseOn()) {
+                            Debug.logVerbose("chooseClientAlias for keyType [" + keyType + "] got alias " + this.alias, module);
+                        }
                         return this.alias;
                     }
                 }
@@ -59,6 +62,7 @@ public class AliasKeyManager implements X509KeyManager {
     }
 
     // these just pass through the keyManager
+    @Override
     public String chooseServerAlias(String keyType, Principal[] issuers, Socket socket) {
         return keyManager.chooseServerAlias(keyType, issuers, socket);
     }
@@ -68,22 +72,30 @@ public class AliasKeyManager implements X509KeyManager {
         return keyManager.chooseServerAlias(keyType, issuers, socket);
     }
 
+    @Override
     public X509Certificate[] getCertificateChain(String alias) {
         X509Certificate[] certArray = keyManager.getCertificateChain(alias);
-        if (Debug.verboseOn()) Debug.logVerbose("getCertificateChain for alias [" + alias + "] got " + certArray.length + " results", module);
+        if (Debug.verboseOn()) {
+            Debug.logVerbose("getCertificateChain for alias [" + alias + "] got " + certArray.length + " results", module);
+        }
         return certArray;
     }
 
+    @Override
     public String[] getClientAliases(String keyType, Principal[] issuers) {
         return keyManager.getClientAliases(keyType, issuers);
     }
 
+    @Override
     public PrivateKey getPrivateKey(String alias) {
         PrivateKey pk = keyManager.getPrivateKey(alias);
-        if (Debug.verboseOn()) Debug.logVerbose("getPrivateKey for alias [" + alias + "] got " + (pk == null ? "[Not Found!]" : "[alg:" + pk.getAlgorithm() + ";format:" + pk.getFormat() + "]"), module);
+        if (Debug.verboseOn()) {
+            Debug.logVerbose("getPrivateKey for alias [" + alias + "] got " + (pk == null ? "[Not Found!]" : "[alg:" + pk.getAlgorithm() + ";format:" + pk.getFormat() + "]"), module);
+        }
         return pk;
     }
 
+    @Override
     public String[] getServerAliases(String keyType, Principal[] issuers) {
         return keyManager.getServerAliases(keyType, issuers);
     }

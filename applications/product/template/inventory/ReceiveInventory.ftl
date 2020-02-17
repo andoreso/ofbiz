@@ -16,7 +16,7 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 -->
-<script language="JavaScript" type="text/javascript">
+<script type="application/javascript">
     function setNow(field) { eval('document.selectAllForm.' + field + '.value="${nowTimestamp}"'); }
 </script>
 <div class="page-title">${title}</div>
@@ -54,7 +54,7 @@ under the License.
                   <td>${item.orderItemSeqId}</td>
                   <td>${item.productId?default("Not Found")}</td>
                   <td>${item.lotId?default("")}</td>
-                  <td>${item.unitCost?default(0)?string("##0.00")}</td>
+                  <td><@ofbizAmount amount=item.unitCost?default(0)/></td>
                   <td>${item.quantityRejected?default(0)?string.number}</td>
                   <td>${item.quantityAccepted?string.number}</td>
                   <td>
@@ -280,7 +280,7 @@ under the License.
                 <td colspan="2"><input type="submit" value="${uiLabelMap.CommonReceive}" /></td>
               </tr>
             </table>
-            <script language="JavaScript" type="text/javascript">
+            <script type="application/javascript">
               document.selectAllForm.quantityAccepted.focus();
             </script>
           </form>
@@ -373,7 +373,12 @@ under the License.
                   </td>
                 </tr>
                 <#list purchaseOrderItems as orderItem>
-                  <#assign defaultQuantity = orderItem.quantity - receivedQuantities[orderItem.orderItemSeqId]?double/>
+                    <#if orderItem.cancelQuantity?has_content>
+                      <#assign cancelQuantity = orderItem.cancelQuantity>
+                    <#else>
+                      <#assign cancelQuantity = 0>
+                    </#if>
+                  <#assign defaultQuantity = orderItem.quantity - cancelQuantity - receivedQuantities[orderItem.orderItemSeqId]?double/>
                   <#assign itemCost = orderItem.unitPrice?default(0)/>
                   <#assign salesOrderItem = salesOrderItems[orderItem.orderItemSeqId]!/>
                   <#if shipment?has_content>

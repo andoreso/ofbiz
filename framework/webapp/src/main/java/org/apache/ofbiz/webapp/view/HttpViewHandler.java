@@ -19,6 +19,7 @@
 package org.apache.ofbiz.webapp.view;
 
 import java.io.IOException;
+
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -35,9 +36,11 @@ public class HttpViewHandler extends AbstractViewHandler {
 
     public static final String module = HttpViewHandler.class.getName();
 
+    @Override
     public void init(ServletContext context) throws ViewHandlerException {
     }
 
+    @Override
     public void render(String name, String page, String info, String contentType, String encoding, HttpServletRequest request, HttpServletResponse response) throws ViewHandlerException {
         // some containers call filters on EVERY request, even forwarded ones,
         // so let it know that it came from the control servlet

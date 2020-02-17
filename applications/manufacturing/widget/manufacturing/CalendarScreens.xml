@@ -28,6 +28,10 @@ under the License.
                         <section>
                             <widgets>
                                 <include-menu name="CalendarTabBar" location="component://manufacturing/widget/manufacturing/ManufacturingMenus.xml"/>
+                                <container style="button-bar">
+                                    <link style="buttontext" target="EditCalendar" text="${uiLabelMap.ManufacturingNewCalendar}"/>
+                                    <link style="buttontext" target="EditCalendarWeek" text="${uiLabelMap.ManufacturingNewCalendarWeek}"/>
+                                </container>
                                 <decorator-section-include name="body"/>
                             </widgets>
                         </section>
@@ -68,7 +72,7 @@ under the License.
                 <set field="tabButtonItem" value="Calendar"/>
                 <set field="headerItem" value="calendar"/>
                 <set field="viewIndex" from-field="parameters.VIEW_INDEX" type="Integer"/>
-                <property-to-field resource="widget" property="widget.form.defaultViewSize" field="viewSizeDefaultValue"/>
+                <set field="viewSizeDefaultValue" value="${groovy: modelTheme.getDefaultViewSize()}" type="Integer"/>
                 <set field="viewSize" from-field="parameters.VIEW_SIZE" type="Integer" default-value="${viewSizeDefaultValue}"/>
 
                 <entity-condition entity-name="TechDataCalendar" list="techDataCalendars"/>
@@ -77,9 +81,6 @@ under the License.
                 <decorator-screen name="CommonCalendarDecorator">
                     <decorator-section name="body">
                         <screenlet title="${uiLabelMap.PageTitleFindCalendar}">
-                            <container style="button-bar">
-                                <link style="buttontext" target="EditCalendar" text="${uiLabelMap.ManufacturingNewCalendar}"/>
-                            </container>
                             <include-form name="ListTechDataCalendars" location="component://manufacturing/widget/manufacturing/CalendarForms.xml"/>
                         </screenlet>
                     </decorator-section>
@@ -94,7 +95,7 @@ under the License.
                 <set field="tabButtonItem" value="CalendarWeek"/>
                 <set field="headerItem" value="calendar"/>
                 <set field="viewIndex" from-field="parameters.VIEW_INDEX" type="Integer"/>
-                <property-to-field resource="widget" property="widget.form.defaultViewSize" field="viewSizeDefaultValue"/>
+                <set field="viewSizeDefaultValue" value="${groovy: modelTheme.getDefaultViewSize()}" type="Integer"/>
                 <set field="viewSize" from-field="parameters.VIEW_SIZE" type="Integer" default-value="${viewSizeDefaultValue}"/>
 
                 <entity-condition entity-name="TechDataCalendarWeek" list="calendarWeeks"/>
@@ -103,9 +104,6 @@ under the License.
                 <decorator-screen name="CommonCalendarDecorator">
                     <decorator-section name="body">
                         <screenlet title="${uiLabelMap.PageTitleListCalendarWeek}">
-                            <container style="button-bar">
-                                <link style="buttontext" target="EditCalendarWeek" text="${uiLabelMap.ManufacturingNewCalendarWeek}"/>
-                            </container>
                             <include-form name="ListCalendarWeek" location="component://manufacturing/widget/manufacturing/CalendarForms.xml"/>
                         </screenlet>
                     </decorator-section>

@@ -16,7 +16,7 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 -->
-<script type="text/javascript">
+<script type="application/javascript">
     function callDocumentByPaginate(info) {
         var str = info.split('~');
         var checkUrl = '<@ofbizUrl>categoryAjaxFired</@ofbizUrl>';
@@ -41,12 +41,12 @@ under the License.
 </script>
 
 <#macro paginationControls>
-    <#assign viewIndexMax = Static["java.lang.Math"].ceil((listSize)?double / viewSize?double)>
+    <#local viewIndexMax = Static["java.lang.Math"].ceil((listSize)?double / viewSize?double)>
       <#if (viewIndexMax?int > 0)>
         <div class="product-prevnext">
             <select name="pageSelect" onchange="callDocumentByPaginate(this[this.selectedIndex].value);">
                 <option value="#">${uiLabelMap.CommonPage} ${viewIndex?int + 1} ${uiLabelMap.CommonOf} ${viewIndexMax}</option>
-                <#if (viewIndex?int > 1)>
+                <#if (viewIndexMax?int > 1)>
                     <#list 1..viewIndexMax as curViewNum>
                          <option value="${productCategoryId}~${viewSize}~${curViewNum-1?int}">${uiLabelMap.CommonGotoPage} ${curViewNum}</option>
                     </#list>
@@ -87,7 +87,7 @@ under the License.
         <a href="javascript:document.thecategoryform.submit()" class="buttontext"><span style="white-space: nowrap;">${uiLabelMap.ProductAddProductsUsingDefaultQuantities}</span></a>
       </form>
     </#if>
-    <#if searchInCategory?default("Y") == "Y">
+    <#if "Y" == searchInCategory?default("Y")>
         <a href="<@ofbizUrl>advancedsearch?SEARCH_CATEGORY_ID=${productCategory.productCategoryId}</@ofbizUrl>" class="buttontext">${uiLabelMap.ProductSearchInCategory}</a>
     </#if>
     <#assign longDescription = categoryContentWrapper.get("LONG_DESCRIPTION", "html")!/>
@@ -119,16 +119,10 @@ under the License.
     <#if paginateEcommerceStyle??>
         <@paginationControls/>
     <#else>
-        <#include "component://common/template/includes/HtmlTemplate.ftl"/>
         <#assign commonUrl = "category?category_id="+ (parameters.category_id!) + "&"/>
-        <#--assign viewIndex = viewIndex - 1/-->
-        <#assign viewIndexFirst = 0/>
-        <#assign viewIndexPrevious = viewIndex - 1/>
-        <#assign viewIndexNext = viewIndex + 1/>
-        <#assign viewIndexLast = Static["org.apache.ofbiz.base.util.UtilMisc"].getViewLastIndex(listSize, viewSize) />
         <#assign messageMap = Static["org.apache.ofbiz.base.util.UtilMisc"].toMap("lowCount", lowIndex, "highCount", highIndex, "total", listSize)/>
         <#assign commonDisplaying = Static["org.apache.ofbiz.base.util.UtilProperties"].getMessage("CommonUiLabels", "CommonDisplaying", messageMap, locale)/>
-        <@nextPrev commonUrl=commonUrl ajaxEnabled=false javaScriptEnabled=false paginateStyle="nav-pager" paginateFirstStyle="nav-first" viewIndex=viewIndex highIndex=highIndex listSize=listSize viewSize=viewSize ajaxFirstUrl="" firstUrl="" paginateFirstLabel="" paginatePreviousStyle="nav-previous" ajaxPreviousUrl="" previousUrl="" paginatePreviousLabel="" pageLabel="" ajaxSelectUrl="" selectUrl="" ajaxSelectSizeUrl="" selectSizeUrl="" commonDisplaying=commonDisplaying paginateNextStyle="nav-next" ajaxNextUrl="" nextUrl="" paginateNextLabel="" paginateLastStyle="nav-last" ajaxLastUrl="" lastUrl="" paginateLastLabel="" paginateViewSizeLabel="" />
+        <@htmlTemplate.nextPrev commonUrl=commonUrl ajaxEnabled=false javaScriptEnabled=false paginateStyle="nav-pager" paginateFirstStyle="nav-first" viewIndex=viewIndex highIndex=highIndex listSize=listSize viewSize=viewSize ajaxFirstUrl="" firstUrl="" paginateFirstLabel="" paginatePreviousStyle="nav-previous" ajaxPreviousUrl="" previousUrl="" paginatePreviousLabel="" pageLabel="" ajaxSelectUrl="" selectUrl="" ajaxSelectSizeUrl="" selectSizeUrl="" commonDisplaying=commonDisplaying paginateNextStyle="nav-next" ajaxNextUrl="" nextUrl="" paginateNextLabel="" paginateLastStyle="nav-last" ajaxLastUrl="" lastUrl="" paginateLastLabel="" paginateViewSizeLabel="" />
     </#if>
       <#assign numCol = numCol?default(1)>
       <#assign numCol = numCol?number>

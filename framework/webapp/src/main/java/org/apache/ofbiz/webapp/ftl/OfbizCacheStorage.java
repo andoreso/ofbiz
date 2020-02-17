@@ -18,9 +18,9 @@
  *******************************************************************************/
 package org.apache.ofbiz.webapp.ftl;
 
-import freemarker.cache.CacheStorage;
-
 import org.apache.ofbiz.base.util.cache.UtilCache;
+
+import freemarker.cache.CacheStorage;
 
 /**
  * A custom cache wrapper for caching FreeMarker templates
@@ -33,18 +33,22 @@ public class OfbizCacheStorage implements CacheStorage {
         this.localCache = UtilCache.createUtilCache("webapp.FreeMarkerCache." + id, 0, 0, false);
     }
 
+    @Override
     public Object get(Object key) {
         return localCache.get(key);
     }
 
+    @Override
     public void put(Object key, Object value) {
         localCache.put(key, value);
     }
 
+    @Override
     public void remove(Object key) {
         localCache.remove(key);
     }
 
+    @Override
     public void clear() {
         localCache.clear();
     }

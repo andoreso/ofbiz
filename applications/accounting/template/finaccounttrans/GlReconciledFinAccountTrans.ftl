@@ -30,7 +30,7 @@ under the License.
     </div>
     <div class="screenlet-body">
       <a href="<@ofbizUrl>EditFinAccountReconciliations?finAccountId=${finAccountId}&amp;glReconciliationId=${glReconciliationId}</@ofbizUrl>" class="buttontext">${uiLabelMap.CommonEdit}</a>
-      <#assign finAcctTransCondList = delegator.findByAnd("FinAccountTrans", {"glReconciliationId" : glReconciliationId, "statusId" : "FINACT_TRNS_CREATED"}, null, false)>
+      <#assign finAcctTransCondList = EntityQuery.use(delegator).from("FinAccountTrans").where("glReconciliationId", glReconciliationId!, "statusId", "FINACT_TRNS_CREATED").queryList()!>
       <#if finAcctTransCondList?has_content>
         <a href="javascript:document.CancelBankReconciliationForm.submit();" class="buttontext">${uiLabelMap.AccountingCancelBankReconciliation}</a>
       </#if>
@@ -152,20 +152,20 @@ under the License.
             <#assign paymentMethodType = "">
             <#assign partyName = "">
             <#if finAccountTrans.paymentId?has_content>
-              <#assign payment = delegator.findOne("Payment", {"paymentId" : finAccountTrans.paymentId}, true)>
+              <#assign payment = EntityQuery.use(delegator).from("Payment").where("paymentId", finAccountTrans.paymentId!).cache().queryOne()!>
             </#if>
-            <#assign finAccountTransType = delegator.findOne("FinAccountTransType", {"finAccountTransTypeId" : finAccountTrans.finAccountTransTypeId}, true)>
+            <#assign finAccountTransType = EntityQuery.use(delegator).from("FinAccountTransType").where("finAccountTransTypeId", finAccountTrans.finAccountTransTypeId!).cache().queryOne()!>
             <#if finAccountTrans.statusId?has_content>
-              <#assign status = delegator.findOne("StatusItem", {"statusId" : finAccountTrans.statusId}, true)>
+              <#assign status = EntityQuery.use(delegator).from("StatusItem").where("statusId", finAccountTrans.statusId!).cache().queryOne()!>
             </#if>
             <#if payment?has_content && payment.paymentTypeId?has_content>
-              <#assign paymentType = delegator.findOne("PaymentType", {"paymentTypeId" : payment.paymentTypeId}, true)>
+              <#assign paymentType = EntityQuery.use(delegator).from("PaymentType").where("paymentTypeId", payment.paymentTypeId!).cache().queryOne()!>
             </#if>
             <#if payment?has_content && payment.paymentMethodTypeId?has_content>
-              <#assign paymentMethodType = delegator.findOne("PaymentMethodType", {"paymentMethodTypeId" : payment.paymentMethodTypeId}, true)>
+              <#assign paymentMethodType = EntityQuery.use(delegator).from("PaymentMethodType").where("paymentMethodTypeId", payment.paymentMethodTypeId!).cache().queryOne()!>
             </#if>
             <#if finAccountTrans.partyId?has_content>
-              <#assign partyName = (delegator.findOne("PartyNameView", {"partyId" : finAccountTrans.partyId}, true))>
+              <#assign partyName = EntityQuery.use(delegator).from("PartyNameView").where("partyId", finAccountTrans.partyId!).cache().queryOne()!>
             </#if>
             <tr valign="middle"<#if alt_row> class="alternate-row"</#if>>
               <td>
@@ -187,7 +187,7 @@ under the License.
               <td><#if paymentMethodType?has_content>${paymentMethodType.description!}</#if></td>
               <td><#if status?has_content>${status.description!}</#if></td>
               <td>${finAccountTrans.comments!}</td>
-              <#if finAccountTrans.statusId == "FINACT_TRNS_CREATED">
+              <#if "FINACT_TRNS_CREATED" == finAccountTrans.statusId>
                 <td align="center"><a href="javascript:document.reomveFinAccountTransAssociation_${finAccountTrans.finAccountTransId}.submit();" class="buttontext">${uiLabelMap.CommonRemove}</a></td>
               <#else>
                 <td/>
@@ -196,7 +196,7 @@ under the License.
                 <td align="center">
                   <a id="toggleGlTransactions_${finAccountTrans.finAccountTransId}" href="javascript:void(0)" class="buttontext">${uiLabelMap.FormFieldTitle_glTransactions}</a>
                   <#include "ShowGlTransactions.ftl"/>
-                  <script type="text/javascript">
+                  <script type="application/javascript">
                        jQuery(document).ready( function() {
                             jQuery("#displayGlTransactions_${finAccountTrans.finAccountTransId}").dialog({autoOpen: false, modal: true,
                                     buttons: {

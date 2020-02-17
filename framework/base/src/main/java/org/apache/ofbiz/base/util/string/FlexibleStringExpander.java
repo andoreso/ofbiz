@@ -31,6 +31,7 @@ import javax.el.PropertyNotFoundException;
 import org.apache.ofbiz.base.lang.IsEmpty;
 import org.apache.ofbiz.base.lang.SourceMonitored;
 import org.apache.ofbiz.base.util.Debug;
+import org.apache.ofbiz.base.util.GeneralException;
 import org.apache.ofbiz.base.util.ObjectType;
 import org.apache.ofbiz.base.util.ScriptUtil;
 import org.apache.ofbiz.base.util.UtilDateTime;
@@ -297,7 +298,7 @@ public abstract class FlexibleStringExpander implements Serializable, IsEmpty {
             return new FlexibleStringExpander[] { new ConstOffsetElem(chars, offset, length) };
         }
         int origLen = length;
-        ArrayList<FlexibleStringExpander> strElems = new ArrayList<FlexibleStringExpander>();
+        ArrayList<FlexibleStringExpander> strElems = new ArrayList<>();
         int currentInd = offset;
         int end = -1;
         while (start != -1) {
@@ -438,10 +439,11 @@ public abstract class FlexibleStringExpander implements Serializable, IsEmpty {
                 if (obj instanceof String) {
                     buffer.append(obj);
                 } else {
-                    buffer.append(ObjectType.simpleTypeConvert(obj, "String", null, timeZone, locale, true));
+                    buffer.append(ObjectType.simpleTypeOrObjectConvert(obj, "String", null, timeZone, locale, true));
                 }
             }
-        } catch (Exception e) {
+        } catch (GeneralException | RuntimeException e) {
+            Debug.log(e, module);
             buffer.append(obj);
         }
         if (buffer.length() > this.hint) {
@@ -501,6 +503,7 @@ public abstract class FlexibleStringExpander implements Serializable, IsEmpty {
      * @return <code>true</code> if the original expression is empty
      * or <code>null</code>
      */
+    @Override
     public abstract boolean isEmpty();
 
     /** Returns a copy of the original expression.
@@ -650,7 +653,7 @@ public abstract class FlexibleStringExpander implements Serializable, IsEmpty {
         @Override
         protected Object get(Map<String, ? extends Object> context, TimeZone timeZone, Locale locale) {
             try {
-                Map <String, Object> contextCopy = new HashMap<String, Object>(context);
+                Map <String, Object> contextCopy = new HashMap<>(context);
                 Object obj = ScriptUtil.evaluate(this.language, this.script, this.parsedScript, contextCopy);
                 if (obj != null) {
                     return obj;

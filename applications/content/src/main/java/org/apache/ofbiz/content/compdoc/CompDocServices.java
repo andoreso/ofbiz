@@ -28,6 +28,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.apache.ofbiz.base.util.Debug;
+import org.apache.ofbiz.base.util.GeneralException;
 import org.apache.ofbiz.base.util.UtilMisc;
 import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.UtilValidate;
@@ -47,6 +48,7 @@ import org.apache.ofbiz.webapp.event.CoreEvents;
 import org.apache.ofbiz.webapp.view.ViewHandlerException;
 
 import com.lowagie.text.Document;
+import com.lowagie.text.DocumentException;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.pdf.PdfCopy;
 import com.lowagie.text.pdf.PdfImportedPage;
@@ -71,7 +73,7 @@ public class CompDocServices {
      */
 
     public static Map<String, Object> persistRootCompDoc(DispatchContext dctx, Map<String, ? extends Object> context) {
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         Delegator delegator = dctx.getDelegator();
         LocalDispatcher dispatcher = dctx.getDispatcher();
         Locale locale = (Locale)context.get("locale");
@@ -105,7 +107,7 @@ public class CompDocServices {
             contentId = (String) persistContentResult.get("contentId");
             result.putAll(persistContentResult);
 
-            Map<String, Object> contentRevisionMap = new HashMap<String, Object>();
+            Map<String, Object> contentRevisionMap = new HashMap<>();
             contentRevisionMap.put("itemContentId", contentId);
             contentRevisionMap.put("contentId", contentId);
             contentRevisionMap.put("userLogin", userLogin);
@@ -135,10 +137,9 @@ public class CompDocServices {
 
         String contentId = (String) context.get("contentId");
         String contentRevisionSeqId = (String) context.get("contentRevisionSeqId");
-        GenericValue userLogin = (GenericValue) context.get("userLogin");
 
         try {
-            List<EntityCondition> exprList = new LinkedList<EntityCondition>();
+            List<EntityCondition> exprList = new LinkedList<>();
             exprList.add(EntityCondition.makeCondition("contentIdTo", EntityOperator.EQUALS, contentId));
             exprList.add(EntityCondition.makeCondition("contentAssocTypeId", EntityOperator.EQUALS, "COMPDOC_PART"));
             exprList.add(EntityCondition.makeCondition("rootRevisionContentId", EntityOperator.EQUALS, contentId));
@@ -157,7 +158,6 @@ public class CompDocServices {
             document.setPageSize(PageSize.LETTER);
             PdfCopy writer = new PdfCopy(document, baos);
             document.open();
-            int pgCnt = 0;
             for (GenericValue contentAssocRevisionItemView : compDocParts) {
                 String thisDataResourceId = contentAssocRevisionItemView.getString("dataResourceId");
                 GenericValue dataResource = EntityQuery.use(delegator).from("DataResource").where("dataResourceId", thisDataResourceId).queryOne();
@@ -167,17 +167,17 @@ public class CompDocServices {
                 }
                 byte [] inputByteArray = null;
                 PdfReader reader = null;
-                if (inputMimeType != null && inputMimeType.equals("application/pdf")) {
+                if (inputMimeType != null && "application/pdf".equals(inputMimeType)) {
                     ByteBuffer byteBuffer = DataResourceWorker.getContentAsByteBuffer(delegator, thisDataResourceId, https, webSiteId, locale, rootDir);
                     inputByteArray = byteBuffer.array();
                     reader = new PdfReader(inputByteArray);
-                } else if (inputMimeType != null && inputMimeType.equals("text/html")) {
+                } else if (inputMimeType != null && "text/html".equals(inputMimeType)) {
                     ByteBuffer byteBuffer = DataResourceWorker.getContentAsByteBuffer(delegator, thisDataResourceId, https, webSiteId, locale, rootDir);
                     inputByteArray = byteBuffer.array();
-                    String s = new String(inputByteArray);
+                    String s = new String(inputByteArray, "UTF-8");
                     Debug.logInfo("text/html string:" + s, module);
                     continue;
-                } else if (inputMimeType != null && inputMimeType.equals("application/vnd.ofbiz.survey.response")) {
+                } else if (inputMimeType != null && "application/vnd.ofbiz.survey.response".equals(inputMimeType)) {
                     String surveyResponseId = dataResource.getString("relatedDetailId");
                     String surveyId = null;
                     String acroFormContentId = null;
@@ -228,7 +228,6 @@ public class CompDocServices {
                     for (int i=0; i < n; i++) {
                         PdfImportedPage pg = writer.getImportedPage(reader, i + 1);
                         writer.addPage(pg);
-                        pgCnt++;
                     }
                 }
             }
@@ -240,10 +239,7 @@ public class CompDocServices {
             return results;
         } catch (GenericEntityException e) {
             return ServiceUtil.returnError(e.toString());
-        } catch (IOException e) {
-            Debug.logError(e, "Error in CompDoc operation: ", module);
-            return ServiceUtil.returnError(e.toString());
-        } catch (Exception e) {
+        } catch (IOException | DocumentException | GeneralException e) {
             Debug.logError(e, "Error in CompDoc operation: ", module);
             return ServiceUtil.returnError(e.toString());
         }
@@ -263,7 +259,6 @@ public class CompDocServices {
 
         String contentId = (String) context.get("contentId");
         String contentRevisionSeqId = (String) context.get("contentRevisionSeqId");
-        GenericValue userLogin = (GenericValue) context.get("userLogin");
 
         try {
             Document document = new Document();
@@ -294,15 +289,15 @@ public class CompDocServices {
                 inputMimeType = dataResource.getString("mimeTypeId");
             }
             byte [] inputByteArray = null;
-            if (inputMimeType != null && inputMimeType.equals("application/pdf")) {
+            if (inputMimeType != null && "application/pdf".equals(inputMimeType)) {
                 ByteBuffer byteBuffer = DataResourceWorker.getContentAsByteBuffer(delegator, dataResourceId, https, webSiteId, locale, rootDir);
                 inputByteArray = byteBuffer.array();
-            } else if (inputMimeType != null && inputMimeType.equals("text/html")) {
+            } else if (inputMimeType != null && "text/html".equals(inputMimeType)) {
                 ByteBuffer byteBuffer = DataResourceWorker.getContentAsByteBuffer(delegator, dataResourceId, https, webSiteId, locale, rootDir);
                 inputByteArray = byteBuffer.array();
-                String s = new String(inputByteArray);
+                String s = new String(inputByteArray, "UTF-8");
                 Debug.logInfo("text/html string:" + s, module);
-            } else if (inputMimeType != null && inputMimeType.equals("application/vnd.ofbiz.survey.response")) {
+            } else if (inputMimeType != null && "application/vnd.ofbiz.survey.response".equals(inputMimeType)) {
                 String surveyResponseId = dataResource.getString("relatedDetailId");
                 String surveyId = null;
                 String acroFormContentId = null;
@@ -348,14 +343,15 @@ public class CompDocServices {
                 return ServiceUtil.returnError(UtilProperties.getMessage(resource, "ContentMimeTypeNotSupported", locale));
             }
 
+            if (inputByteArray == null) {
+                Debug.logError("Error in PDF generation: ", module);
+                return ServiceUtil.returnError("The array used to create outByteBuffer is still declared null");
+            }
             ByteBuffer outByteBuffer = ByteBuffer.wrap(inputByteArray);
             results.put("outByteBuffer", outByteBuffer);
         } catch (GenericEntityException e) {
             return ServiceUtil.returnError(e.toString());
-        } catch (IOException e) {
-            Debug.logError(e, "Error in PDF generation: ", module);
-            return ServiceUtil.returnError(e.toString());
-        } catch (Exception e) {
+        } catch (IOException | GeneralException e) {
             Debug.logError(e, "Error in PDF generation: ", module);
             return ServiceUtil.returnError(e.toString());
         }

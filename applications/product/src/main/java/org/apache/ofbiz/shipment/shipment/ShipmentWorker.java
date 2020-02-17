@@ -20,6 +20,7 @@ package org.apache.ofbiz.shipment.shipment;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -36,6 +37,7 @@ import org.apache.ofbiz.service.DispatchContext;
 import org.apache.ofbiz.service.GenericServiceException;
 import org.apache.ofbiz.service.LocalDispatcher;
 import org.apache.ofbiz.service.ModelService;
+import org.apache.ofbiz.service.ServiceUtil;
 
 /**
  * ShipmentWorker - Worker methods for Shipment and related entities
@@ -56,7 +58,7 @@ public final class ShipmentWorker {
     public static BigDecimal getShipmentPackageContentValue(GenericValue shipmentPackageContent) {
         BigDecimal quantity = shipmentPackageContent.getBigDecimal("quantity");
 
-        BigDecimal value = new BigDecimal("0");
+        BigDecimal value;
 
         // lookup the issuance to find the order
         List<GenericValue> issuances = null;
@@ -102,17 +104,17 @@ public final class ShipmentWorker {
             }
         }
         // take the average value of the issuances and multiply it by the shipment package content quantity
-        value = totalValue.divide(totalIssued, 10, BigDecimal.ROUND_HALF_EVEN).multiply(quantity);
+        value = totalValue.divide(totalIssued, 10, RoundingMode.HALF_EVEN).multiply(quantity);
         return value;
     }
 
     public static List<Map<String, BigDecimal>> getPackageSplit(DispatchContext dctx, List<Map<String, Object>> shippableItemInfo, BigDecimal maxWeight) {
         // create the package list w/ the first package
-        List<Map<String, BigDecimal>> packages = new LinkedList<Map<String,BigDecimal>>();
+        List<Map<String, BigDecimal>> packages = new LinkedList<>();
 
         if (UtilValidate.isNotEmpty(shippableItemInfo)) {
             for (Map<String, Object> itemInfo: shippableItemInfo) {
-                long pieces = ((Long) itemInfo.get("piecesIncluded")).longValue();
+                long pieces = (Long) itemInfo.get("piecesIncluded");
                 BigDecimal totalQuantity = (BigDecimal) itemInfo.get("quantity");
                 BigDecimal totalWeight = (BigDecimal) itemInfo.get("weight");
                 String productId = (String) itemInfo.get("productId");
@@ -126,7 +128,7 @@ public final class ShipmentWorker {
                     BigDecimal partialQty = pieces > 1 ? BigDecimal.ONE.divide(BigDecimal.valueOf(pieces), generalRounding) : BigDecimal.ONE;
                     for (long x = 0; x < pieces; x++) {
                         if (weight.compareTo(maxWeight) >= 0) {
-                            Map<String, BigDecimal> newPackage = new HashMap<String, BigDecimal>();
+                            Map<String, BigDecimal> newPackage = new HashMap<>();
                             newPackage.put(productId, partialQty);
                             packages.add(newPackage);
                         } else if (totalWeight.compareTo(BigDecimal.ZERO) > 0) {
@@ -149,7 +151,7 @@ public final class ShipmentWorker {
                                 }
                             }
                             if (!addedToPackage) {
-                                Map<String, BigDecimal> packageMap = new HashMap<String, BigDecimal>();
+                                Map<String, BigDecimal> packageMap = new HashMap<>();
                                 packageMap.put(productId, partialQty);
                                 packages.add(packageMap);
                             }
@@ -172,20 +174,25 @@ public final class ShipmentWorker {
             String productId = entry.getKey();
             Map<String, Object> productInfo = getProductItemInfo(shippableItemInfo, productId);
             BigDecimal productWeight = (BigDecimal) productInfo.get("productWeight");
+            if (productWeight == null) productWeight = BigDecimal.ZERO;
             BigDecimal quantity = packageMap.get(productId);
 
             String weightUomId = (String) productInfo.get("weightUomId");
 
-            Debug.logInfo("Product Id : " + productId.toString() + " Product Weight : " + String.valueOf(productWeight) + " Product UomId : " + weightUomId + " assuming " + defaultWeightUomId + " if null. Quantity : " + String.valueOf(quantity), module);
+            Debug.logInfo("Product Id : " + productId + " Product Weight : " + String.valueOf(productWeight) + " Product UomId : " + weightUomId + " assuming " + defaultWeightUomId + " if null. Quantity : " + String.valueOf(quantity), module);
 
             if (UtilValidate.isEmpty(weightUomId)) {
                 weightUomId = defaultWeightUomId;
             }
             if (!"WT_lb".equals(weightUomId)) {
                 // attempt a conversion to pounds
-                Map<String, Object> result = new HashMap<String, Object>();
+                Map<String, Object> result = new HashMap<>();
                 try {
                     result = dispatcher.runSync("convertUom", UtilMisc.<String, Object>toMap("uomId", weightUomId, "uomIdTo", "WT_lb", "originalValue", productWeight));
+                    if (ServiceUtil.isError(result)) {
+                        Debug.logError(ServiceUtil.getErrorMessage(result), module);
+                        return totalWeight;
+                    }
                 } catch (GenericServiceException ex) {
                     Debug.logError(ex, module);
                 }

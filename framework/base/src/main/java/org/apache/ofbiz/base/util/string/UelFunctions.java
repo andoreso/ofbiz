@@ -22,9 +22,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.util.Collection;
@@ -34,22 +36,27 @@ import java.util.Map;
 import java.util.TimeZone;
 
 import javax.el.FunctionMapper;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamSource;
 
-import org.cyberneko.html.parsers.DOMParser;
 import org.apache.ofbiz.base.location.FlexibleLocation;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.FileUtil;
 import org.apache.ofbiz.base.util.UtilDateTime;
+import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.UtilXml;
+import org.cyberneko.html.parsers.DOMParser;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
+import org.xml.sax.SAXException;
 
 /** Implements Unified Expression Language functions.
  * <p>Built-in functions are divided into a number of
  * namespace prefixes:</p>
- * <table border="1" summary="">
+ * <table border="1">
+ * <caption>Miscellaneous date/time functions</caption>
  * <tr><td colspan="2"><b><code>date:</code> contains miscellaneous date/time functions</b></td></tr>
  * <tr><td><code>date:second(Timestamp, TimeZone, Locale)</code></td><td>Returns the second value of <code>Timestamp</code> (0 - 59).</td></tr>
  * <tr><td><code>date:minute(Timestamp, TimeZone, Locale)</code></td><td>Returns the minute value of <code>Timestamp</code> (0 - 59).</td></tr>
@@ -140,6 +147,7 @@ import org.w3c.dom.Node;
  * <tr><td colspan="2"><b><code>util:</code> contains miscellaneous utility functions</b></td></tr>
  * <tr><td><code>util:defaultLocale()</code></td><td>Returns the default <code>Locale</code>.</td></tr>
  * <tr><td><code>util:defaultTimeZone()</code></td><td>Returns the default <code>TimeZone</code>.</td></tr>
+ * <tr><td><code>util:label(String, String, Locale)</code></td><td>Return the label present in ressource on the given locale.</td></tr>
  * <tr><td><code>util:size(Object)</code></td><td>Returns the size of <code>Maps</code>,
  * <code>Collections</code>, and <code>Strings</code>. Invalid <code>Object</code> types return -1.</td></tr>
  * <tr><td><code>util:urlExists(String)</code></td><td>Returns <code>true</code> if the specified URL exists.</td></tr>
@@ -153,7 +161,7 @@ import org.w3c.dom.Node;
  */
 public class UelFunctions {
 
-    public static final String module = UelFunctions.class.getName();
+    private static final String module = UelFunctions.class.getName();
     protected static final Functions functionMapper = new Functions();
 
     /** Returns a <code>FunctionMapper</code> instance.
@@ -164,7 +172,7 @@ public class UelFunctions {
     }
 
     protected static class Functions extends FunctionMapper {
-        protected final Map<String, Method> functionMap = new HashMap<String, Method>();
+        protected final Map<String, Method> functionMap = new HashMap<>();
         public Functions() {
             try {
                 this.functionMap.put("date:second", UtilDateTime.class.getMethod("getSecond", Timestamp.class, TimeZone.class, Locale.class));
@@ -252,16 +260,16 @@ public class UelFunctions {
                 this.functionMap.put("util:size", UelFunctions.class.getMethod("getSize", Object.class));
                 this.functionMap.put("util:defaultLocale", Locale.class.getMethod("getDefault"));
                 this.functionMap.put("util:defaultTimeZone", TimeZone.class.getMethod("getDefault"));
-                this.functionMap.put("util:urlExists", UelFunctions.class.getMethod("urlExists", String.class));
+                this.functionMap.put("util:label", UelFunctions.class.getMethod("label", String.class, String.class, Locale.class));
                 this.functionMap.put("dom:readHtmlDocument", UelFunctions.class.getMethod("readHtmlDocument", String.class));
                 this.functionMap.put("dom:readXmlDocument", UelFunctions.class.getMethod("readXmlDocument", String.class));
                 this.functionMap.put("dom:toHtmlString", UelFunctions.class.getMethod("toHtmlString", Node.class, String.class, boolean.class, int.class));
                 this.functionMap.put("dom:toXmlString", UelFunctions.class.getMethod("toXmlString", Node.class, String.class, boolean.class, boolean.class, int.class));
                 this.functionMap.put("dom:writeXmlDocument", UelFunctions.class.getMethod("writeXmlDocument", String.class, Node.class, String.class, boolean.class, boolean.class, int.class));
-            } catch (Exception e) {
+            } catch (NoSuchMethodException | NullPointerException | SecurityException e) {
                 Debug.logError(e, "Error while initializing UelFunctions.Functions instance", module);
             }
-            Debug.logVerbose("UelFunctions.Functions loaded " + this.functionMap.size() + " functions", module);
+            if (Debug.verboseOn()) Debug.logVerbose("UelFunctions.Functions loaded " + this.functionMap.size() + " functions", module);
         }
         @Override
         public Method resolveFunction(String prefix, String localName) {
@@ -304,143 +312,109 @@ public class UelFunctions {
         return dateFormat.format(stamp);
     }
 
-    @SuppressWarnings("rawtypes")
     public static int getSize(Object obj) {
-        try {
-            Map map = (Map) obj;
-            return map.size();
-        } catch (Exception e) {}
-        try {
-            Collection coll = (Collection) obj;
-            return coll.size();
-        } catch (Exception e) {}
-        try {
-            String str = (String) obj;
-            return str.length();
-        } catch (Exception e) {}
+        if (null == obj) return 0;
+        if (obj instanceof Map) {
+            return ((Map<?, ?>) obj).size();
+        }
+        if (obj instanceof Collection) {
+            return ((Collection<?>) obj).size();
+        }
+        if (obj instanceof String) {
+            return ((String) obj).length();
+        }
         return -1;
     }
 
     public static boolean endsWith(String str1, String str2) {
-        try {
-            return str1.endsWith(str2);
-        } catch (Exception e) {}
-        return false;
+        if (null == str1) return false;
+        return str1.endsWith(str2);
     }
 
     public static int indexOf(String str1, String str2) {
-        try {
-            return str1.indexOf(str2);
-        } catch (Exception e) {}
-        return -1;
+        if (null == str1) return -1;
+        return str1.indexOf(str2);
     }
 
     public static int lastIndexOf(String str1, String str2) {
-        try {
-            return str1.lastIndexOf(str2);
-        } catch (Exception e) {}
-        return -1;
+        if (null == str1) return -1;
+        return str1.lastIndexOf(str2);
     }
 
     public static int length(String str1) {
-        try {
-            return str1.length();
-        } catch (Exception e) {}
-        return -1;
+        if (null == str1) return 0;
+        return str1.length();
     }
 
     public static String replace(String str1, String str2, String str3) {
-        try {
-            return str1.replace(str2, str3);
-        } catch (Exception e) {}
-        return null;
+        if (null == str1) return null;
+        return str1.replace(str2, str3);
     }
 
     public static String replaceAll(String str1, String str2, String str3) {
-        try {
-            return str1.replaceAll(str2, str3);
-        } catch (Exception e) {}
-        return null;
+        if (null == str1) return null;
+        return str1.replaceAll(str2, str3);
     }
 
     public static String replaceFirst(String str1, String str2, String str3) {
-        try {
-            return str1.replaceFirst(str2, str3);
-        } catch (Exception e) {}
-        return null;
+        if (null == str1) return null;
+        return str1.replaceFirst(str2, str3);
     }
 
     public static boolean startsWith(String str1, String str2) {
-        try {
-            return str1.startsWith(str2);
-        } catch (Exception e) {}
-        return false;
+        if (null == str1) return false;
+        return str1.startsWith(str2);
     }
 
     public static String endString(String str, int index) {
-        try {
-            return str.substring(index);
-        } catch (Exception e) {}
-        return null;
+        if (null == str) return null;
+        return str.substring(index);
     }
 
     public static String subString(String str, int beginIndex, int endIndex) {
-        try {
-            return str.substring(beginIndex, endIndex);
-        } catch (Exception e) {}
-        return null;
+        if (null == str) return null;
+        return str.substring(beginIndex, endIndex);
     }
 
     public static String trim(String str) {
-        try {
-            return str.trim();
-        } catch (Exception e) {}
-        return null;
+        if (null == str) return null;
+        return str.trim();
     }
 
     public static String toLowerCase(String str) {
-        try {
-            return str.toLowerCase();
-        } catch (Exception e) {}
-        return null;
+        if (null == str) return null;
+        return str.toLowerCase(Locale.getDefault());
     }
 
     public static String toUpperCase(String str) {
-        try {
-            return str.toUpperCase();
-        } catch (Exception e) {}
-        return null;
+        if (null == str) return null;
+        return str.toUpperCase(Locale.getDefault());
     }
 
     public static String toString(Object obj) {
+        if (null == obj) return null;
         return obj.toString();
     }
 
     public static String sysGetEnv(String str) {
-        try {
-            return System.getenv(str);
-        } catch (Exception e) {}
-        return null;
+        if (null == str) return null;
+        return System.getenv(str);
     }
 
     public static String sysGetProp(String str) {
-        try {
-            return System.getProperty(str);
-        } catch (Exception e) {}
-        return null;
+        if (null == str) return null;
+        return System.getProperty(str);
     }
 
-    public static boolean urlExists(String str) {
-        boolean result = false;
-        try {
-            URL url = FlexibleLocation.resolveLocation(str);
-            if (url != null) {
-                InputStream is = url.openStream();
-                result = true;
-                is.close();
-            }
-        } catch (Exception e) {}
-        return result;
+    public static String label(String ressource, String label, Locale locale) {
+        if (locale == null) {
+            locale = Locale.getDefault();
+        }
+        String resolveLabel = UtilProperties.getMessage(ressource, label, locale);
+        if (resolveLabel != null) {
+            return resolveLabel;
+        }
+        return label;
     }
 
     public static Document readHtmlDocument(String str) {
@@ -455,7 +429,7 @@ public class UelFunctions {
             } else {
                 Debug.logError("Unable to locate HTML document " + str, module);
             }
-        } catch (Exception e) {
+        } catch (IOException | SAXException e) {
             Debug.logError(e, "Error while reading HTML document " + str, module);
         }
         return document;
@@ -466,13 +440,17 @@ public class UelFunctions {
         try {
             URL url = FlexibleLocation.resolveLocation(str);
             if (url != null) {
-                InputStream is = url.openStream();
-                document = UtilXml.readXmlDocument(is, str);
-                is.close();
+                try (InputStream is = url.openStream();) {
+                    document = UtilXml.readXmlDocument(is, str);
+                }
+                catch (SAXException | ParserConfigurationException e) {
+                    Debug.logError(e, "Error while reading XML document " + str, module);
+                }
             } else {
                 Debug.logError("Unable to locate XML document " + str, module);
             }
-        } catch (Exception e) {
+        }
+        catch (IOException e) {
             Debug.logError(e, "Error while reading XML document " + str, module);
         }
         return document;
@@ -482,14 +460,14 @@ public class UelFunctions {
         try {
             File file = FileUtil.getFile(str);
             if (file != null) {
-                FileOutputStream os = new FileOutputStream(file);
-                UtilXml.writeXmlDocument(node, os, encoding, omitXmlDeclaration, indent, indentAmount);
-                os.close();
-                return true;
+                try (FileOutputStream os = new FileOutputStream(file);) {
+                    UtilXml.writeXmlDocument(node, os, encoding, omitXmlDeclaration, indent, indentAmount);
+                    return true;
+                }
             } else {
                 Debug.logError("Unable to create XML document " + str, module);
             }
-        } catch (Exception e) {
+        } catch (IOException | TransformerException | SecurityException e) {
             Debug.logError(e, "Error while writing XML document " + str, module);
         }
         return false;
@@ -514,25 +492,23 @@ public class UelFunctions {
             sb.append("/>\n<xsl:template match=\"@*|node()\">\n");
             sb.append("<xsl:copy><xsl:apply-templates select=\"@*|node()\"/></xsl:copy>\n");
             sb.append("</xsl:template>\n</xsl:stylesheet>\n");
-            ByteArrayInputStream bis = new ByteArrayInputStream(sb.toString().getBytes());
+            ByteArrayInputStream bis = new ByteArrayInputStream(sb.toString().getBytes(StandardCharsets.UTF_8));
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            ByteArrayOutputStream os = new ByteArrayOutputStream();
-            UtilXml.transformDomDocument(transformerFactory.newTransformer(new StreamSource(bis)), node, os);
-            os.close();
-            return os.toString();
-        } catch (Exception e) {
+            try (ByteArrayOutputStream os = new ByteArrayOutputStream();) {
+                UtilXml.transformDomDocument(transformerFactory.newTransformer(new StreamSource(bis)), node, os);
+                return os.toString();
+            }
+        } catch (IOException | TransformerException e) {
             Debug.logError(e, "Error while creating HTML String ", module);
         }
         return null;
     }
 
     public static String toXmlString(Node node, String encoding, boolean omitXmlDeclaration, boolean indent, int indentAmount) {
-        try {
-            ByteArrayOutputStream os = new ByteArrayOutputStream();
+        try (ByteArrayOutputStream os = new ByteArrayOutputStream();) {
             UtilXml.writeXmlDocument(node, os, encoding, omitXmlDeclaration, indent, indentAmount);
-            os.close();
             return os.toString();
-        } catch (Exception e) {
+        } catch (IOException | TransformerException e) {
             Debug.logError(e, "Error while creating XML String ", module);
         }
         return null;

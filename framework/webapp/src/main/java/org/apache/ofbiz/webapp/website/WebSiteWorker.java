@@ -37,10 +37,8 @@ public final class WebSiteWorker {
     private WebSiteWorker() {}
 
     public static String getWebSiteId(ServletRequest request) {
-        ServletContext application = ((ServletContext) request.getAttribute("servletContext"));
-
-        if (application == null) return null;
-        return application.getInitParameter("webSiteId");
+        ServletContext ctx = request.getServletContext();
+        return (ctx == null) ? null : ctx.getInitParameter("webSiteId");
     }
 
     public static GenericValue getWebSite(ServletRequest request) {
@@ -58,9 +56,9 @@ public final class WebSiteWorker {
      * @param delegator
      * @param webSiteId
      * @param useCache
-     * @return
+     * @return GenericValue
      */
-    private static GenericValue findWebSite(Delegator delegator, String webSiteId, boolean useCache) {
+    public static GenericValue findWebSite(Delegator delegator, String webSiteId, boolean useCache) {
         GenericValue result = null;
         try {
             result = EntityQuery.use(delegator).from("WebSite").where("webSiteId", webSiteId).cache(useCache).queryOne();

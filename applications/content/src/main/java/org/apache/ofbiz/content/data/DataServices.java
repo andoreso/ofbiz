@@ -21,13 +21,15 @@ package org.apache.ofbiz.content.data;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.RandomAccessFile;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -74,7 +76,7 @@ public class DataServices {
      */
     public static Map<String, Object> createDataResourceAndText(DispatchContext dctx, Map<String, ? extends Object> rcontext) {
         Map<String, Object> context = UtilMisc.makeMapWritable(rcontext);
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
 
         Map<String, Object> thisResult = createDataResourceMethod(dctx, context);
         if (thisResult.get(ModelService.RESPONSE_MESSAGE) != null) {
@@ -85,7 +87,7 @@ public class DataServices {
         context.put("dataResourceId", thisResult.get("dataResourceId"));
 
         String dataResourceTypeId = (String) context.get("dataResourceTypeId");
-        if (dataResourceTypeId != null && dataResourceTypeId.equals("ELECTRONIC_TEXT")) {
+        if (dataResourceTypeId != null && "ELECTRONIC_TEXT".equals(dataResourceTypeId)) {
             thisResult = createElectronicText(dctx, context);
             if (thisResult.get(ModelService.RESPONSE_MESSAGE) != null) {
                 return ServiceUtil.returnError((String) thisResult.get(ModelService.ERROR_MESSAGE));
@@ -105,7 +107,7 @@ public class DataServices {
 
     public static Map<String, Object> createDataResourceMethod(DispatchContext dctx, Map<String, ? extends Object> rcontext) {
         Map<String, Object> context = UtilMisc.makeMapWritable(rcontext);
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         Delegator delegator = dctx.getDelegator();
         GenericValue userLogin = (GenericValue) context.get("userLogin");
         String userLoginId = (String) userLogin.get("userLoginId");
@@ -123,7 +125,7 @@ public class DataServices {
         String dataResourceId = (String) context.get("dataResourceId");
         if (UtilValidate.isEmpty(dataResourceId)) {
             dataResourceId = delegator.getNextSeqId("DataResource");
-        }   
+        }
         if (Debug.infoOn()) {
             Debug.logInfo("in createDataResourceMethod, dataResourceId:" + dataResourceId, module);
         }
@@ -149,8 +151,6 @@ public class DataServices {
             dataResource.create();
         } catch (GenericEntityException e) {
             return ServiceUtil.returnError(e.getMessage());
-        } catch (Exception e2) {
-            return ServiceUtil.returnError(e2.getMessage());
         }
         result.put("dataResourceId", dataResourceId);
         result.put("dataResource", dataResource);
@@ -166,7 +166,7 @@ public class DataServices {
     }
 
     public static Map<String, Object> createElectronicTextMethod(DispatchContext dctx, Map<String, ? extends Object> context) {
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         Delegator delegator = dctx.getDelegator();
         String dataResourceId = (String) context.get("dataResourceId");
         String textData = (String) context.get("textData");
@@ -216,23 +216,23 @@ public class DataServices {
         if (UtilValidate.isEmpty(objectInfo)) {
             return ServiceUtil.returnError(UtilProperties.getMessage(resource, "ContentUnableObtainReferenceToFile", UtilMisc.toMap("objectInfo", ""), locale));
         }
-        if (UtilValidate.isEmpty(dataResourceTypeId) || dataResourceTypeId.equals("LOCAL_FILE") || dataResourceTypeId.equals("LOCAL_FILE_BIN")) {
+        if (UtilValidate.isEmpty(dataResourceTypeId) || "LOCAL_FILE".equals(dataResourceTypeId) || "LOCAL_FILE_BIN".equals(dataResourceTypeId)) {
             file = new File(objectInfo);
             if (!file.isAbsolute()) {
                 return ServiceUtil.returnError(UtilProperties.getMessage(resource, "ContentLocalFileDoesNotPointToAbsoluteLocation", locale));
             }
-        } else if (dataResourceTypeId.equals("OFBIZ_FILE") || dataResourceTypeId.equals("OFBIZ_FILE_BIN")) {
+        } else if ("OFBIZ_FILE".equals(dataResourceTypeId) || "OFBIZ_FILE_BIN".equals(dataResourceTypeId)) {
             prefix = System.getProperty("ofbiz.home");
-            if (objectInfo.indexOf("/") != 0 && prefix.lastIndexOf("/") != (prefix.length() - 1)) {
+            if (objectInfo.indexOf('/') != 0 && prefix.lastIndexOf('/') != (prefix.length() - 1)) {
                 sep = "/";
             }
             file = new File(prefix + sep + objectInfo);
-        } else if (dataResourceTypeId.equals("CONTEXT_FILE") || dataResourceTypeId.equals("CONTEXT_FILE_BIN")) {
+        } else if ("CONTEXT_FILE".equals(dataResourceTypeId) || "CONTEXT_FILE_BIN".equals(dataResourceTypeId)) {
             prefix = (String) context.get("rootDir");
             if (UtilValidate.isEmpty(prefix)) {
                 return ServiceUtil.returnError(UtilProperties.getMessage(resource, "ContentCannotFindContextFileWithEmptyContextRoot", locale));
             }
-            if (objectInfo.indexOf("/") != 0 && prefix.lastIndexOf("/") != (prefix.length() - 1)) {
+            if (objectInfo.indexOf('/') != 0 && prefix.lastIndexOf('/') != (prefix.length() - 1)) {
                 sep = "/";
             }
             file = new File(prefix + sep + objectInfo);
@@ -243,10 +243,10 @@ public class DataServices {
 
         // write the data to the file
         if (UtilValidate.isNotEmpty(textData)) {
-            try {
-                FileWriter out = new FileWriter(file);
+            try (
+                OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
+            ) {
                 out.write(textData);
-                out.close();
             } catch (IOException e) {
                 Debug.logWarning(e, module);
                 return ServiceUtil.returnError(UtilProperties.getMessage(resource, "ContentUnableWriteCharacterDataToFile", UtilMisc.toMap("fileName", file.getAbsolutePath()), locale));
@@ -280,7 +280,7 @@ public class DataServices {
             return ServiceUtil.returnError((String) thisResult.get(ModelService.ERROR_MESSAGE));
         }
         String dataResourceTypeId = (String) context.get("dataResourceTypeId");
-        if (dataResourceTypeId != null && dataResourceTypeId.equals("ELECTRONIC_TEXT")) {
+        if (dataResourceTypeId != null && "ELECTRONIC_TEXT".equals(dataResourceTypeId)) {
             thisResult = updateElectronicText(dctx, context);
             if (thisResult.get(ModelService.RESPONSE_MESSAGE) != null) {
                 return ServiceUtil.returnError((String) thisResult.get(ModelService.ERROR_MESSAGE));
@@ -298,7 +298,7 @@ public class DataServices {
     }
 
     public static Map<String, Object> updateDataResourceMethod(DispatchContext dctx, Map<String, ? extends Object> context) {
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         Delegator delegator = dctx.getDelegator();
         GenericValue dataResource = null;
         Locale locale = (Locale) context.get("locale");
@@ -347,7 +347,7 @@ public class DataServices {
      * @return update the ElectronicText
      */
     public static Map<String, Object> updateElectronicTextMethod(DispatchContext dctx, Map<String, ? extends Object> context) {
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         Delegator delegator = dctx.getDelegator();
         GenericValue electronicText = null;
         Locale locale = (Locale) context.get("locale");
@@ -396,7 +396,7 @@ public class DataServices {
     }
 
     public static Map<String, Object> updateFileMethod(DispatchContext dctx, Map<String, ? extends Object> context) throws GenericServiceException {
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         Locale locale = (Locale) context.get("locale");
         String dataResourceTypeId = (String) context.get("dataResourceTypeId");
         String objectInfo = (String) context.get("objectInfo");
@@ -415,27 +415,27 @@ public class DataServices {
                 }
             } else if (dataResourceTypeId.startsWith("OFBIZ_FILE")) {
                 prefix = System.getProperty("ofbiz.home");
-                if (objectInfo.indexOf("/") != 0 && prefix.lastIndexOf("/") != (prefix.length() - 1)) {
+                if (objectInfo.indexOf('/') != 0 && prefix.lastIndexOf('/') != (prefix.length() - 1)) {
                     sep = "/";
                 }
                 file = new File(prefix + sep + objectInfo);
             } else if (dataResourceTypeId.startsWith("CONTEXT_FILE")) {
                 prefix = (String) context.get("rootDir");
-                if (objectInfo.indexOf("/") != 0 && prefix.lastIndexOf("/") != (prefix.length() - 1)) {
+                if (objectInfo.indexOf('/') != 0 && prefix.lastIndexOf('/') != (prefix.length() - 1)) {
                     sep = "/";
                 }
                 file = new File(prefix + sep + objectInfo);
             }
             if (file == null) {
-                throw new IOException("File: " + file + " is null");
+                throw new IOException("File is null");
             }
 
             // write the data to the file
             if (UtilValidate.isNotEmpty(textData)) {
-                try {
-                    FileWriter out = new FileWriter(file);
+                try (
+                        OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(file),StandardCharsets.UTF_8);
+                ) {
                     out.write(textData);
-                    out.close();
                 } catch (IOException e) {
                     Debug.logWarning(e, module);
                     return ServiceUtil.returnError(UtilProperties.getMessage(resource, "ContentUnableWriteCharacterDataToFile", UtilMisc.toMap("fileName", file.getAbsolutePath()), locale));
@@ -466,11 +466,10 @@ public class DataServices {
     }
 
     public static Map<String, Object> renderDataResourceAsText(DispatchContext dctx, Map<String, ? extends Object> context) throws GeneralException, IOException {
-        Map<String, Object> results = new HashMap<String, Object>();
-        Delegator delegator = dctx.getDelegator();
+        Map<String, Object> results = new HashMap<>();
         //LocalDispatcher dispatcher = dctx.getDispatcher();
         Writer out = (Writer) context.get("outWriter");
-        Map<String, Object> templateContext = UtilGenerics.checkMap(context.get("templateContext"));
+        Map<String, Object> templateContext = UtilGenerics.cast(context.get("templateContext"));
         //GenericValue userLogin = (GenericValue) context.get("userLogin");
         String dataResourceId = (String) context.get("dataResourceId");
         if (templateContext != null && UtilValidate.isEmpty(dataResourceId)) {
@@ -484,7 +483,7 @@ public class DataServices {
         Locale locale = (Locale) context.get("locale");
 
         if (templateContext == null) {
-            templateContext = new HashMap<String, Object>();
+            templateContext = new HashMap<>();
         }
 
         Writer outWriter = new StringWriter();
@@ -508,7 +507,7 @@ public class DataServices {
     }
 
     public static Map<String, Object> updateImageMethod(DispatchContext dctx, Map<String, ? extends Object> context) {
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         Delegator delegator = dctx.getDelegator();
         //Locale locale = (Locale) context.get("locale");
         String dataResourceId = (String) context.get("dataResourceId");
@@ -519,14 +518,13 @@ public class DataServices {
                 GenericValue imageDataResource = EntityQuery.use(delegator).from("ImageDataResource").where("dataResourceId", dataResourceId).queryOne();
                 if (Debug.infoOn()) {
                     Debug.logInfo("imageDataResource(U):" + imageDataResource, module);
-                    Debug.logInfo("imageBytes(U):" + imageBytes, module);
+                    Debug.logInfo("imageBytes(U):" + Arrays.toString(imageBytes), module);
                 }
                 if (imageDataResource == null) {
                     return createImageMethod(dctx, context);
-                } else {
-                    imageDataResource.setBytes("imageData", imageBytes);
-                    imageDataResource.store();
                 }
+                imageDataResource.setBytes("imageData", imageBytes);
+                imageDataResource.store();
             } catch (GenericEntityException e) {
                 return ServiceUtil.returnError(e.getMessage());
             }
@@ -543,7 +541,7 @@ public class DataServices {
     }
 
     public static Map<String, Object> createImageMethod(DispatchContext dctx, Map<String, ? extends Object> context) {
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         Delegator delegator = dctx.getDelegator();
         String dataResourceId = (String) context.get("dataResourceId");
         ByteBuffer byteBuffer = (ByteBuffer)context.get("imageData");
@@ -578,7 +576,7 @@ public class DataServices {
     }
 
     public static Map<String, Object> createBinaryFileMethod(DispatchContext dctx, Map<String, ? extends Object> context) throws GenericServiceException {
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         GenericValue dataResource = (GenericValue) context.get("dataResource");
         String dataResourceTypeId = (String) dataResource.get("dataResourceTypeId");
         String objectInfo = (String) dataResource.get("objectInfo");
@@ -592,25 +590,22 @@ public class DataServices {
         }
         try {
             file = DataResourceWorker.getContentFile(dataResourceTypeId, objectInfo, rootDir);
-        } catch (FileNotFoundException e) {
+        } catch (FileNotFoundException | GeneralException e) {
             Debug.logWarning(e, module);
             throw new GenericServiceException(e.getMessage());
-        } catch (GeneralException e2) {
-            Debug.logWarning(e2, module);
-            throw new GenericServiceException(e2.getMessage());
         }
         if (Debug.infoOn()) {
             Debug.logInfo("in createBinaryFileMethod, file:" + file, module);
             Debug.logInfo("in createBinaryFileMethod, imageData:" + imageData.length, module);
         }
         if (imageData != null && imageData.length > 0) {
-            try {
+            try (
                 FileOutputStream out = new FileOutputStream(file);
+            ) {
                 out.write(imageData);
                 if (Debug.infoOn()) {
                     Debug.logInfo("in createBinaryFileMethod, length:" + file.length(), module);
                 }
-                out.close();
             } catch (IOException e) {
                 Debug.logWarning(e, module);
                 throw new GenericServiceException(e.getMessage());
@@ -634,7 +629,7 @@ public class DataServices {
     }
 
     public static Map<String, Object> updateBinaryFileMethod(DispatchContext dctx, Map<String, ? extends Object> context) throws GenericServiceException {
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         GenericValue dataResource = (GenericValue) context.get("dataResource");
         String dataResourceTypeId = (String) dataResource.get("dataResourceTypeId");
         String objectInfo = (String) dataResource.get("objectInfo");
@@ -657,16 +652,16 @@ public class DataServices {
         }
         if (Debug.infoOn()) {
             Debug.logInfo("in updateBinaryFileMethod, file:" + file, module);
-            Debug.logInfo("in updateBinaryFileMethod, imageData:" + imageData, module);
+            Debug.logInfo("in updateBinaryFileMethod, imageData:" + Arrays.toString(imageData), module);
         }
         if (imageData != null && imageData.length > 0) {
-            try {
-                FileOutputStream out = new FileOutputStream(file);
+            try (
+                    FileOutputStream out = new FileOutputStream(file);
+                    ){
                 out.write(imageData);
                 if (Debug.infoOn()) {
                     Debug.logInfo("in updateBinaryFileMethod, length:" + file.length(), module);
                 }
-                out.close();
             } catch (IOException e) {
                 Debug.logWarning(e, module);
                 throw new GenericServiceException(e.getMessage());

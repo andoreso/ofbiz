@@ -96,9 +96,6 @@ under the License.
                 <decorator-screen name="CommonProductDecorator" location="${parameters.productDecoratorLocation}">
                     <decorator-section name="body">
                         <section>
-                            <condition>
-                                <if-service-permission service-name="acctgAgreementPermissionCheck" main-action="VIEW"/>
-                            </condition>
                             <widgets>
                                 <decorator-screen name="FindScreenDecorator" location="component://common/widget/CommonScreens.xml">
                                     <decorator-section name="search-options">
@@ -109,9 +106,6 @@ under the License.
                                     </decorator-section>
                                 </decorator-screen>
                             </widgets>
-                            <fail-widgets>
-                                <label style="h3">${uiLabelMap.AccountingViewPermissionError}</label>
-                            </fail-widgets>
                         </section>
                     </decorator-section>
                 </decorator-screen>
@@ -234,7 +228,7 @@ under the License.
                 <decorator-screen name="CommonProductDecorator" location="${parameters.productDecoratorLocation}">
                     <decorator-section name="body">
                         <container>
-                            <link target="/accounting/control/EditAgreement" url-mode="inter-app" text="${uiLabelMap.AccountingNewAgreement}" style="buttontext">
+                            <link target="/accounting/control/EditAgreement" url-mode="inter-app" text="${uiLabelMap.CommonCreate}" style="buttontext">
                                 <parameter param-name="productId"/>
                             </link>
                             <link target="CreateSalesAgreement" text="${uiLabelMap.CreateSalesAgreement}" style="buttontext">
@@ -1058,7 +1052,7 @@ under the License.
                 <set field="productId" from-field="parameters.productId"/>
                 <entity-one entity-name="Product" value-field="product"/>
                 <set field="viewIndex" from-field="parameters.VIEW_INDEX" type="Integer"/>
-                <property-to-field resource="widget" property="widget.form.defaultViewSize" field="viewSizeDefaultValue"/>
+                <set field="viewSizeDefaultValue" value="${groovy: modelTheme.getDefaultViewSize()}" type="Integer"/>
                 <set field="viewSize" from-field="parameters.VIEW_SIZE" type="Integer" default-value="${viewSizeDefaultValue}"/>
 
                 <script location="component://product/groovyScripts/catalog/product/ApplyFeaturesFromCategory.groovy"/>

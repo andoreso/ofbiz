@@ -20,6 +20,7 @@ package org.apache.ofbiz.service.mail;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
@@ -42,6 +43,7 @@ import javax.mail.search.FlagTerm;
 
 import org.apache.ofbiz.base.container.Container;
 import org.apache.ofbiz.base.container.ContainerConfig;
+import org.apache.ofbiz.base.container.ContainerConfig.Configuration;
 import org.apache.ofbiz.base.container.ContainerException;
 import org.apache.ofbiz.base.start.StartupCommand;
 import org.apache.ofbiz.base.util.Debug;
@@ -72,32 +74,18 @@ public class JavaMailContainer implements Container {
     protected String configFile = null;
     protected Map<Store, Session> stores = null;
     private String name;
-    /**
-     * Initialize the container
-     *
-     * @param ofbizCommands command line arguments
-     * @param configFile Location of master OFBiz configuration file
-     * @throws org.apache.ofbiz.base.container.ContainerException
-     *
-     */
+
     @Override
-    public void init(List<StartupCommand> ofbizCommands, String name, String configFile) throws ContainerException {
+    public void init(List<StartupCommand> ofbizCommands, String name, String configFile) {
         this.name = name;
         this.configFile = configFile;
-        this.stores = new LinkedHashMap<Store, Session>();
+        this.stores = new LinkedHashMap<>();
         this.pollTimer = Executors.newScheduledThreadPool(1);
     }
 
-    /**
-     * Start the container
-     *
-     * @return true if server started
-     * @throws org.apache.ofbiz.base.container.ContainerException
-     *
-     */
     @Override
     public boolean start() throws ContainerException {
-        ContainerConfig.Configuration cfg = ContainerConfig.getConfiguration(name, configFile);
+        ContainerConfig.Configuration cfg = ContainerConfig.getConfiguration(name);
         String dispatcherName = ContainerConfig.getPropertyValue(cfg, "dispatcher-name", "JavaMailDispatcher");
         String delegatorName = ContainerConfig.getPropertyValue(cfg, "delegator-name", "default");
         this.deleteMail = "true".equals(ContainerConfig.getPropertyValue(cfg, "delete-mail", "false"));
@@ -120,14 +108,11 @@ public class JavaMailContainer implements Container {
         ServiceMcaUtil.readConfig();
 
         // load the listeners
-        List<ContainerConfig.Configuration.Property> configs = cfg.getPropertiesWithValue("store-listener");
-        for (ContainerConfig.Configuration.Property prop: configs) {
+        for (Configuration.Property prop: cfg.getPropertiesWithValue("store-listener")) {
             Session session = this.makeSession(prop);
             Store store = this.getStore(session);
-            if (store != null) {
-                stores.put(store, session);
-                store.addStoreListener(new LoggingStoreListener());
-            }
+            stores.put(store, session);
+            store.addStoreListener(new LoggingStoreListener());
         }
 
         // start the polling timer
@@ -140,14 +125,8 @@ public class JavaMailContainer implements Container {
         return true;
     }
 
-    /**
-     * Stop the container
-     *
-     * @throws org.apache.ofbiz.base.container.ContainerException
-     *
-     */
     @Override
-    public void stop() throws ContainerException {
+    public void stop() {
         // stop the poller
         this.pollTimer.shutdown();
         Debug.logWarning("stop JavaMail poller", module);
@@ -159,12 +138,12 @@ public class JavaMailContainer implements Container {
     }
 
     // java-mail methods
-    protected Session makeSession(ContainerConfig.Configuration.Property client) {
+    protected Session makeSession(Configuration.Property client) {
         Properties props = new Properties();
-        Map<String, ContainerConfig.Configuration.Property> clientProps = client.properties;
+        Map<String, Configuration.Property> clientProps = client.properties();
         if (clientProps != null) {
-            for (ContainerConfig.Configuration.Property p: clientProps.values()) {
-                props.setProperty(p.name.toLowerCase(), p.value);
+            for (Configuration.Property p: clientProps.values()) {
+                props.setProperty(p.name().toLowerCase(Locale.getDefault()), p.value());
             }
         }
         return Session.getInstance(props);
@@ -182,7 +161,9 @@ public class JavaMailContainer implements Container {
         // re-write the URLName including the password for this store
         if (store != null && store.getURLName() != null) {
             URLName urlName = this.updateUrlName(store.getURLName(), session.getProperties());
-            if (Debug.verboseOn()) Debug.logVerbose("URLName - " + urlName.toString(), module);
+            if (Debug.verboseOn()) {
+                Debug.logVerbose("URLName - " + urlName.toString(), module);
+            }
             try {
                 store = session.getStore(urlName);
             } catch (NoSuchProviderException e) {
@@ -236,13 +217,13 @@ public class JavaMailContainer implements Container {
                 host = props.getProperty("mail.host");
             }
         }
-        
+
         // check the port
         int portProps = 0;
         String portStr = props.getProperty("mail." + protocol + ".port");
         if (UtilValidate.isNotEmpty(portStr)) {
             try {
-                portProps = Integer.valueOf(portStr);
+                portProps = Integer.parseInt(portStr);
             } catch (NumberFormatException e) {
                 Debug.logError("The port given in property mail." + protocol + ".port is wrong, please check", module);
             }
@@ -251,7 +232,7 @@ public class JavaMailContainer implements Container {
             portStr = props.getProperty("mail.port");
             if (UtilValidate.isNotEmpty(portStr)) {
                 try {
-                    portProps = Integer.valueOf(props.getProperty("mail.port"));
+                    portProps = Integer.parseInt(props.getProperty("mail.port"));
                 } catch (NumberFormatException e) {
                     Debug.logError("The port given in property mail.port is wrong, please check", module);
                 }
@@ -261,12 +242,14 @@ public class JavaMailContainer implements Container {
         if (portProps != 0) {
             port = portProps;
         }
- 
-        if (Debug.verboseOn()) Debug.logVerbose("Update URL - " + protocol + "://" + userName + "@" + host + ":" + port + "!" + password + ";" + file, module);
+
+        if (Debug.verboseOn()) {
+            Debug.logVerbose("Update URL - " + protocol + "://" + userName + "@" + host + ":" + port + "!" + password + ";" + file, module);
+        }
         return new URLName(protocol, host, port, file, userName, password);
     }
 
-    class LoggingStoreListener implements StoreListener {
+    static class LoggingStoreListener implements StoreListener {
 
         @Override
         public void notification(StoreEvent event) {
@@ -278,9 +261,13 @@ public class JavaMailContainer implements Container {
                 case StoreEvent.NOTICE:
                     typeString = "NOTICE: ";
                     break;
+                default:
+                    Debug.logWarning("There was a case error in LoggingStoreListener.notification", module);
             }
 
-            if (Debug.verboseOn()) Debug.logVerbose("JavaMail " + typeString + event.getMessage(), module);
+            if (Debug.verboseOn()) {
+                Debug.logVerbose("JavaMail " + typeString + event.getMessage(), module);
+            }
         }
     }
 
@@ -309,7 +296,9 @@ public class JavaMailContainer implements Container {
                     if (store.isConnected()) {
                         try {
                             store.close();
-                        } catch (Exception e) {}
+                        } catch (Exception e) {
+                            Debug.logError(e, module);
+                        }
                     }
                 }
             }
@@ -360,13 +349,19 @@ public class JavaMailContainer implements Container {
                         message.setFlag(Flags.Flag.SEEN, true);
                     } else {
                         this.processMessage(message, session);
-                        if (Debug.verboseOn()) Debug.logVerbose("Message from " + UtilMisc.toListArray(message.getFrom()) + " with subject [" + message.getSubject() + "]  has been processed." , module);
+                        if (Debug.verboseOn()) {
+                            Debug.logVerbose("Message from " + UtilMisc.toListArray(message.getFrom()) + " with subject [" + message.getSubject() + "]  has been processed." , module);
+                        }
                         message.setFlag(Flags.Flag.SEEN, true);
-                        if (Debug.verboseOn()) Debug.logVerbose("Message [" + message.getSubject() + "] is marked seen", module);
+                        if (Debug.verboseOn()) {
+                            Debug.logVerbose("Message [" + message.getSubject() + "] is marked seen", module);
+                        }
 
                         // delete the message after processing
                         if (deleteMail) {
-                            if (Debug.verboseOn()) Debug.logVerbose("Message [" + message.getSubject() + "] is being deleted", module);
+                            if (Debug.verboseOn()) {
+                                Debug.logVerbose("Message [" + message.getSubject() + "] is being deleted", module);
+                            }
                             message.setFlag(Flags.Flag.DELETED, true);
                         }
                     }

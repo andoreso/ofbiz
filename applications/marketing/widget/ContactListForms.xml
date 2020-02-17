@@ -28,7 +28,7 @@ under the License.
         <field use-when="contactList==null&amp;&amp;contactListId==null" name="contactListId" title="${uiLabelMap.MarketingContactListContactListId}"><ignored/></field>
         <field use-when="contactList==null&amp;&amp;contactListId!=null" name="contactListId" title="${uiLabelMap.MarketingContactListContactListId}" tooltip="${uiLabelMap.CommonCannotBeFound}: [${contactListId}]"><display/></field>
 
-        <field name="contactListName" title="${uiLabelMap.MarketingContactListContactListName}"><text/></field>
+        <field name="contactListName" title="${uiLabelMap.MarketingContactListContactListName}" required-field="true"><text size="30" maxlength="255"/></field>
         <field name="contactListTypeId" title="${uiLabelMap.MarketingContactListContactListTypeId}">
             <drop-down>
                 <entity-options entity-name="ContactListType" key-field-name="contactListTypeId">
@@ -76,7 +76,7 @@ under the License.
         </field>
         <field name="optOutScreen"><text size="60"/></field>
         
-        <field name="submitButton" title="${uiLabelMap.CommonSave}" widget-style="buttontext"><submit button-type="text-link"/></field>
+        <field name="submitButton" title="${uiLabelMap.CommonSave}" widget-style="buttontext"><submit button-type="button"/></field>
         <!-- <field name="DONE_PAGE"><hidden value="${donePage}"/></field> -->
         <!-- <field name="cancelLink" title=" " widget-style="buttontext"><hyperlink description="${uiLabelMap.CommonCancelDone}" target="${donePage}" also-hidden="false" target-type="inter-app"/></field> -->
     </form>
@@ -147,11 +147,11 @@ under the License.
         <alt-target use-when="contactListParty==null" target="createContactListParty"/>
 
         <field name="contactListId"><hidden/></field>
-        <field name="partyId" title="${uiLabelMap.MarketingContactListPartyId}"><lookup target-form-name="LookupPartyName"/></field>
-        <field name="fromDate" title="${uiLabelMap.CommonFromDate}"><date-time default-value="${groovy: org.apache.ofbiz.base.util.UtilDateTime.nowTimestamp()}"/></field>
+        <field name="partyId" use-when="contactListParty==null" title="${uiLabelMap.MarketingContactListPartyId}" required-field="true"><lookup target-form-name="LookupPartyName"/></field>
+        <field name="partyId" use-when="contactListParty!=null"><display/></field>
+        <field name="fromDate" use-when="contactListParty==null" title="${uiLabelMap.CommonFromDate}" required-field="true"><date-time default-value="${groovy: org.apache.ofbiz.base.util.UtilDateTime.nowTimestamp()}"/></field>
+        <field name="fromDate" use-when="contactListParty!=null"><display/></field>
         <field name="thruDate" title="${uiLabelMap.CommonThruDate}"><date-time/></field>
-        <field use-when="partyId!=null" name="partyId"><display/></field>
-        <field use-when="fromDate!=null" name="fromDate"><display/></field>
 
         <field name="statusId" title="${uiLabelMap.CommonStatus}">
             <drop-down no-current-selected-key="CLPT_ACCEPTED">
@@ -167,8 +167,8 @@ under the License.
             <lookup target-form-name="LookupPreferredContactMech" target-parameter="partyId"/>
         </field>
 
-        <field name="submitButton" title="${uiLabelMap.CommonSave}" widget-style="buttontext"><submit button-type="text-link"/></field>
-        <field use-when="partyId!=null" name="submitButton" title="${uiLabelMap.CommonUpdate}" widget-style="buttontext"><submit button-type="text-link"/></field>
+        <field name="submitButton" use-when="contactListParty==null" title="${uiLabelMap.CommonSave}" widget-style="buttontext"><submit button-type="text-link"/></field>
+        <field name="submitButton" use-when="contactListParty!=null" title="${uiLabelMap.CommonUpdate}" widget-style="buttontext"><submit button-type="text-link"/></field>
         <field name="cancelLink" title=" " widget-style="buttontext"><hyperlink description="${uiLabelMap.CommonCancelDone}" target="${donePage}" also-hidden="false"/></field>
      </form>
     
@@ -343,7 +343,7 @@ under the License.
             </drop-down>
         </field>
         <field name="statusId" use-when="communicationEvent!=null" title="${uiLabelMap.CommonStatus}">
-            <drop-down allow-empty="false" no-current-selected-key="COM_PENDING" current-description="${uiLabelMap.CommonSelectOne}">
+            <drop-down allow-empty="false" current="first-in-list" no-current-selected-key="COM_PENDING" current-description="${uiLabelMap.CommonSelectOne}">
                 <entity-options entity-name="StatusValidChangeToDetail" key-field-name="statusIdTo" description="${transitionName} (${description})">
                     <entity-constraint name="statusId" value="${communicationEvent.statusId}"/>
                     <entity-order-by field-name="sequenceId"/>
@@ -399,7 +399,7 @@ under the License.
         <field name="datetimeStarted" title="${uiLabelMap.CommonStartDate}"><date-time/></field>
         <field name="datetimeEnded" title="${uiLabelMap.CommonFinishDate}"><date-time/></field>
         <field name="subject" title="${uiLabelMap.PartySubject}"><text size="50"/></field>
-        <field name="contentMimeTypeId" position="2">
+        <field name="contentMimeTypeId" position="2" encode-output="false">
             <drop-down no-current-selected-key="text/html" allow-empty="false">
                 <entity-options description="${mimeTypeId}" entity-name="MimeType" key-field-name="mimeTypeId">
                     <entity-order-by field-name="mimeTypeId"/>

@@ -77,7 +77,7 @@ public class ContentSearch {
 
         // now find all sub-categories, filtered by effective dates, and call this routine for them
         try {
-            List<GenericValue> contentAssocList = EntityQuery.use(delegator).from("ContentAssoc").where("contentIdFrom", contentId).cache().queryList();
+            List<GenericValue> contentAssocList = EntityQuery.use(delegator).from("ContentAssoc").where("contentId", contentId).cache().queryList();
             for (GenericValue contentAssoc: contentAssocList) {
                 String subContentId = contentAssoc.getString("contentIdTo");
                 if (contentIdSet.contains(subContentId)) {
@@ -93,8 +93,8 @@ public class ContentSearch {
 
             // Find Content where current contentId = contentParentId; only select minimal fields to keep the size low
             List<GenericValue> childContentList = EntityQuery.use(delegator)
-                    .select("contentId", "contentParentId").from("Content")
-                    .where("contentParentId", contentId)
+                    .select("contentId", "ownerContentId").from("Content")
+                    .where("ownerContentId", contentId)
                     .cache().queryList();
             for (GenericValue childContent: childContentList) {
                 String subContentId = childContent.getString("contentId");
@@ -113,17 +113,17 @@ public class ContentSearch {
 
     public static class ContentSearchContext {
         public int index = 1;
-        public List<EntityCondition> entityConditionList = new LinkedList<EntityCondition>();
-        public List<String> orderByList = new LinkedList<String>();
+        public List<EntityCondition> entityConditionList = new LinkedList<>();
+        public List<String> orderByList = new LinkedList<>();
         public Set<String> fieldsToSelect = UtilMisc.toSet("contentId");
         public DynamicViewEntity dynamicViewEntity = new DynamicViewEntity();
         public boolean contentIdGroupBy = false;
         public boolean includedKeywordSearch = false;
         public Timestamp nowTimestamp = UtilDateTime.nowTimestamp();
-        public List<Set<String>> keywordFixedOrSetAndList = new LinkedList<Set<String>>();
-        public Set<String> orKeywordFixedSet = new HashSet<String>();
-        public Set<String> andKeywordFixedSet = new HashSet<String>();
-        public List<GenericValue> contentSearchConstraintList = new LinkedList<GenericValue>();
+        public List<Set<String>> keywordFixedOrSetAndList = new LinkedList<>();
+        public Set<String> orKeywordFixedSet = new HashSet<>();
+        public Set<String> andKeywordFixedSet = new HashSet<>();
+        public List<GenericValue> contentSearchConstraintList = new LinkedList<>();
         public ResultSortOrder resultSortOrder = null;
         public Integer resultOffset = null;
         public Integer maxResults = null;
@@ -168,21 +168,18 @@ public class ContentSearch {
             long startMillis = System.currentTimeMillis();
 
             // do the query
-            EntityListIterator eli = this.doQuery(delegator);
-            ArrayList<String> contentIds = this.makeContentIdList(eli);
-            if (eli != null) {
-                try {
-                    eli.close();
-                } catch (GenericEntityException e) {
-                    Debug.logError(e, "Error closing ContentSearch EntityListIterator");
-                }
+            ArrayList<String> contentIds = null;
+            try (EntityListIterator eli = this.doQuery(delegator)) {
+                contentIds = this.makeContentIdList(eli);
+            } catch (GenericEntityException e) {
+                Debug.logError(e, "Error closing ContentSearch EntityListIterator");
             }
 
             long endMillis = System.currentTimeMillis();
             double totalSeconds = ((double)endMillis - (double)startMillis)/1000.0;
 
             // store info about results in the database, attached to the user's visitId, if specified
-            this.saveSearchResultInfo(Long.valueOf(contentIds.size()), Double.valueOf(totalSeconds));
+            this.saveSearchResultInfo((long) contentIds.size(), totalSeconds);
 
             return contentIds;
         }
@@ -253,7 +250,7 @@ public class ContentSearch {
                     dynamicViewEntity.addMemberEntity(entityAlias, "ContentKeyword");
                     dynamicViewEntity.addAlias(entityAlias, prefix + "Keyword", "keyword", null, null, null, null);
                     dynamicViewEntity.addViewLink("CNT", entityAlias, Boolean.FALSE, ModelKeyMap.makeKeyMapList("contentId"));
-                    List<EntityExpr> keywordOrList = new LinkedList<EntityExpr>();
+                    List<EntityExpr> keywordOrList = new LinkedList<>();
                     for (String keyword: keywordFixedOrSet) {
                         keywordOrList.add(EntityCondition.makeCondition(prefix + "Keyword", EntityOperator.LIKE, keyword));
                     }
@@ -274,6 +271,12 @@ public class ContentSearch {
             }
         }
 
+        /**
+         * @param delegator the delegator
+         * @return EntityListIterator representing the result of the query: NOTE THAT THIS MUST BE CLOSED WHEN YOU ARE
+         *      DONE WITH IT (preferably in a finally block), 
+         *      AND DON'T LEAVE IT OPEN TOO LONG BECAUSE IT WILL MAINTAIN A DATABASE CONNECTION.
+         */
         public EntityListIterator doQuery(Delegator delegator) {
             // handle the now assembled or and and keyword fixed lists
             this.finishKeywordConstraints();
@@ -281,7 +284,7 @@ public class ContentSearch {
             if (resultSortOrder != null) {
                 resultSortOrder.setSortOrder(this);
             }
-            dynamicViewEntity.addAlias("CNT", "contentId", null, null, null, Boolean.valueOf(contentIdGroupBy), null);
+            dynamicViewEntity.addAlias("CNT", "contentId", null, null, null, contentIdGroupBy, null);
             EntityCondition whereCondition = EntityCondition.makeCondition(entityConditionList, EntityOperator.AND);
 
             EntityListIterator eli = null;
@@ -302,7 +305,7 @@ public class ContentSearch {
         }
 
         public ArrayList<String> makeContentIdList(EntityListIterator eli) {
-            ArrayList<String> contentIds = new ArrayList<String>(maxResults == null ? 100 : maxResults.intValue());
+            ArrayList<String> contentIds = new ArrayList<>(maxResults == null ? 100 : maxResults);
             if (eli == null) {
                 Debug.logWarning("The eli is null, returning zero results", module);
                 return contentIds;
@@ -315,9 +318,9 @@ public class ContentSearch {
                 if (initialResult != null) {
                     hasResults = true;
                 }
-                if (resultOffset != null && resultOffset.intValue() > 1) {
+                if (resultOffset != null && resultOffset > 1) {
                     if (Debug.infoOn()) Debug.logInfo("Before relative, current index=" + eli.currentIndex(), module);
-                    hasResults = eli.relative(resultOffset.intValue() - 1);
+                    hasResults = eli.relative(resultOffset - 1);
                     initialResult = null;
                 }
 
@@ -335,9 +338,9 @@ public class ContentSearch {
                     // nothing to get...
                     int failTotal = 0;
                     if (this.resultOffset != null) {
-                        failTotal = this.resultOffset.intValue() - 1;
+                        failTotal = this.resultOffset - 1;
                     }
-                    this.totalResults = Integer.valueOf(failTotal);
+                    this.totalResults = failTotal;
                     return contentIds;
                 }
 
@@ -346,12 +349,12 @@ public class ContentSearch {
                 int numRetreived = 1;
                 int duplicatesFound = 0;
 
-                Set<String> contentIdSet = new HashSet<String>();
+                Set<String> contentIdSet = new HashSet<>();
 
                 contentIds.add(searchResult.getString("contentId"));
                 contentIdSet.add(searchResult.getString("contentId"));
 
-                while (((searchResult = eli.next()) != null) && (maxResults == null || numRetreived < maxResults.intValue())) {
+                while (((searchResult = eli.next()) != null) && (maxResults == null || numRetreived < maxResults)) {
                     String contentId = searchResult.getString("contentId");
                     if (!contentIdSet.contains(contentId)) {
                         contentIds.add(contentId);
@@ -365,12 +368,12 @@ public class ContentSearch {
                 if (searchResult != null) {
                     this.totalResults = eli.getResultsSizeAfterPartialList();
                 }
-                if (this.totalResults == null || this.totalResults.intValue() == 0) {
+                if (this.totalResults == null || this.totalResults == 0) {
                     int total = numRetreived;
                     if (this.resultOffset != null) {
-                        total += (this.resultOffset.intValue() - 1);
+                        total += (this.resultOffset - 1);
                     }
-                    this.totalResults = Integer.valueOf(total);
+                    this.totalResults = total;
                 }
 
                 Debug.logInfo("Got search values, numRetreived=" + numRetreived + ", totalResults=" + totalResults + ", maxResults=" + maxResults + ", resultOffset=" + resultOffset + ", duplicatesFound(in the current results)=" + duplicatesFound, module);
@@ -453,7 +456,7 @@ public class ContentSearch {
 
         @Override
         public void addConstraint(ContentSearchContext contentSearchContext) {
-            Set<String> contentIdSet = new HashSet<String>();
+            Set<String> contentIdSet = new HashSet<>();
             if (includeSubContents) {
                 // find all sub-categories recursively, make a Set of contentId
                 ContentSearch.getAllSubContentIds(contentId, contentIdSet, contentSearchContext.getDelegator(), contentSearchContext.nowTimestamp);
@@ -473,14 +476,14 @@ public class ContentSearch {
             contentSearchContext.index++;
 
             contentSearchContext.dynamicViewEntity.addMemberEntity(entityAlias, "ContentAssoc");
-            contentSearchContext.dynamicViewEntity.addAlias(entityAlias, prefix + "ContentIdFrom", "contentIdFrom", null, null, null, null);
+            contentSearchContext.dynamicViewEntity.addAlias(entityAlias, prefix + "ContentIdFrom", "contentId", null, null, null, null);
             contentSearchContext.dynamicViewEntity.addAlias(entityAlias, prefix + "ContentIdTo", "contentIdTo", null, null, null, null);
             contentSearchContext.dynamicViewEntity.addAlias(entityAlias, prefix + "ContentAssocTypeId", "contentAssocTypeId", null, null, null, null);
             contentSearchContext.dynamicViewEntity.addAlias(entityAlias, prefix + "FromDate", "fromDate", null, null, null, null);
             contentSearchContext.dynamicViewEntity.addAlias(entityAlias, prefix + "ThruDate", "thruDate", null, null, null, null);
-            contentSearchContext.dynamicViewEntity.addViewLink("CNT", entityAlias, Boolean.TRUE, ModelKeyMap.makeKeyMapList("contentId","contentIdFrom"));
+            contentSearchContext.dynamicViewEntity.addViewLink("CNT", entityAlias, Boolean.TRUE, ModelKeyMap.makeKeyMapList("contentId"));
 
-            List<EntityExpr> assocConditionFromTo = new LinkedList<EntityExpr>();
+            List<EntityExpr> assocConditionFromTo = new LinkedList<>();
             assocConditionFromTo.add(EntityCondition.makeCondition(prefix + "ContentIdTo", EntityOperator.IN, contentIdSet));
             if (UtilValidate.isNotEmpty(contentAssocTypeId)) {
                 assocConditionFromTo.add(EntityCondition.makeCondition(prefix + "ContentAssocTypeId", EntityOperator.EQUALS, contentAssocTypeId));
@@ -494,14 +497,14 @@ public class ContentSearch {
             contentSearchContext.index++;
 
             contentSearchContext.dynamicViewEntity.addMemberEntity(entityAlias, "ContentAssoc");
-            contentSearchContext.dynamicViewEntity.addAlias(entityAlias, prefix + "ContentIdFrom", "contentIdFrom", null, null, null, null);
+            contentSearchContext.dynamicViewEntity.addAlias(entityAlias, prefix + "ContentIdFrom", "contentId", null, null, null, null);
             contentSearchContext.dynamicViewEntity.addAlias(entityAlias, prefix + "ContentIdTo", "contentIdTo", null, null, null, null);
             contentSearchContext.dynamicViewEntity.addAlias(entityAlias, prefix + "ContentAssocTypeId", "contentAssocTypeId", null, null, null, null);
             contentSearchContext.dynamicViewEntity.addAlias(entityAlias, prefix + "FromDate", "fromDate", null, null, null, null);
             contentSearchContext.dynamicViewEntity.addAlias(entityAlias, prefix + "ThruDate", "thruDate", null, null, null, null);
             contentSearchContext.dynamicViewEntity.addViewLink("CNT", entityAlias, Boolean.TRUE, ModelKeyMap.makeKeyMapList("contentId","contentIdTo"));
 
-            List<EntityExpr> assocConditionToFrom = new LinkedList<EntityExpr>();
+            List<EntityExpr> assocConditionToFrom = new LinkedList<>();
             assocConditionToFrom.add(EntityCondition.makeCondition(prefix + "ContentIdFrom", EntityOperator.IN, contentIdSet));
             if (UtilValidate.isNotEmpty(contentAssocTypeId)) {
                 assocConditionToFrom.add(EntityCondition.makeCondition(prefix + "ContentAssocTypeId", EntityOperator.EQUALS, contentAssocTypeId));
@@ -514,7 +517,7 @@ public class ContentSearch {
 
 
             // add in contentSearchConstraint, don't worry about the contentSearchResultId or constraintSeqId, those will be fill in later
-            contentSearchContext.contentSearchConstraintList.add(contentSearchContext.getDelegator().makeValue("ContentSearchConstraint", UtilMisc.toMap("constraintName", constraintName, "infoString", this.contentId + "," + this.contentAssocTypeId, "includeSubContents", this.includeSubContents ? "Y" : "N")));
+            contentSearchContext.contentSearchConstraintList.add(contentSearchContext.getDelegator().makeValue("ContentSearchConstraint", UtilMisc.toMap("constraintName", constraintName, "infoString", this.contentId + "," + this.contentAssocTypeId)));
         }
 
 
@@ -558,6 +561,7 @@ public class ContentSearch {
 
         @Override
         public boolean equals(Object obj) {
+            if (!(obj instanceof ContentSearchConstraint)) return false;
             ContentSearchConstraint psc = (ContentSearchConstraint) obj;
             if (psc instanceof ContentAssocConstraint) {
                 ContentAssocConstraint that = (ContentAssocConstraint) psc;
@@ -587,6 +591,16 @@ public class ContentSearch {
                 return false;
             }
         }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((contentAssocTypeId == null) ? 0 : contentAssocTypeId.hashCode());
+            result = prime * result + ((contentId == null) ? 0 : contentId.hashCode());
+            result = prime * result + (includeSubContents ? 1231 : 1237);
+            return result;
+        }
     }
 
     @SuppressWarnings("serial")
@@ -604,7 +618,7 @@ public class ContentSearch {
             this.anySuffix = anySuffix;
             this.isAnd = isAnd;
             if (removeStems != null) {
-                this.removeStems = removeStems.booleanValue();
+                this.removeStems = removeStems;
             } else {
                 this.removeStems = UtilProperties.propertyValueEquals("keywordsearch", "remove.stems", "true");
             }
@@ -612,11 +626,11 @@ public class ContentSearch {
 
         public Set<String> makeFullKeywordSet(Delegator delegator) {
             Set<String> keywordSet = KeywordSearchUtil.makeKeywordSet(this.keywordsString, null, true);
-            Set<String> fullKeywordSet = new TreeSet<String>();
+            Set<String> fullKeywordSet = new TreeSet<>();
 
             // expand the keyword list according to the thesaurus and create a new set of keywords
             for (String keyword: keywordSet) {
-                Set<String> expandedSet = new TreeSet<String>();
+                Set<String> expandedSet = new TreeSet<>();
                 boolean replaceEntered = KeywordSearchUtil.expandKeywordForSearch(keyword, expandedSet, delegator);
                 fullKeywordSet.addAll(expandedSet);
                 if (!replaceEntered) {
@@ -641,13 +655,13 @@ public class ContentSearch {
 
                 // expand the keyword list according to the thesaurus and create a new set of keywords
                 for (String keyword: keywordSet) {
-                    Set<String> expandedSet = new TreeSet<String>();
+                    Set<String> expandedSet = new TreeSet<>();
                     boolean replaceEntered = KeywordSearchUtil.expandKeywordForSearch(keyword, expandedSet, contentSearchContext.getDelegator());
                     if (!replaceEntered) {
                         expandedSet.add(keyword);
                     }
                     Set<String> fixedSet = KeywordSearchUtil.fixKeywordsForSearch(expandedSet, anyPrefix, anySuffix, removeStems, isAnd);
-                    Set<String> fixedKeywordSet = new HashSet<String>();
+                    Set<String> fixedKeywordSet = new HashSet<>();
                     fixedKeywordSet.addAll(fixedSet);
                     contentSearchContext.keywordFixedOrSetAndList.add(fixedKeywordSet);
                 }
@@ -679,34 +693,41 @@ public class ContentSearch {
 
         @Override
         public boolean equals(Object obj) {
-            ContentSearchConstraint psc = (ContentSearchConstraint) obj;
-            if (psc instanceof KeywordConstraint) {
-                KeywordConstraint that = (KeywordConstraint) psc;
-                if (this.anyPrefix != that.anyPrefix) {
-                    return false;
-                }
-                if (this.anySuffix != that.anySuffix) {
-                    return false;
-                }
-                if (this.isAnd != that.isAnd) {
-                    return false;
-                }
-                if (this.removeStems != that.removeStems) {
-                    return false;
-                }
-                if (this.keywordsString == null) {
-                    if (that.keywordsString != null) {
+            if ((obj instanceof ContentSearchConstraint)) {
+                ContentSearchConstraint psc = (ContentSearchConstraint) obj;
+                if (psc instanceof KeywordConstraint) {
+                    KeywordConstraint that = (KeywordConstraint) psc;
+                    if (this.anyPrefix != that.anyPrefix
+                            || this.anySuffix != that.anySuffix
+                            || this.isAnd != that.isAnd
+                            || this.removeStems != that.removeStems) {
                         return false;
                     }
-                } else {
-                    if (!this.keywordsString.equals(that.keywordsString)) {
-                        return false;
+                    if (this.keywordsString == null) {
+                        if (that.keywordsString != null) {
+                            return false;
+                        }
+                    } else {
+                        if (!this.keywordsString.equals(that.keywordsString)) {
+                            return false;
+                        }
                     }
+                    return true;
                 }
-                return true;
-            } else {
-                return false;
             }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + (anyPrefix ? 1231 : 1237);
+            result = prime * result + (anySuffix ? 1231 : 1237);
+            result = prime * result + (isAnd ? 1231 : 1237);
+            result = prime * result + ((keywordsString == null) ? 0 : keywordsString.hashCode());
+            result = prime * result + (removeStems ? 1231 : 1237);
+            return result;
         }
     }
 
@@ -717,8 +738,8 @@ public class ContentSearch {
         protected Timestamp thruDate;
 
         public LastUpdatedRangeConstraint(Timestamp fromDate, Timestamp thruDate) {
-            this.fromDate = fromDate;
-            this.thruDate = thruDate;
+            this.fromDate = fromDate != null ? (Timestamp) fromDate.clone() : null;
+            this.thruDate = thruDate != null ? (Timestamp) thruDate.clone() : null;
         }
 
         @Override
@@ -764,34 +785,43 @@ public class ContentSearch {
             return ppBuf.toString();
         }
 
-
         @Override
         public boolean equals(Object obj) {
-            ContentSearchConstraint psc = (ContentSearchConstraint) obj;
-            if (psc instanceof LastUpdatedRangeConstraint) {
-                LastUpdatedRangeConstraint that = (LastUpdatedRangeConstraint) psc;
-                if (this.fromDate == null) {
-                    if (that.fromDate != null) {
-                        return false;
+            if (obj instanceof ContentSearchConstraint) {
+                ContentSearchConstraint psc = (ContentSearchConstraint) obj;
+                if (psc instanceof LastUpdatedRangeConstraint) {
+                    LastUpdatedRangeConstraint that = (LastUpdatedRangeConstraint) psc;
+                    if (this.fromDate == null) {
+                        if (that.fromDate != null) {
+                            return false;
+                        }
+                    } else {
+                        if (!this.fromDate.equals(that.fromDate)) {
+                            return false;
+                        }
                     }
-                } else {
-                    if (!this.fromDate.equals(that.fromDate)) {
-                        return false;
+                    if (this.thruDate == null) {
+                        if (that.thruDate != null) {
+                            return false;
+                        }
+                    } else {
+                        if (!this.thruDate.equals(that.thruDate)) {
+                            return false;
+                        }
                     }
+                    return true;
                 }
-                if (this.thruDate == null) {
-                    if (that.thruDate != null) {
-                        return false;
-                    }
-                } else {
-                    if (!this.thruDate.equals(that.thruDate)) {
-                        return false;
-                    }
-                }
-                return true;
-            } else {
-                return false;
             }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((fromDate == null) ? 0 : fromDate.hashCode());
+            result = prime * result + ((thruDate == null) ? 0 : thruDate.hashCode());
+            return result;
         }
     }
 

@@ -58,7 +58,7 @@ under the License.
         <field name="workEffortId" use-when="workEffort==null&amp;&amp;workEffortId==null" title="${uiLabelMap.WorkEffortWorkEffortId}"><ignored/></field>
         <field name="workEffortId" use-when="workEffort==null&amp;&amp;workEffortId!=null" title="${uiLabelMap.WorkEffortWorkEffortId}" tooltip="${uiLabelMap.CommonCannotBeFound}: [${workEffortId}]"><display also-hidden="false"/></field>
 
-        <field name="workEffortName" title="${uiLabelMap.CommonName}*"/>
+        <field name="workEffortName" title="${uiLabelMap.CommonName}*" required-field="true"/>
         <field name="workEffortTypeId" title="${uiLabelMap.CommonType}*" position="1">
             <drop-down>
                 <entity-options entity-name="WorkEffortType" key-field-name="workEffortTypeId">
@@ -290,6 +290,7 @@ under the License.
              the form it is extending (results in two workEffortId fields in the form)
         <field name="workEffortId"><hidden value=""/></field>
         -->
+        <alt-target use-when="workEffort==null" target="createWorkEffortAndAssoc"/>
         <field name="workEffortIdFrom"><display-entity entity-name="WorkEffort" key-field-name="workEffortId" description="${workEffortName} [${workEffortId}]"/></field>
         <field name="workEffortIdTo"><lookup target-form-name="LookupWorkEffort"/></field>
         <field name="workEffortAssocTypeId">
@@ -568,7 +569,7 @@ under the License.
             </drop-down>
         </field>
         <field name="statusId" use-when="communicationEvent!=null" title="${uiLabelMap.CommonStatus}">
-            <drop-down allow-empty="false" current-description="${currentStatus.description}">
+            <drop-down allow-empty="false" current="first-in-list" current-description="${currentStatus.description}">
                 <entity-options entity-name="StatusValidChangeToDetail" key-field-name="statusIdTo" description="${transitionName} (${description})">
                     <entity-constraint name="statusId" value="${communicationEvent.statusId}"/>
                     <entity-order-by field-name="sequenceId"/>
@@ -1163,7 +1164,7 @@ under the License.
         <field name="relevancyWeight" title="${uiLabelMap.ProductWeight}"><text size="5"/></field>
         <field name="submitButton" title="${uiLabelMap.CommonAdd}" widget-style="smallSubmit"><submit button-type="button"/></field>
     </form>
-    <form name="ListWorkEffortKeywords" type="list" target="" list-name="listWorkEffortKeywords"
+    <form name="ListWorkEffortKeywords" type="list" target="" list-name="workEffortkeywords"
         odd-row-style="alternate-row" header-row-style="header-row-2" default-table-style="basic-table hover-bar">
         <actions>
             <entity-and entity-name="WorkEffortKeyword" use-cache="true" list="workEffortkeywords">
@@ -1186,6 +1187,12 @@ under the License.
         header-row-style="header-row" default-table-style="basic-table">
         <field name="workEffortId"><hidden value="${parameters.workEffortId}"/></field>
         <field name="contactMechId"><lookup target-form-name="LookupContactMech"/></field>
+        <field name="contactMechTypeId" event="onchange" action="javascript:ajaxUpdateAreas('contactMechContainer,ContactMechTypeOnly,contactMechTypeId=' + this.value);">
+            <drop-down>
+                <option key="" description="${uiLabelMap.CommonNone}"/>
+                <entity-options entity-name="ContactMechType" key-field-name="contactMechTypeId"/>
+            </drop-down>
+        </field>
         <field name="comments"><text size="50"/></field>
         <field name="submitButton" title="${uiLabelMap.CommonAdd}"><submit button-type="button"/></field>
     </form>
@@ -1236,7 +1243,7 @@ under the License.
         </actions>
         <field name="agreementId">
             <display-entity entity-name="Agreement" key-field-name="agreementId"  also-hidden="true">
-                <sub-hyperlink target="/accounting/control/FindAgreement" description="${agreementId}" link-style="buttontext" target-type="inter-app">
+                <sub-hyperlink target="/accounting/control/EditAgreement" description="${agreementId}" link-style="buttontext" target-type="inter-app">
                     <parameter param-name="agreementId"/>
                 </sub-hyperlink>
             </display-entity>

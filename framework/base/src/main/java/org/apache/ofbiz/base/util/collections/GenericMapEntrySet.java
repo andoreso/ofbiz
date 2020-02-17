@@ -25,21 +25,33 @@ public abstract class GenericMapEntrySet<K, V, M extends GenericMap<K, V>> exten
         super(source);
     }
 
+    @Override
     public boolean contains(Object item) {
-        if (item == null) return false;
-        if (!(item instanceof Map.Entry<?, ?>)) return false;
+        if (item == null) {
+            return false;
+        }
+        if (!(item instanceof Map.Entry<?, ?>)) {
+            return false;
+        }
         Map.Entry<?, ?> other = (Map.Entry<?, ?>) item;
         return contains(other.getKey(), other.getValue());
     }
 
     protected abstract boolean contains(Object key, Object value);
 
+    @Override
     public boolean remove(Object item) {
-        if (item == null) return false;
-        if (!(item instanceof Map.Entry<?, ?>)) return false;
+        if (item == null) {
+            return false;
+        }
+        if (!(item instanceof Map.Entry<?, ?>)) {
+            return false;
+        }
         Map.Entry<?, ?> other = (Map.Entry<?, ?>) item;
         Object key = other.getKey();
-        if (!source.containsKey(key)) return false;
+        if (!source.containsKey(key)) {
+            return false;
+        }
         source.remove(key);
         return true;
     }

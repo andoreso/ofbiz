@@ -63,11 +63,13 @@ public final class ProductDisplayWorker {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         ShoppingCart cart = (ShoppingCart) httpRequest.getSession().getAttribute("shoppingCart");
 
-        if (cart == null || cart.size() <= 0) return null;
+        if (cart == null || cart.size() <= 0) {
+            return null;
+        }
 
         List<GenericValue> cartAssocs = null;
         try {
-            Map<String, GenericValue> products = new HashMap<String, GenericValue>();
+            Map<String, GenericValue> products = new HashMap<>();
 
             Iterator<ShoppingCartItem> cartiter = cart.iterator();
 
@@ -116,16 +118,16 @@ public final class ProductDisplayWorker {
                 String currentCatalogId = CatalogWorker.getCurrentCatalogId(request);
                 String viewProductCategoryId = CatalogWorker.getCatalogViewAllowCategoryId(delegator, currentCatalogId);
                 if (viewProductCategoryId != null) {
-                    List<GenericValue> tempList = new LinkedList<GenericValue>();
+                    List<GenericValue> tempList = new LinkedList<>();
                     tempList.addAll(products.values());
                     tempList = CategoryWorker.filterProductsInCategory(delegator, tempList, viewProductCategoryId, "productId");
-                    cartAssocs = new LinkedList<GenericValue>();
+                    cartAssocs = new LinkedList<>();
                     cartAssocs.addAll(tempList);
                 }
             }
 
             if (cartAssocs == null) {
-                cartAssocs = new LinkedList<GenericValue>();
+                cartAssocs = new LinkedList<>();
                 cartAssocs.addAll(products.values());
             }
 
@@ -140,31 +142,34 @@ public final class ProductDisplayWorker {
 
         if (UtilValidate.isNotEmpty(cartAssocs)) {
             return cartAssocs;
-        } else {
-            return null;
         }
+        return null;
     }
 
     public static Map<String, Object> getQuickReorderProducts(ServletRequest request) {
         Delegator delegator = (Delegator) request.getAttribute("delegator");
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         GenericValue userLogin = (GenericValue) httpRequest.getSession().getAttribute("userLogin");
-        Map<String, Object> results = new HashMap<String, Object>();
+        Map<String, Object> results = new HashMap<>();
 
-        if (userLogin == null) userLogin = (GenericValue) httpRequest.getSession().getAttribute("autoUserLogin");
-        if (userLogin == null) return results;
+        if (userLogin == null) {
+            userLogin = (GenericValue) httpRequest.getSession().getAttribute("autoUserLogin");
+        }
+        if (userLogin == null) {
+            return results;
+        }
 
         try {
-            Map<String, GenericValue> products = UtilGenerics.checkMap(httpRequest.getSession().getAttribute("_QUICK_REORDER_PRODUCTS_"));
-            Map<String, BigDecimal> productQuantities = UtilGenerics.checkMap(httpRequest.getSession().getAttribute("_QUICK_REORDER_PRODUCT_QUANTITIES_"));
-            Map<String, Integer> productOccurances = UtilGenerics.checkMap(httpRequest.getSession().getAttribute("_QUICK_REORDER_PRODUCT_OCCURANCES_"));
+            Map<String, GenericValue> products = UtilGenerics.cast(httpRequest.getSession().getAttribute("_QUICK_REORDER_PRODUCTS_"));
+            Map<String, BigDecimal> productQuantities = UtilGenerics.cast(httpRequest.getSession().getAttribute("_QUICK_REORDER_PRODUCT_QUANTITIES_"));
+            Map<String, Integer> productOccurances = UtilGenerics.cast(httpRequest.getSession().getAttribute("_QUICK_REORDER_PRODUCT_OCCURANCES_"));
 
             if (products == null || productQuantities == null || productOccurances == null) {
-                products = new HashMap<String, GenericValue>();
-                productQuantities = new HashMap<String, BigDecimal>();
+                products = new HashMap<>();
+                productQuantities = new HashMap<>();
                 // keep track of how many times a product occurs in order to find averages and rank by purchase amount
-                productOccurances = new HashMap<String, Integer>();
-                
+                productOccurances = new HashMap<>();
+
                 // get all order role entities for user by customer role type : PLACING_CUSTOMER
                 List<GenericValue> orderRoles = EntityQuery.use(delegator).from("OrderRole").where("partyId", userLogin.get("partyId"), "roleTypeId", "PLACING_CUSTOMER").queryList();
                 Iterator<GenericValue> ordersIter = UtilMisc.toIterator(orderRoles);
@@ -186,16 +191,22 @@ public final class ProductDisplayWorker {
 
                             BigDecimal curQuant = productQuantities.get(product.get("productId"));
 
-                            if (curQuant == null) curQuant = BigDecimal.ZERO;
+                            if (curQuant == null) {
+                                curQuant = BigDecimal.ZERO;
+                            }
                             BigDecimal orderQuant = orderItem.getBigDecimal("quantity");
 
-                            if (orderQuant == null) orderQuant = BigDecimal.ZERO;
+                            if (orderQuant == null) {
+                                orderQuant = BigDecimal.ZERO;
+                            }
                             productQuantities.put(product.getString("productId"), curQuant.add(orderQuant));
 
                             Integer curOcc = productOccurances.get(product.get("productId"));
 
-                            if (curOcc == null) curOcc = Integer.valueOf(0);
-                            productOccurances.put(product.getString("productId"), Integer.valueOf(curOcc.intValue() + 1));
+                            if (curOcc == null) {
+                                curOcc = 0;
+                            }
+                            productOccurances.put(product.getString("productId"), curOcc + 1);
                         }
                     }
                 }
@@ -207,18 +218,20 @@ public final class ProductDisplayWorker {
                     Integer occs = productOccurances.get(prodId);
                     BigDecimal nqint = quantity.divide(new BigDecimal(occs), new MathContext(10));
 
-                    if (nqint.compareTo(BigDecimal.ONE) < 0) nqint = BigDecimal.ONE;
+                    if (nqint.compareTo(BigDecimal.ONE) < 0) {
+                        nqint = BigDecimal.ONE;
+                    }
                     productQuantities.put(prodId, nqint);
                 }
-                
-                httpRequest.getSession().setAttribute("_QUICK_REORDER_PRODUCTS_", new HashMap<String, GenericValue>(products));
-                httpRequest.getSession().setAttribute("_QUICK_REORDER_PRODUCT_QUANTITIES_", new HashMap<String, BigDecimal>(productQuantities));
-                httpRequest.getSession().setAttribute("_QUICK_REORDER_PRODUCT_OCCURANCES_", new HashMap<String, Integer>(productOccurances));
+
+                httpRequest.getSession().setAttribute("_QUICK_REORDER_PRODUCTS_", new HashMap<>(products));
+                httpRequest.getSession().setAttribute("_QUICK_REORDER_PRODUCT_QUANTITIES_", new HashMap<>(productQuantities));
+                httpRequest.getSession().setAttribute("_QUICK_REORDER_PRODUCT_OCCURANCES_", new HashMap<>(productOccurances));
             } else {
                 // make a copy since we are going to change them
-                products = new HashMap<String, GenericValue>(products);
-                productQuantities = new HashMap<String, BigDecimal>(productQuantities);
-                productOccurances = new HashMap<String, Integer>(productOccurances);
+                products = new HashMap<>(products);
+                productQuantities = new HashMap<>(productQuantities);
+                productOccurances = new HashMap<>(productOccurances);
             }
 
             // remove all products that are already in the cart
@@ -246,23 +259,23 @@ public final class ProductDisplayWorker {
                     }
                 }
 
-            List<GenericValue> reorderProds = new LinkedList<GenericValue>();
+            List<GenericValue> reorderProds = new LinkedList<>();
             reorderProds.addAll(products.values());
 
             // sort descending by new metric...
             BigDecimal occurancesModifier = BigDecimal.ONE;
             BigDecimal quantityModifier = BigDecimal.ONE;
-            Map<String, Object> newMetric = new HashMap<String, Object>();
+            Map<String, Object> newMetric = new HashMap<>();
             for (Map.Entry<String, Integer> entry : productOccurances.entrySet()) {
                 String prodId = entry.getKey();
                 Integer quantity = entry.getValue();
                 BigDecimal occs = productQuantities.get(prodId);
                 //For quantity we should test if we allow to add decimal quantity for this product an productStore : if not then round to 0
                 if(! ProductWorker.isDecimalQuantityOrderAllowed(delegator, prodId, cart.getProductStoreId())){
-                    occs = occs.setScale(0, UtilNumber.getBigDecimalRoundingMode("order.rounding"));
+                    occs = occs.setScale(0, UtilNumber.getRoundingMode("order.rounding"));
                 }
                 else {
-                    occs = occs.setScale(UtilNumber.getBigDecimalScale("order.decimals"), UtilNumber.getBigDecimalRoundingMode("order.rounding"));
+                    occs = occs.setScale(UtilNumber.getBigDecimalScale("order.decimals"), UtilNumber.getRoundingMode("order.rounding"));
                 }
                 productQuantities.put(prodId, occs);
                 BigDecimal nqdbl = quantityModifier.multiply(new BigDecimal(quantity)).add(occs.multiply(occurancesModifier));
@@ -286,12 +299,14 @@ public final class ProductDisplayWorker {
     }
 
     public static List<GenericValue> productOrderByMap(List<GenericValue> values, Map<String, Object> orderByMap, boolean descending) {
-        if (values == null)  return null;
-        if (values.size() == 0) return UtilMisc.toList(values);
+        if (values == null) {
+            return null;
+        }
+        if (values.size() == 0) {
+            return values;
+        }
 
-        List<GenericValue> result = new LinkedList<GenericValue>();
-        result.addAll(values);
-
+        List<GenericValue> result = new LinkedList<>(values);
         Collections.sort(result, new ProductByMapComparator(orderByMap, descending));
         return result;
     }
@@ -305,6 +320,7 @@ public final class ProductDisplayWorker {
             this.descending = descending;
         }
 
+        @Override
         public int compare(java.lang.Object prod1, java.lang.Object prod2) {
             int result = compareAsc((GenericEntity) prod1, (GenericEntity) prod2);
 
@@ -320,8 +336,19 @@ public final class ProductDisplayWorker {
             Object value2 = orderByMap.get(prod2.get("productId"));
 
             // null is defined as the smallest possible value
-            if (value == null) return value2 == null ? 0 : -1;
+            if (value == null) {
+                return value2 == null ? 0 : -1;
+            }
             return ((Comparable<Object>) value).compareTo(value2);
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + (descending ? 1231 : 1237);
+            result = prime * result + ((orderByMap == null) ? 0 : orderByMap.hashCode());
+            return result;
         }
 
         @Override
@@ -330,9 +357,8 @@ public final class ProductDisplayWorker {
                 ProductByMapComparator that = (ProductByMapComparator) obj;
 
                 return this.orderByMap.equals(that.orderByMap) && this.descending == that.descending;
-            } else {
-                return false;
             }
+            return false;
         }
     }
 }

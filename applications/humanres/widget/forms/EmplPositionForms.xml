@@ -238,7 +238,7 @@ under the License.
     <form name="ListValidResponsibilities" type="list" target="updateValidResponsibility" title="" paginate-target="findValidResponsibilities"
         odd-row-style="alternate-row" default-table-style="basic-table hover-bar">
         <actions>
-            <entity-condition entity-name="EmplPositionResponsibility"/>
+            <entity-condition entity-name="ValidResponsibility"/>
         </actions>
         <auto-fields-service service-name="updateValidResponsibility"/>
         <field name="emplPositionTypeId" title="${uiLabelMap.HumanResEmployeePositionTypeId}"><display /></field>
@@ -276,25 +276,25 @@ under the License.
         <auto-fields-entity entity-name="EmplPosition" default-field-type="find"/>
         <field name="noConditionFind"><hidden value="Y"/><!-- if this isn't there then with all fields empty no query will be done --></field>
         <field name="salaryFlag">
-            <drop-down allow-empty="false" current="selected">
+            <drop-down allow-empty="true" current="selected">
                 <option key="Y" description="${uiLabelMap.CommonYes}"/>
                 <option key="N" description="${uiLabelMap.CommonNo}"/>
             </drop-down>
         </field>
         <field name="exemptFlag">
-            <drop-down allow-empty="false" current="selected">
+            <drop-down allow-empty="true" current="selected">
                 <option key="Y" description="${uiLabelMap.CommonYes}"/>
                 <option key="N" description="${uiLabelMap.CommonNo}"/>
             </drop-down>
         </field>
         <field name="fulltimeFlag">
-            <drop-down allow-empty="false" current="selected">
+            <drop-down allow-empty="true" current="selected">
                 <option key="Y" description="${uiLabelMap.CommonYes}"/>
                 <option key="N" description="${uiLabelMap.CommonNo}"/>
             </drop-down>
         </field>
         <field name="temporaryFlag">
-            <drop-down allow-empty="false" current="selected">
+            <drop-down allow-empty="true" current="selected">
                 <option key="Y" description="${uiLabelMap.CommonYes}"/>
                 <option key="N" description="${uiLabelMap.CommonNo}"/>
             </drop-down>

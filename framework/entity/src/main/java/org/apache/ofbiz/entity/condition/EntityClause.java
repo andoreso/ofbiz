@@ -37,13 +37,13 @@ public class EntityClause {
     private String secondField = "";
     private ModelEntity firstModelEntity = null;
     private ModelEntity secondModelEntity = null;
-    private EntityOperator<?,?,?> interFieldOperation = null;
-    private EntityOperator<?,?,?> intraFieldOperation = null;
+    private EntityOperator<?,?> interFieldOperation = null;
+    private EntityOperator<?,?> intraFieldOperation = null;
 
     private Object value = null;
     public EntityClause() {}
 
-    public EntityClause(String firstEntity, String secondEntity, String firstField, String secondField, EntityOperator<?, ?, ?> interFieldOperation, EntityOperator<?, ?, ?> intraFieldOperation) {
+    public EntityClause(String firstEntity, String secondEntity, String firstField, String secondField, EntityOperator<?, ?> interFieldOperation, EntityOperator<?, ?> intraFieldOperation) {
         this.firstEntity = firstEntity;
         this.secondEntity = secondEntity;
         this.firstField = firstField;
@@ -52,7 +52,7 @@ public class EntityClause {
         this.intraFieldOperation = intraFieldOperation;
     }
 
-    public EntityClause(String firstEntity, String firstField, Object value, EntityOperator<?, ?, ?> interFieldOperation, EntityOperator<?, ?, ?> intraFieldOperation) {
+    public EntityClause(String firstEntity, String firstField, Object value, EntityOperator<?, ?> interFieldOperation, EntityOperator<?, ?> intraFieldOperation) {
         this.firstEntity = firstEntity;
         this.firstField = firstField;
         this.value = value;
@@ -77,15 +77,17 @@ public class EntityClause {
     }
 
     public Object getValue() {
-        if (value == null) value = new Object();
+        if (value == null) {
+            value = new Object();
+        }
         return value;
     }
 
-    public <L,R,T> EntityOperator<L,R,T> getInterFieldOperation() {
+    public <L,R> EntityOperator<L,R> getInterFieldOperation() {
         return UtilGenerics.cast(interFieldOperation);
     }
 
-    public <L,R,T> EntityOperator<L,R,T> getIntraFieldOperation() {
+    public <L,R> EntityOperator<L,R> getIntraFieldOperation() {
         return UtilGenerics.cast(intraFieldOperation);
     }
 
@@ -105,11 +107,11 @@ public class EntityClause {
         this.secondField = secondField;
     }
 
-    public <L,R,T> void setInterFieldOperation(EntityOperator<L,R,T> interFieldOperation) {
+    public <L,R> void setInterFieldOperation(EntityOperator<L,R> interFieldOperation) {
         this.interFieldOperation = interFieldOperation;
     }
 
-    public <L,R,T> void setIntraFieldOperation(EntityOperator<L,R,T> intraFieldOperation) {
+    public <L,R> void setIntraFieldOperation(EntityOperator<L,R> intraFieldOperation) {
         this.intraFieldOperation = intraFieldOperation;
     }
 
@@ -139,9 +141,9 @@ public class EntityClause {
         outputBuffer.append("[secondField,").append(secondField == null ? "null" : secondField).append("]");
         outputBuffer.append("[firstModelEntity,").append(firstModelEntity == null ? "null" : (firstModelEntity.getEntityName() == null ? "null" : firstModelEntity.getEntityName())).append("]");
         outputBuffer.append("[secondModelEntity,").append(secondModelEntity == null ? "null" : (secondModelEntity.getEntityName() == null ? "null" : secondModelEntity.getEntityName())).append("]");
-        outputBuffer.append("[interFieldOperation,").append(interFieldOperation == null ? "null" : (interFieldOperation.getCode() == null ? "null" : interFieldOperation.getCode())).append("]");
+        outputBuffer.append("[interFieldOperation,").append(interFieldOperation == null ? "null" : (interFieldOperation.getCode())).append("]");
         outputBuffer.append("[intraFieldOperation,").append(intraFieldOperation == null ? "null" : (intraFieldOperation.getCode() == null ? "null" : intraFieldOperation.getCode())).append("]");
-        outputBuffer.append("[value,").append(getValue().toString() == null ? "null" : getValue().toString()).append("]");
+        outputBuffer.append("[value,").append(getValue().toString()).append("]");
         return outputBuffer.toString();
     }
 

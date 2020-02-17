@@ -36,9 +36,10 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.UtilXml;
-import org.xml.sax.SAXException;
+import org.apache.ofbiz.service.ModelService;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.xml.sax.SAXException;
 
 
 
@@ -70,7 +71,7 @@ public class ImageTransform {
 
         /* VARIABLES */
         BufferedImage bufImg;
-        Map<String, Object> result =  new LinkedHashMap<String, Object>();
+        Map<String, Object> result =  new LinkedHashMap<>();
 
         /* BUFFERED IMAGE */
         try {
@@ -78,12 +79,12 @@ public class ImageTransform {
         } catch (IllegalArgumentException e) {
             String errMsg = UtilProperties.getMessage(resource, "ImageTransform.input_is_null", locale) + " : " + fileLocation + " ; " + e.toString();
             Debug.logError(errMsg, module);
-            result.put("errorMessage", errMsg);
+            result.put(ModelService.ERROR_MESSAGE, errMsg);
             return result;
         } catch (IOException e) {
             String errMsg = UtilProperties.getMessage(resource, "ImageTransform.error_occurs_during_reading", locale) + " : " + fileLocation + " ; " + e.toString();
             Debug.logError(errMsg, module);
-            result.put("errorMessage", errMsg);
+            result.put(ModelService.ERROR_MESSAGE, errMsg);
             return result;
         }
 
@@ -110,24 +111,24 @@ public class ImageTransform {
         /* VARIABLES */
         BufferedImage bufNewImg;
         double defaultHeight, defaultWidth, scaleFactor;
-        Map<String, Object> result =  new LinkedHashMap<String, Object>();
+        Map<String, Object> result =  new LinkedHashMap<>();
 
         /* DIMENSIONS from ImageProperties */
         // A missed dimension is authorized
         if (dimensionMap.get(sizeType).containsKey("height")) {
-            defaultHeight = Double.parseDouble(dimensionMap.get(sizeType).get("height").toString());
+            defaultHeight = Double.parseDouble(dimensionMap.get(sizeType).get("height"));
         } else {
             defaultHeight = -1;
         }
         if (dimensionMap.get(sizeType).containsKey("width")) {
-            defaultWidth = Double.parseDouble(dimensionMap.get(sizeType).get("width").toString());
+            defaultWidth = Double.parseDouble(dimensionMap.get(sizeType).get("width"));
         } else {
             defaultWidth = -1;
         }
         if (defaultHeight == 0.0 || defaultWidth == 0.0) {
             String errMsg = UtilProperties.getMessage(resource, "ImageTransform.one_default_dimension_is_null", locale) + " : defaultHeight = " + defaultHeight + " ; defaultWidth = " + defaultWidth;
             Debug.logError(errMsg, module);
-            result.put("errorMessage", errMsg);
+            result.put(ModelService.ERROR_MESSAGE, errMsg);
             return result;
         }
 
@@ -138,7 +139,7 @@ public class ImageTransform {
             if (scaleFactor == 0.0) {
                 String errMsg = UtilProperties.getMessage(resource, "ImageTransform.width_scale_factor_is_null", locale) + "  (defaultWidth = " + defaultWidth + "; imgWidth = " + imgWidth;
                 Debug.logError(errMsg, module);
-                result.put("errorMessage", errMsg);
+                result.put(ModelService.ERROR_MESSAGE, errMsg);
                 return result;
             }
         } else if (defaultWidth == -1) {
@@ -146,7 +147,7 @@ public class ImageTransform {
             if (scaleFactor == 0.0) {
                 String errMsg = UtilProperties.getMessage(resource, "ImageTransform.height_scale_factor_is_null", locale) + "  (defaultHeight = " + defaultHeight + "; imgHeight = " + imgHeight;
                 Debug.logError(errMsg, module);
-                result.put("errorMessage", errMsg);
+                result.put(ModelService.ERROR_MESSAGE, errMsg);
                 return result;
             }
         } else if (imgHeight > imgWidth) {
@@ -154,7 +155,7 @@ public class ImageTransform {
             if (scaleFactor == 0.0) {
                 String errMsg = UtilProperties.getMessage(resource, "ImageTransform.height_scale_factor_is_null", locale) + "  (defaultHeight = " + defaultHeight + "; imgHeight = " + imgHeight;
                 Debug.logError(errMsg, module);
-                result.put("errorMessage", errMsg);
+                result.put(ModelService.ERROR_MESSAGE, errMsg);
                 return result;
             }
             // get scaleFactor from the smallest width
@@ -166,7 +167,7 @@ public class ImageTransform {
             if (scaleFactor == 0.0) {
                 String errMsg = UtilProperties.getMessage(resource, "ImageTransform.width_scale_factor_is_null", locale) + "  (defaultWidth = " + defaultWidth + "; imgWidth = " + imgWidth;
                 Debug.logError(errMsg, module);
-                result.put("errorMessage", errMsg);
+                result.put(ModelService.ERROR_MESSAGE, errMsg);
                 return result;
             }
             // get scaleFactor from the smallest height
@@ -178,7 +179,7 @@ public class ImageTransform {
         if (scaleFactor == 0.0) {
             String errMsg = UtilProperties.getMessage(resource, "ImageTransform.final_scale_factor_is_null", locale) + " = " + scaleFactor;
             Debug.logError(errMsg, module);
-            result.put("errorMessage", errMsg);
+            result.put(ModelService.ERROR_MESSAGE, errMsg);
             return result;
         }
         int bufImgType;
@@ -217,26 +218,21 @@ public class ImageTransform {
         /* VARIABLES */
         Document document;
         Element rootElt;
-        Map<String, Map<String, String>> valueMap =  new LinkedHashMap<String, Map<String, String>>();
-        Map<String, Object> result =  new LinkedHashMap<String, Object>();
+        Map<String, Map<String, String>> valueMap =  new LinkedHashMap<>();
+        Map<String, Object> result =  new LinkedHashMap<>();
 
         /* PARSING */
         try {
             document = UtilXml.readXmlDocument(new FileInputStream(fileFullPath), fileFullPath);
-        } catch (ParserConfigurationException e) {
+        } catch (ParserConfigurationException | SAXException e) {
             String errMsg = UtilProperties.getMessage(resource, "ImageTransform.errors_occurred_during_parsing", locale) +  " ImageProperties.xml " + e.toString();
             Debug.logError(errMsg, module);
-            result.put("errorMessage", "error");
-            return result;
-        } catch (SAXException e) {
-            String errMsg = UtilProperties.getMessage(resource, "ImageTransform.errors_occurred_during_parsing", locale) +  " ImageProperties.xml " + e.toString();
-            Debug.logError(errMsg, module);
-            result.put("errorMessage", "error");
+            result.put(ModelService.ERROR_MESSAGE, "error");
             return result;
         } catch (IOException e) {
             String errMsg = UtilProperties.getMessage(resource, "ImageTransform.error_prevents_the document_from_being_fully_parsed", locale) + e.toString();
             Debug.logError(errMsg, module);
-            result.put("errorMessage", "error");
+            result.put(ModelService.ERROR_MESSAGE, "error");
             return result;
         }
         // set Root Element
@@ -245,17 +241,17 @@ public class ImageTransform {
         } catch (IllegalStateException e) {
             String errMsg = UtilProperties.getMessage(resource, "ImageTransform.root_element_has_not_been_set", locale) + e.toString();
             Debug.logError(errMsg, module);
-            result.put("errorMessage", "error");
+            result.put(ModelService.ERROR_MESSAGE, "error");
             return result;
         }
 
         /* get NAME and VALUE */
         List<? extends Element> children = UtilXml.childElementList(rootElt); // FIXME : despite upgrading to jdom 1.1, it seems that getChildren is pre 1.5 java code (ie getChildren does not retun List<Element> but only List)
         for (Element currentElt : children) {
-            Map<String, String> eltMap =  new LinkedHashMap<String, String>();
+            Map<String, String> eltMap =  new LinkedHashMap<>();
             List<? extends Element> children2 = UtilXml.childElementList(currentElt);
             if (children2.size() > 0) {
-                Map<String, String> childMap =  new LinkedHashMap<String, String>();
+                Map<String, String> childMap =  new LinkedHashMap<>();
                 // loop over Children 1st level
                 for (Element currentChild : children2) {
                     childMap.put(currentChild.getAttribute("name"), currentChild.getAttribute("value"));
@@ -289,21 +285,20 @@ public class ImageTransform {
         /** Check if the image isn't already a BufferedImage instance */
         if( image instanceof BufferedImage ) {
                 return( (BufferedImage)image );
-        } else {
-                /** Full image loading */
-                image = new ImageIcon(image).getImage();
-
-                /** new BufferedImage creation */
-                BufferedImage bufferedImage = new BufferedImage(
-                            image.getWidth(null),
-                            image.getHeight(null),
-                            bufImgType);
-
-                Graphics2D g = bufferedImage.createGraphics();
-                g.drawImage(image,0,0,null);
-                g.dispose();
-
-                return( bufferedImage );
         }
+        /** Full image loading */
+        image = new ImageIcon(image).getImage();
+
+        /** new BufferedImage creation */
+        BufferedImage bufferedImage = new BufferedImage(
+                    image.getWidth(null),
+                    image.getHeight(null),
+                    bufImgType);
+
+        Graphics2D g = bufferedImage.createGraphics();
+        g.drawImage(image,0,0,null);
+        g.dispose();
+
+        return( bufferedImage );
     }
 }

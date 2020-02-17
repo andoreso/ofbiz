@@ -18,7 +18,6 @@
  *******************************************************************************/
 package org.apache.ofbiz.base.conversion;
 
-import java.io.IOException;
 import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -30,6 +29,7 @@ import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import org.apache.ofbiz.base.util.StringUtil;
 import org.apache.ofbiz.base.util.UtilGenerics;
 import org.apache.ofbiz.base.util.UtilMisc;
 
@@ -43,6 +43,7 @@ public class MiscConverters implements ConverterLoader {
             super(Blob.class, Blob.class);
         }
 
+        @Override
         public Blob convert(Blob obj) throws ConversionException {
             try {
                 return new javax.sql.rowset.serial.SerialBlob(obj.getBytes(1, (int) obj.length()));
@@ -57,6 +58,7 @@ public class MiscConverters implements ConverterLoader {
             super(Blob.class, byte[].class);
         }
 
+        @Override
         public byte[] convert(Blob obj) throws ConversionException {
             try {
                 return obj.getBytes(1, (int) obj.length());
@@ -71,6 +73,7 @@ public class MiscConverters implements ConverterLoader {
             super(byte[].class, Blob.class);
         }
 
+        @Override
         public Blob convert(byte[] obj) throws ConversionException {
             try {
                 return new javax.sql.rowset.serial.SerialBlob(obj);
@@ -85,6 +88,7 @@ public class MiscConverters implements ConverterLoader {
             super(ByteBuffer.class, byte[].class);
         }
 
+        @Override
         public byte[] convert(ByteBuffer obj) throws ConversionException {
             try {
                 return obj.hasArray() ? obj.array() : null;
@@ -99,6 +103,7 @@ public class MiscConverters implements ConverterLoader {
             super(byte[].class, ByteBuffer.class);
         }
 
+        @Override
         public ByteBuffer convert(byte[] obj) throws ConversionException {
             try {
                 return ByteBuffer.wrap(obj);
@@ -113,25 +118,17 @@ public class MiscConverters implements ConverterLoader {
             super(Clob.class, String.class);
         }
 
+        @Override
         public String convert(Clob obj) throws ConversionException {
             StringBuilder strBuf = new StringBuilder();
             char[] inCharBuffer = new char[CHAR_BUFFER_SIZE];
             int charsRead = 0;
-            Reader clobReader = null;
-            try {
-                clobReader =  obj.getCharacterStream();
+            try (Reader clobReader =  obj.getCharacterStream()) {
                 while ((charsRead = clobReader.read(inCharBuffer, 0, CHAR_BUFFER_SIZE)) > 0) {
                     strBuf.append(inCharBuffer, 0, charsRead);
                 }
             } catch (Exception e) {
                 throw new ConversionException(e);
-            }
-            finally {
-                if (clobReader != null) {
-                    try {
-                        clobReader.close();
-                    } catch (IOException e) {}
-                }
             }
             return strBuf.toString();
         }
@@ -147,6 +144,7 @@ public class MiscConverters implements ConverterLoader {
             return Enum.class.isAssignableFrom(sourceClass) && String.class.isAssignableFrom(targetClass);
         }
 
+        @Override
         public String convert(Enum<?> obj) throws ConversionException {
             return obj.name();
         }
@@ -163,16 +161,17 @@ public class MiscConverters implements ConverterLoader {
     }
 
     public static class StringToEnumConverterCreator<E extends Enum<E>> implements ConverterCreator, ConverterLoader {
+        @Override
         public void loadConverters() {
             Converters.registerCreator(this);
         }
 
+        @Override
         public <S, T> Converter<S, T> createConverter(Class<S> sourceClass, Class<T> targetClass) {
             if (String.class == sourceClass && Enum.class.isAssignableFrom(targetClass)) {
-                return UtilGenerics.cast(new StringToEnum<E>());
-            } else {
-                return null;
+                return UtilGenerics.cast(new StringToEnum<>());
             }
+            return null;
         }
     }
 
@@ -186,6 +185,7 @@ public class MiscConverters implements ConverterLoader {
             return String.class.isAssignableFrom(sourceClass) && Enum.class.isAssignableFrom(targetClass);
         }
 
+        @Override
         public E convert(String obj) throws ConversionException {
             throw new UnsupportedOperationException();
         }
@@ -206,6 +206,7 @@ public class MiscConverters implements ConverterLoader {
             super(Locale.class, String.class);
         }
 
+        @Override
         public String convert(Locale obj) throws ConversionException {
              return obj.toString();
         }
@@ -216,6 +217,7 @@ public class MiscConverters implements ConverterLoader {
             super(String.class, Clob.class);
         }
 
+        @Override
         public Clob convert(String obj) throws ConversionException {
             try {
                 return new javax.sql.rowset.serial.SerialClob(obj.toCharArray());
@@ -230,13 +232,13 @@ public class MiscConverters implements ConverterLoader {
             super(String.class, Locale.class);
         }
 
+        @Override
         public Locale convert(String obj) throws ConversionException {
             Locale loc = UtilMisc.parseLocale(obj);
             if (loc != null) {
                 return loc;
-            } else {
-                throw new ConversionException("Could not convert " + obj + " to Locale: ");
             }
+            throw new ConversionException("Could not convert " + obj + " to Locale: ");
         }
     }
 
@@ -245,6 +247,7 @@ public class MiscConverters implements ConverterLoader {
             super(DecimalFormat.class, String.class);
         }
 
+        @Override
         public String convert(DecimalFormat obj) throws ConversionException {
             return obj.toPattern();
         }
@@ -255,6 +258,7 @@ public class MiscConverters implements ConverterLoader {
             super(String.class, DecimalFormat.class);
         }
 
+        @Override
         public DecimalFormat convert(String obj) throws ConversionException {
             return new DecimalFormat(obj);
         }
@@ -265,6 +269,7 @@ public class MiscConverters implements ConverterLoader {
             super(SimpleDateFormat.class, String.class);
         }
 
+        @Override
         public String convert(SimpleDateFormat obj) throws ConversionException {
             return obj.toPattern();
         }
@@ -275,6 +280,7 @@ public class MiscConverters implements ConverterLoader {
             super(String.class, SimpleDateFormat.class);
         }
 
+        @Override
         public SimpleDateFormat convert(String obj) throws ConversionException {
             return new SimpleDateFormat(obj);
         }
@@ -285,6 +291,7 @@ public class MiscConverters implements ConverterLoader {
             super(Charset.class, String.class);
         }
 
+        @Override
         public String convert(Charset obj) throws ConversionException {
             return obj.name();
         }
@@ -295,8 +302,31 @@ public class MiscConverters implements ConverterLoader {
             super(String.class, Charset.class);
         }
 
+        @Override
         public Charset convert(String obj) throws ConversionException {
             return Charset.forName(obj);
+        }
+    }
+
+    public static class StringBufferToString extends AbstractConverter<StringBuffer, String> {
+        public StringBufferToString() {
+            super(StringBuffer.class, String.class);
+        }
+
+        @Override
+        public String convert(StringBuffer obj) throws ConversionException {
+            return obj.toString();
+        }
+    }
+
+    public static class StringWrapperToString extends AbstractConverter<StringUtil.StringWrapper, String> {
+        public StringWrapperToString() {
+            super(StringUtil.StringWrapper.class, String.class);
+        }
+
+        @Override
+        public String convert(StringUtil.StringWrapper obj) {
+            return obj.toString();
         }
     }
 
@@ -305,6 +335,7 @@ public class MiscConverters implements ConverterLoader {
             super(UUID.class, String.class);
         }
 
+        @Override
         public String convert(UUID obj) throws ConversionException {
             return obj.toString();
         }
@@ -315,6 +346,7 @@ public class MiscConverters implements ConverterLoader {
             super(String.class, UUID.class);
         }
 
+        @Override
         public UUID convert(String obj) throws ConversionException {
             return UUID.fromString(obj);
         }
@@ -325,6 +357,7 @@ public class MiscConverters implements ConverterLoader {
             super(Pattern.class, String.class);
         }
 
+        @Override
         public String convert(Pattern obj) throws ConversionException {
             return obj.toString();
         }
@@ -335,6 +368,7 @@ public class MiscConverters implements ConverterLoader {
             super(String.class, Pattern.class);
         }
 
+        @Override
         public Pattern convert(String obj) throws ConversionException {
             return Pattern.compile(obj);
         }
@@ -351,6 +385,7 @@ public class MiscConverters implements ConverterLoader {
         }
     }
 
+    @Override
     public void loadConverters() {
         Converters.loadContainedConverters(MiscConverters.class);
     }

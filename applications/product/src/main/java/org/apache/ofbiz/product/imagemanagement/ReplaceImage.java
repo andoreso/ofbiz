@@ -20,6 +20,7 @@ package org.apache.ofbiz.product.imagemanagement;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -32,13 +33,13 @@ import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.base.util.string.FlexibleStringExpander;
 import org.apache.ofbiz.entity.Delegator;
-import org.apache.ofbiz.entity.GenericValue;
 import org.apache.ofbiz.entity.GenericEntityException;
+import org.apache.ofbiz.entity.GenericValue;
 import org.apache.ofbiz.entity.util.EntityQuery;
 import org.apache.ofbiz.entity.util.EntityUtilProperties;
 import org.apache.ofbiz.service.DispatchContext;
-import org.apache.ofbiz.service.LocalDispatcher;
 import org.apache.ofbiz.service.GenericServiceException;
+import org.apache.ofbiz.service.LocalDispatcher;
 import org.apache.ofbiz.service.ServiceUtil;
 
 public class ReplaceImage{
@@ -58,7 +59,7 @@ public class ReplaceImage{
         String contentIdReplace = (String) context.get("contentIdReplace");
         String dataResourceNameExist = (String) context.get("dataResourceNameExist");
         String dataResourceNameReplace = (String) context.get("dataResourceNameReplace");
-        
+
         if (UtilValidate.isNotEmpty(dataResourceNameExist)) {
             if (UtilValidate.isNotEmpty(contentIdReplace)) {
                 if (contentIdExist.equals(contentIdReplace)) {
@@ -68,7 +69,7 @@ public class ReplaceImage{
                 }
             }
             else{
-            	 String errMsg = UtilProperties.getMessage(resourceError, "ProductPleaseChooseImageToReplace", locale);
+                 String errMsg = UtilProperties.getMessage(resourceError, "ProductPleaseChooseImageToReplace", locale);
                 Debug.logError(errMsg, module);
                 return ServiceUtil.returnError(errMsg);
             }
@@ -78,22 +79,22 @@ public class ReplaceImage{
             Debug.logError(errMsg, module);
             return ServiceUtil.returnError(errMsg);
         }
-        
+
         try {
             BufferedImage bufImg = ImageIO.read(new File(imageServerPath + "/" + productId + "/" + dataResourceNameReplace));
             ImageIO.write(bufImg, "jpg", new File(imageServerPath + "/" + productId + "/" + dataResourceNameExist));
-            
+
             List<GenericValue> contentAssocReplaceList = EntityQuery.use(delegator).from("ContentAssoc").where("contentId", contentIdReplace, "contentAssocTypeId", "IMAGE_THUMBNAIL").queryList();
             if (contentAssocReplaceList.size() > 0) {
                 for (int i = 0; i < contentAssocReplaceList.size(); i++) {
                     GenericValue contentAssocReplace = contentAssocReplaceList.get(i);
-                    
+
                     GenericValue dataResourceAssocReplace = EntityQuery.use(delegator).from("ContentDataResourceView").where("contentId", contentAssocReplace.get("contentIdTo")).queryFirst();
-                    
+
                     GenericValue contentAssocExist = EntityQuery.use(delegator).from("ContentAssoc").where("contentId", contentIdExist, "contentAssocTypeId", "IMAGE_THUMBNAIL", "mapKey", contentAssocReplace.get("mapKey")).queryFirst();
-                    
+
                     GenericValue dataResourceAssocExist = EntityQuery.use(delegator).from("ContentDataResourceView").where("contentId", contentAssocExist.get("contentIdTo")).queryFirst();
-                    
+
                     if (UtilValidate.isNotEmpty(dataResourceAssocExist)) {
                         BufferedImage bufImgAssocReplace = ImageIO.read(new File(imageServerPath + "/" + productId + "/" + dataResourceAssocReplace.get("drDataResourceName")));
                         ImageIO.write(bufImgAssocReplace, "jpg", new File(imageServerPath + "/" + productId + "/" + dataResourceAssocExist.get("drDataResourceName")));
@@ -104,29 +105,24 @@ public class ReplaceImage{
                     }
                 }
             }
-            
+
             GenericValue productContent = EntityQuery.use(delegator).from("ProductContent").where("productId", productId, "contentId", contentIdReplace, "productContentTypeId", "IMAGE").queryFirst();
-            
+
             if (productContent != null) {
-                Map<String, Object> productContentCtx = new HashMap<String, Object>();
+                Map<String, Object> productContentCtx = new HashMap<>();
                 productContentCtx.put("productId", productId);
                 productContentCtx.put("contentId", contentIdReplace);
                 productContentCtx.put("productContentTypeId", "IMAGE");
                 productContentCtx.put("fromDate", productContent.get("fromDate"));
                 productContentCtx.put("userLogin", userLogin);
-                dispatcher.runSync("removeProductContentAndImageFile", productContentCtx);
+                Map<String, Object> serviceResult = dispatcher.runSync("removeProductContentAndImageFile", productContentCtx);
+                if (ServiceUtil.isError(serviceResult)) {
+                    return ServiceUtil.returnError(ServiceUtil.getErrorMessage(serviceResult));
+                }
             }
-        } catch (GenericEntityException gee) {
+        } catch (IOException | IllegalArgumentException | GenericEntityException | GenericServiceException e) {
             String errMsg = UtilProperties.getMessage(resourceError, "ProductCannotReplaceImage", locale);
-            Debug.logError(errMsg, module);
-            return ServiceUtil.returnError(errMsg);
-        } catch (GenericServiceException gse) {
-            String errMsg = UtilProperties.getMessage(resourceError, "ProductCannotReplaceImage", locale);
-            Debug.logError(errMsg, module);
-            return ServiceUtil.returnError(errMsg);
-        } catch (Exception gse) {
-            String errMsg = UtilProperties.getMessage(resourceError, "ProductCannotReplaceImage", locale);
-            Debug.logError(errMsg, module);
+            Debug.logError(e, errMsg, module);
             return ServiceUtil.returnError(errMsg);
         }
         String successMsg = UtilProperties.getMessage(resource, "ProductReplaceImageSuccessfully", locale);

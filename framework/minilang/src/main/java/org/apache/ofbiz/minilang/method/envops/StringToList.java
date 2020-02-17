@@ -37,7 +37,7 @@ import org.w3c.dom.Element;
 /**
  * Implements the &lt;string-to-list&gt; element.
  * 
- * @see <a href="https://cwiki.apache.org/confluence/display/OFBADMIN/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Referenc</a>
+ * @see <a href="https://cwiki.apache.org/confluence/display/OFBIZ/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Referenc</a>
  */
 public final class StringToList extends MethodOperation {
 
@@ -80,7 +80,7 @@ public final class StringToList extends MethodOperation {
         }
         List<Object> toList = listFma.get(methodContext.getEnvMap());
         if (toList == null) {
-            toList = new LinkedList<Object>();
+            toList = new LinkedList<>();
             listFma.put(methodContext.getEnvMap(), toList);
         }
         toList.add(value);

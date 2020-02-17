@@ -21,14 +21,12 @@ package org.apache.ofbiz.widget;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.util.Map;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.UtilCodec;
 import org.apache.ofbiz.base.util.UtilGenerics;
@@ -42,6 +40,7 @@ import org.apache.ofbiz.webapp.control.WebAppConfigurationException;
 import org.apache.ofbiz.webapp.taglib.ContentUrlTag;
 import org.apache.ofbiz.widget.model.ModelForm;
 import org.apache.ofbiz.widget.model.ModelFormField;
+import org.jsoup.parser.Parser;
 
 public final class WidgetWorker {
 
@@ -54,7 +53,7 @@ public final class WidgetWorker {
         // We may get an encoded request like: &#47;projectmgr&#47;control&#47;EditTaskContents&#63;workEffortId&#61;10003
         // Try to reducing a possibly encoded string down to its simplest form: /projectmgr/control/EditTaskContents?workEffortId=10003
         // This step make sure the following appending externalLoginKey operation to work correctly
-        String localRequestName = StringEscapeUtils.unescapeHtml(target);
+        String localRequestName = Parser.unescapeEntities(target, true);
         localRequestName = UtilHttp.encodeAmpersands(localRequestName);
 
         Appendable localWriter = new StringWriter();
@@ -85,8 +84,6 @@ public final class WidgetWorker {
             }
         } else if ("content".equals(targetType)) {
             appendContentUrl(localWriter, localRequestName, request);
-        } else if ("plain".equals(targetType)) {
-            localWriter.append(localRequestName);
         } else {
             localWriter.append(localRequestName);
         }
@@ -101,25 +98,7 @@ public final class WidgetWorker {
             }
 
             for (Map.Entry<String, String> parameter: parameterMap.entrySet()) {
-                String parameterValue = null;
-                if (parameter.getValue() instanceof String) {
-                    parameterValue = parameter.getValue();
-                } else {
-                    Object parameterObject = parameter.getValue();
-
-                    // skip null values
-                    if (parameterObject == null) continue;
-
-                    if (parameterObject instanceof String[]) {
-                        // it's probably a String[], just get the first value
-                        String[] parameterArray = (String[]) parameterObject;
-                        parameterValue = parameterArray[0];
-                        Debug.logInfo("Found String array value for parameter [" + parameter.getKey() + "], using first value: " + parameterValue, module);
-                    } else {
-                        // not a String, and not a String[], just use toString
-                        parameterValue = parameterObject.toString();
-                    }
-                }
+                String parameterValue = parameter.getValue();
 
                 if (needsAmp) {
                     externalWriter.append("&amp;");
@@ -130,7 +109,7 @@ public final class WidgetWorker {
                 externalWriter.append('=');
                 UtilCodec.SimpleEncoder simpleEncoder = (UtilCodec.SimpleEncoder) context.get("simpleEncoder");
                 if (simpleEncoder != null && parameterValue != null) {
-                    externalWriter.append(simpleEncoder.encode(URLEncoder.encode(parameterValue, Charset.forName("UTF-8").displayName())));
+                    externalWriter.append(simpleEncoder.encode(URLEncoder.encode(parameterValue, "UTF-8")));
                 } else {
                     externalWriter.append(parameterValue);
                 }
@@ -149,17 +128,19 @@ public final class WidgetWorker {
     public static void makeHyperlinkByType(Appendable writer, String linkType, String linkStyle, String targetType, String target,
             Map<String, String> parameterMap, String description, String targetWindow, String confirmation, ModelFormField modelFormField,
             HttpServletRequest request, HttpServletResponse response, Map<String, Object> context) throws IOException {
+        if (modelFormField == null) {
+            throw new IllegalArgumentException("modelFormField in WidgetWorker.makeHyperlinkByType has turned out to be null");
+        }
         String realLinkType = WidgetWorker.determineAutoLinkType(linkType, target, targetType, request);
         if ("hidden-form".equals(realLinkType)) {
-            if (modelFormField != null && "multi".equals(modelFormField.getModelForm().getType())) {
+            if ("multi".equals(modelFormField.getModelForm().getType())) {
                 WidgetWorker.makeHiddenFormLinkAnchor(writer, linkStyle, description, confirmation, modelFormField, request, response, context);
 
                 // this is a bit trickier, since we can't do a nested form we'll have to put the link to submit the form in place, but put the actual form def elsewhere, ie after the big form is closed
-                Map<String, Object> wholeFormContext = UtilGenerics.checkMap(context.get("wholeFormContext"));
+                Map<String, Object> wholeFormContext = UtilGenerics.cast(context.get("wholeFormContext"));
                 Appendable postMultiFormWriter = wholeFormContext != null ? (Appendable) wholeFormContext.get("postMultiFormWriter") : null;
                 if (postMultiFormWriter == null) {
                     postMultiFormWriter = new StringWriter();
-                    wholeFormContext.put("postMultiFormWriter", postMultiFormWriter);
                 }
                 WidgetWorker.makeHiddenFormLinkForm(postMultiFormWriter, target, targetType, targetWindow, parameterMap, modelFormField, request, response, context);
             } else {
@@ -309,10 +290,9 @@ public final class WidgetWorker {
             formUniqueId = (String) context.get("formUniqueId");
         }
         if (itemIndex != null) {
-            return formName + modelForm.getItemIndexSeparator() + itemIndex.intValue() + iterateId + formUniqueId + modelForm.getItemIndexSeparator() + modelFormField.getName();
-        } else {
-            return formName + modelForm.getItemIndexSeparator() + modelFormField.getName();
+            return formName + modelForm.getItemIndexSeparator() + itemIndex + iterateId + formUniqueId + modelForm.getItemIndexSeparator() + modelFormField.getName();
         }
+        return formName + modelForm.getItemIndexSeparator() + modelFormField.getName();
     }
     public static String determineAutoLinkType(String linkType, String target, String targetType, HttpServletRequest request) {
         if ("auto".equals(linkType)) {
@@ -328,15 +308,11 @@ public final class WidgetWorker {
                 }
                 if (requestMap != null && requestMap.event != null) {
                     return "hidden-form";
-                } else {
-                    return "anchor";
                 }
-            } else {
-                return "anchor";
             }
-        } else {
-            return linkType;
+            return "anchor";
         }
+        return linkType;
     }
 
     /** Returns the script location based on a script combined name:
@@ -346,7 +322,7 @@ public final class WidgetWorker {
      * @return The script location
      */
     public static String getScriptLocation(String combinedName) {
-        int pos = combinedName.lastIndexOf("#");
+        int pos = combinedName.lastIndexOf('#');
         if (pos == -1) {
             return combinedName;
         }
@@ -361,7 +337,7 @@ public final class WidgetWorker {
      * @return The method name or <code>null</code>
      */
     public static String getScriptMethodName(String combinedName) {
-        int pos = combinedName.lastIndexOf("#");
+        int pos = combinedName.lastIndexOf('#');
         if (pos == -1) {
             return null;
         }
@@ -373,20 +349,20 @@ public final class WidgetWorker {
         if (context != null) {
             Integer paginateNumberInt= (Integer)context.get("PAGINATOR_NUMBER");
             if (paginateNumberInt == null) {
-                paginateNumberInt = Integer.valueOf(0);
+                paginateNumberInt = 0;
                 context.put("PAGINATOR_NUMBER", paginateNumberInt);
-                Map<String, Object> globalCtx = UtilGenerics.checkMap(context.get("globalContext"));
+                Map<String, Object> globalCtx = UtilGenerics.cast(context.get("globalContext"));
                 if (globalCtx != null) {
                     globalCtx.put("PAGINATOR_NUMBER", paginateNumberInt);
                 }
             }
-            paginator_number = paginateNumberInt.intValue();
+            paginator_number = paginateNumberInt;
         }
         return paginator_number;
     }
 
     public static void incrementPaginatorNumber(Map<String, Object> context) {
-        Map<String, Object> globalCtx = UtilGenerics.checkMap(context.get("globalContext"));
+        Map<String, Object> globalCtx = UtilGenerics.cast(context.get("globalContext"));
         if (globalCtx != null) {
             Boolean NO_PAGINATOR = (Boolean) globalCtx.get("NO_PAGINATOR");
             if (UtilValidate.isNotEmpty(NO_PAGINATOR)) {
@@ -394,9 +370,9 @@ public final class WidgetWorker {
             } else {
                 Integer paginateNumberInt= (Integer)globalCtx.get("PAGINATOR_NUMBER");
                 if (paginateNumberInt == null) {
-                    paginateNumberInt = Integer.valueOf(0);
+                    paginateNumberInt = 0;
                 }
-                paginateNumberInt = Integer.valueOf(paginateNumberInt.intValue() + 1);
+                paginateNumberInt = paginateNumberInt + 1;
                 globalCtx.put("PAGINATOR_NUMBER", paginateNumberInt);
                 context.put("PAGINATOR_NUMBER", paginateNumberInt);
             }

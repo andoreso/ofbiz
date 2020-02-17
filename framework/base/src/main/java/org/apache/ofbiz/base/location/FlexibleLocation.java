@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 
+import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.UtilValidate;
 
@@ -35,10 +36,11 @@ import org.apache.ofbiz.base.util.UtilValidate;
  */
 public final class FlexibleLocation {
 
+    public static final String module = FlexibleLocation.class.getName();
     private static final Map<String, LocationResolver> locationResolvers;
 
     static {
-        Map<String, LocationResolver> resolverMap = new HashMap<String, LocationResolver>(8);
+        Map<String, LocationResolver> resolverMap = new HashMap<>(8);
         LocationResolver standardUrlResolver = new StandardUrlLocationResolver();
         resolverMap.put("http", standardUrlResolver);
         resolverMap.put("https", standardUrlResolver);
@@ -60,11 +62,11 @@ public final class FlexibleLocation {
                     String locationType = (String) entry.getKey();
                     String locationResolverName = (String) entry.getValue();
                     Class<?> lClass = classLoader.loadClass(locationResolverName);
-                    resolverMap.put(locationType, (LocationResolver) lClass.newInstance());
+                    resolverMap.put(locationType, (LocationResolver) lClass.getDeclaredConstructor().newInstance());
                 }
             }
         } catch (Throwable e) {
-            System.out.println("Exception thrown while loading locationresolvers.properties: " + e);
+            Debug.logError(e, "Exception thrown while loading locationresolvers.properties", module);
         }
         locationResolvers = Collections.unmodifiableMap(resolverMap);
     }

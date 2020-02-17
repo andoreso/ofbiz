@@ -39,7 +39,7 @@ import org.w3c.dom.Element;
 /**
  * Implements the &lt;entity-data&gt; element.
  * 
- * @see <a href="https://cwiki.apache.org/confluence/display/OFBADMIN/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
+ * @see <a href="https://cwiki.apache.org/confluence/display/OFBIZ/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
  */
 public final class EntityData extends EntityOperation {
 
@@ -81,7 +81,7 @@ public final class EntityData extends EntityOperation {
     public boolean exec(MethodContext methodContext) throws MiniLangException {
         List<Object> messages = errorListFma.get(methodContext.getEnvMap());
         if (messages == null) {
-            messages = new LinkedList<Object>();
+            messages = new LinkedList<>();
             errorListFma.put(methodContext.getEnvMap(), messages);
         }
         String location = this.locationFse.expandString(methodContext.getEnvMap());

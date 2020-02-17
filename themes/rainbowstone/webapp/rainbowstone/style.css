@@ -101,7 +101,7 @@ body, textarea, input, select {
 
 /*
 html {
-background-image: url(images/tile.gif);
+background-image: url(/images/tile.gif);
 }
 */
 
@@ -651,6 +651,29 @@ text-decoration: underline;
     color: #ccc;
 }
 
+/* ---------------------- */
+/*      Table Styles      */
+/* ---------------------- */
+
+.basic-table {
+    margin-bottom: 1em;
+    width: 100%;
+}
+
+.basic-table tr td {
+    /* Style for all cells */
+    padding: 0.8em 0.1em;
+    vertical-align: middle;
+}
+
+.basic-table tr .align-bottom {
+    vertical-align: bottom;
+}
+
+.basic-table .selected {
+    background: #FFFCCF;
+}
+
 /* ------------------------------------- */
 /*      Table decorator - Hover bar      */
 /* ------------------------------------- */
@@ -868,6 +891,7 @@ text-decoration: underline;
     margin-top: 0.3em;
     width: 16px; /* Setting must be in px */
     height: 16px; /* Setting must be in px */
+    cursor: pointer;
 }
 
 /* --------------------------- */
@@ -886,6 +910,8 @@ text-decoration: underline;
     background: url(/images/expand.gif) no-repeat left center;
     min-height: 1.1em;
     min-width: 1.1em;
+    cursor: pointer;
+    padding-left: 10px;
 }
 
 .fieldgroup-title-bar ul .expanded,
@@ -893,13 +919,8 @@ text-decoration: underline;
     background: url(/images/collapse.gif) no-repeat left center;
     min-height: 1.1em;
     min-width: 1.1em;
-}
-
-.fieldgroup-title-bar a {
     cursor: pointer;
-    text-decoration: none;
-    padding-left: 10px; /* Setting must be in px */
-    color: #000000;
+    padding-left: 10px;
 }
 
 /* ----------------------------------------- */
@@ -1881,3 +1902,17 @@ html > /**/ body .jstree-default a {
 }
 
 /*end addon modification generic-portlet*/
+
+
+/*The Custom css for SELECT 2*/
+.select2-container--default .select2-selection--multiple{
+    -webkit-border-radius: 0px;
+    -moz-border-radius: 0px;
+    border-radius: 0px;
+    border-color: #848484 #c1c1c1 #e1e1e1;
+    min-height: unset !important;
+}
+/* The custom CSS to show mouse pointer on links using featherlight plugin  */
+a[data-featherlight] {
+    cursor: pointer;
+}

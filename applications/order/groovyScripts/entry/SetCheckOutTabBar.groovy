@@ -17,8 +17,6 @@
  * under the License.
  */
 
-import java.util.ArrayList
-import org.apache.ofbiz.base.util.UtilMisc
 import org.apache.ofbiz.order.shoppingcart.ShoppingCartEvents
 
 checkoutSteps = []
@@ -51,7 +49,7 @@ isLastStep = "N"
 enabled = "Y"
 checkoutSteps.eachWithIndex { checkoutStep, i ->
     checkoutStep.put("enabled", enabled)
-    if (enabled.equals("Y")) {
+    if ("Y".equals(enabled)) {
         if (i == (checkoutSteps.size() - 1)) {
             isLastStep = "Y"
         }

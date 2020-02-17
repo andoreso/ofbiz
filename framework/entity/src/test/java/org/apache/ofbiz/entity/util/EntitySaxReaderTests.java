@@ -1,4 +1,4 @@
-/*******************************************************************************
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,18 +15,39 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *******************************************************************************/
+ */
 package org.apache.ofbiz.entity.util;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.entity.Delegator;
 import org.apache.ofbiz.entity.GenericValue;
 import org.apache.ofbiz.entity.model.ModelEntity;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
-
 public class EntitySaxReaderTests {
+    private boolean logVerboseOn;
+
+    @Before
+    public void initialize() {
+        logVerboseOn = Debug.isOn(Debug.VERBOSE); // save the current setting (to be restored after the tests)
+        // disable verbose logging: this is necessary to avoid a test error in the "parse" unit test
+        Debug.set(Debug.VERBOSE, false);
+    }
+
+    @After
+    public void restore() {
+        Debug.set(Debug.VERBOSE, logVerboseOn); // restore the verbose log setting
+    }
+
+
     @Test
     public void constructorWithDefaultTimeout() {
         Delegator delegator = mock(Delegator.class);

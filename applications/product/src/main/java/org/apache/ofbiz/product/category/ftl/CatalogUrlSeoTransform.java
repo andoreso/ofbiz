@@ -25,16 +25,13 @@ import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.oro.text.regex.MalformedPatternException;
-import org.apache.oro.text.regex.Pattern;
-import org.apache.oro.text.regex.Perl5Compiler;
-import org.apache.oro.text.regex.Perl5Matcher;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.StringUtil;
 import org.apache.ofbiz.base.util.StringUtil.StringWrapper;
@@ -53,6 +50,10 @@ import org.apache.ofbiz.product.category.CategoryWorker;
 import org.apache.ofbiz.product.category.SeoConfigUtil;
 import org.apache.ofbiz.product.category.SeoUrlUtil;
 import org.apache.ofbiz.product.product.ProductContentWrapper;
+import org.apache.oro.text.regex.MalformedPatternException;
+import org.apache.oro.text.regex.Pattern;
+import org.apache.oro.text.regex.Perl5Compiler;
+import org.apache.oro.text.regex.Perl5Matcher;
 
 import freemarker.core.Environment;
 import freemarker.ext.beans.BeanModel;
@@ -60,10 +61,11 @@ import freemarker.ext.beans.StringModel;
 import freemarker.template.SimpleScalar;
 import freemarker.template.TemplateModelException;
 import freemarker.template.TemplateTransformModel;
+import org.apache.ofbiz.entity.util.EntityQuery;
 
 public class CatalogUrlSeoTransform implements TemplateTransformModel {
     public final static String module = CatalogUrlSeoTransform.class.getName();
-    
+
     private static Map<String, String> categoryNameIdMap = null;
     private static Map<String, String> categoryIdNameMap = null;
     private static boolean categoryMapInitialed = false;
@@ -82,8 +84,8 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
             Debug.logWarning(e1, module);
         }
     }
-    
-    public String getStringArg(Map args, String key) {
+
+    public String getStringArg(Map<?, ?> args, String key) {
         Object o = args.get(key);
         if (o instanceof SimpleScalar) {
             return ((SimpleScalar) o).getAsString();
@@ -94,22 +96,22 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
     }
 
     @Override
-    public Writer getWriter(final Writer out, final Map args)
+    public Writer getWriter(Writer out, @SuppressWarnings("rawtypes") Map args)
             throws TemplateModelException, IOException {
         final StringBuilder buf = new StringBuilder();
-        
+
         return new Writer(out) {
-            
+
             @Override
             public void write(char[] cbuf, int off, int len) throws IOException {
                 buf.append(cbuf, off, len);
             }
-            
+
             @Override
             public void flush() throws IOException {
                 out.flush();
             }
-            
+
             @Override
             public void close() throws IOException {
                 try {
@@ -120,7 +122,7 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
                         String currentCategoryId = getStringArg(args, "currentCategoryId");
                         String previousCategoryId = getStringArg(args, "previousCategoryId");
                         HttpServletRequest request = (HttpServletRequest) req.getWrappedObject();
-                        
+
                         if (!isCategoryMapInitialed()) {
                             initCategoryMap(request);
                         }
@@ -143,51 +145,51 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
             }
         };
     }
-    
+
     /**
      * Check whether the category map is initialed.
-     * 
+     *
      * @return a boolean value to indicate whether the category map has been initialized.
      */
     public static boolean isCategoryMapInitialed() {
         return categoryMapInitialed;
     }
-    
+
     /**
      * Get the category name/id map.
-     * 
+     *
      * @return the category name/id map
      */
     public static Map<String, String> getCategoryNameIdMap() {
         return categoryNameIdMap;
     }
-    
+
     /**
      * Get the category id/name map.
-     * 
+     *
      * @return the category id/name map
      */
     public static Map<String, String> getCategoryIdNameMap() {
         return categoryIdNameMap;
     }
-    
+
     /**
      * Initial category-name/category-id map.
      * Note: as a key, the category-name should be:
      *         1. ascii
      *         2. lower cased and use hyphen between the words.
      *       If not, the category id will be used.
-     * 
+     *
      */
     public static synchronized void initCategoryMap(HttpServletRequest request) {
         Delegator delegator = (Delegator) request.getAttribute("delegator");
         initCategoryMap(request, delegator);
     }
-    
+
     public static synchronized void initCategoryMap(HttpServletRequest request, Delegator delegator) {
         if (SeoConfigUtil.checkCategoryUrl()) {
-            categoryNameIdMap = new Hashtable<String, String>();
-            categoryIdNameMap = new Hashtable<String, String>();
+            categoryNameIdMap = new Hashtable<>();
+            categoryIdNameMap = new Hashtable<>();
             Perl5Matcher matcher = new Perl5Matcher();
 
             try {
@@ -207,7 +209,7 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
                             categoryNameId = categoryIdName;
                         }
                     } else {
-                        GenericValue productCategory = delegator.findOne("ProductCategory", UtilMisc.toMap("productCategoryId", categoryId), true);
+                        GenericValue productCategory = EntityQuery.use(delegator).from("ProductCategory").where("productCategoryId", categoryId).cache().queryOne();
                         CategoryContentWrapper wrapper = new CategoryContentWrapper(productCategory, request);
                         StringWrapper alternativeUrl = wrapper.get("ALTERNATIVE_URL", "url");
                         if (UtilValidate.isNotEmpty(alternativeUrl) && UtilValidate.isNotEmpty(alternativeUrl.toString())) {
@@ -237,7 +239,7 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
 
     /**
      * Make product url according to the configurations.
-     * 
+     *
      * @return String a catalog url
      */
     public static String makeProductUrl(HttpServletRequest request, String productId, String currentCategoryId, String previousCategoryId) {
@@ -255,7 +257,7 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
         }
         if (UtilValidate.isNotEmpty(productId)) {
             try {
-                product = delegator.findOne("Product", UtilMisc.toMap("productId", productId), true);
+                product = EntityQuery.use(delegator).from("Product").where("productId", productId).cache().queryOne();
             } catch (GenericEntityException e) {
                 Debug.logError(e, "Error looking up product info for productId [" + productId + "]: " + e.toString(), module);
             }
@@ -269,7 +271,9 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
             trail = CategoryWorker.adjustTrail(trail, currentCategoryId, previousCategoryId);
             if (!SeoConfigUtil.isCategoryUrlEnabled(contextPath)) {
                 for (String trailCategoryId: trail) {
-                    if ("TOP".equals(trailCategoryId)) continue;
+                    if ("TOP".equals(trailCategoryId)) {
+                        continue;
+                    }
                     urlBuilder.append("/");
                     urlBuilder.append(trailCategoryId);
                 }
@@ -314,17 +318,17 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
                 urlBuilder.append(productId);
             }
         }
-        
+
         if (!urlBuilder.toString().endsWith("/") && UtilValidate.isNotEmpty(SeoConfigUtil.getCategoryUrlSuffix())) {
             urlBuilder.append(SeoConfigUtil.getCategoryUrlSuffix());
         }
-        
+
         return urlBuilder.toString();
     }
 
     /**
      * Make category url according to the configurations.
-     * 
+     *
      * @return String a category url
      */
     public static String makeCategoryUrl(HttpServletRequest request, String currentCategoryId, String previousCategoryId, String viewSize, String viewIndex, String viewSort, String searchString) {
@@ -361,7 +365,7 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
         if (!urlBuilder.toString().endsWith("/") && UtilValidate.isNotEmpty(SeoConfigUtil.getCategoryUrlSuffix())) {
             urlBuilder.append(SeoConfigUtil.getCategoryUrlSuffix());
         }
-        
+
         // append view index
         if (UtilValidate.isNotEmpty(viewIndex)) {
             if (!urlBuilder.toString().endsWith("?") && !urlBuilder.toString().endsWith("&")) {
@@ -393,13 +397,13 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
         if (urlBuilder.toString().endsWith("&")) {
             return urlBuilder.toString().substring(0, urlBuilder.toString().length()-1);
         }
-        
+
         return urlBuilder.toString();
     }
 
     /**
      * Make product url according to the configurations.
-     * 
+     *
      * @return String a catalog url
      */
     public static String makeProductUrl(String contextPath, List<String> trail, String productId, String productName, String currentCategoryId, String previousCategoryId) {
@@ -418,7 +422,9 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
             trail = CategoryWorker.adjustTrail(trail, currentCategoryId, previousCategoryId);
             if (!SeoConfigUtil.isCategoryUrlEnabled(contextPath)) {
                 for (String trailCategoryId: trail) {
-                    if ("TOP".equals(trailCategoryId)) continue;
+                    if ("TOP".equals(trailCategoryId)) {
+                        continue;
+                    }
                     urlBuilder.append("/");
                     urlBuilder.append(trailCategoryId);
                 }
@@ -448,17 +454,17 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
             }
             urlBuilder.append(productId);
         }
-        
+
         if (!urlBuilder.toString().endsWith("/") && UtilValidate.isNotEmpty(SeoConfigUtil.getCategoryUrlSuffix())) {
             urlBuilder.append(SeoConfigUtil.getCategoryUrlSuffix());
         }
-        
+
         return urlBuilder.toString();
     }
 
     /**
      * Get a string lower cased and hyphen connected.
-     * 
+     *
      * @param name a String to be transformed
      * @return String nice name
      */
@@ -473,7 +479,7 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
         }
         return niceName;
     }
-    
+
     public static boolean forwardProductUri(HttpServletRequest request, HttpServletResponse response, Delegator delegator) throws ServletException, IOException {
         return forwardProductUri(request, response, delegator, null);
     }
@@ -513,7 +519,7 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
         if (pathInfo.startsWith("/" + CatalogUrlServlet.CATEGORY_REQUEST + "/")) {
             return forwardCategoryUri(request, response, delegator, controlServlet);
         }
-        
+
         String lastPathElement = pathElements.get(pathElements.size() - 1);
         String categoryId = null;
         String productId = null;
@@ -526,9 +532,10 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
                 }
             }
             if (SeoConfigUtil.isCategoryNameEnabled() || pathInfo.startsWith("/" + CatalogUrlServlet.CATEGORY_REQUEST + "/")) {
-                for (String categoryName : categoryNameIdMap.keySet()) {
+                for (Entry<String, String> entry : categoryNameIdMap.entrySet()) {
+                    String categoryName = entry.getKey();
                     if (lastPathElement.startsWith(categoryName)) {
-                        categoryId = categoryNameIdMap.get(categoryName);
+                        categoryId = entry.getValue();
                         if (!lastPathElement.equals(categoryName)) {
                             lastPathElement = lastPathElement.substring(categoryName.length() + URL_HYPHEN.length());
                         }
@@ -544,7 +551,7 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
                 List<String> urlElements = StringUtil.split(lastPathElement, URL_HYPHEN);
                 if (UtilValidate.isEmpty(urlElements)) {
                     try {
-                        if (delegator.findOne("Product", UtilMisc.toMap("productId", lastPathElement), true) != null) {
+                        if (EntityQuery.use(delegator).from("Product").where("productId", lastPathElement).cache().queryOne() != null) {
                             productId = lastPathElement;
                         }
                     } catch (GenericEntityException e) {
@@ -555,19 +562,18 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
                     String tempProductId = urlElements.get(i);
                     while (i >= 0) {
                         try {
-                            List<EntityExpr> exprs = new LinkedList<EntityExpr>();
+                            List<EntityExpr> exprs = new LinkedList<>();
                             exprs.add(EntityCondition.makeCondition("productId", EntityOperator.EQUALS, lastPathElement));
                             exprs.add(EntityCondition.makeCondition("productId", EntityOperator.EQUALS, tempProductId));
                             List<GenericValue> products = delegator.findList("Product", EntityCondition.makeCondition(exprs, EntityOperator.OR), UtilMisc.toSet("productId", "productName"), null, null, true);
-                            
+
                             if (products != null && products.size() > 0) {
                                 if (products.size() == 1) {
                                     productId = products.get(0).getString("productId");
                                     break;
-                                } else {
-                                    productId = tempProductId;
-                                    break;
                                 }
+                                productId = tempProductId;
+                                break;
                             } else if (i > 0) {
                                 tempProductId = urlElements.get(i - 1) + URL_HYPHEN + tempProductId;
                             }
@@ -637,9 +643,10 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
                     return false;
                 }
             }
-            for (String categoryName : categoryNameIdMap.keySet()) {
+            for (Entry<String, String> entry : categoryNameIdMap.entrySet()) {
+                String categoryName = entry.getKey();
                 if (lastPathElement.startsWith(categoryName)) {
-                    categoryId = categoryNameIdMap.get(categoryName);
+                    categoryId = entry.getValue();
                     break;
                 }
             }
@@ -665,7 +672,7 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
 
     /**
      * This is used when building product url in services.
-     * 
+     *
      * @param delegator
      * @param wrapper
      * @param prefix
@@ -685,7 +692,7 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
         }
         if (UtilValidate.isNotEmpty(productId)) {
             try {
-                product = delegator.findOne("Product", UtilMisc.toMap("productId", productId), true);
+                product = EntityQuery.use(delegator).from("Product").where("productId", productId).cache().queryOne();
             } catch (GenericEntityException e) {
                 Debug.logError(e, "Error looking up product info for productId [" + productId + "]: " + e.toString(), module);
             }
@@ -696,10 +703,12 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
 
         if (UtilValidate.isNotEmpty(currentCategoryId)) {
             List<String> trail = null;
-            trail = CategoryWorker.adjustTrail(trail, currentCategoryId, previousCategoryId);
+            trail = CategoryWorker.adjustTrail(null, currentCategoryId, previousCategoryId);
             if (!SeoConfigUtil.isCategoryUrlEnabled(contextPath)) {
                 for (String trailCategoryId: trail) {
-                    if ("TOP".equals(trailCategoryId)) continue;
+                    if ("TOP".equals(trailCategoryId)) {
+                        continue;
+                    }
                     urlBuilder.append("/");
                     urlBuilder.append(trailCategoryId);
                 }
@@ -743,17 +752,17 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
                 urlBuilder.append(productId);
             }
         }
-        
+
         if (!urlBuilder.toString().endsWith("/") && UtilValidate.isNotEmpty(SeoConfigUtil.getCategoryUrlSuffix())) {
             urlBuilder.append(SeoConfigUtil.getCategoryUrlSuffix());
         }
-        
+
         return urlBuilder.toString();
     }
 
     /**
      * This is used when building category url in services.
-     * 
+     *
      * @param delegator
      * @param wrapper
      * @param prefix
@@ -778,7 +787,7 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
 
         if (UtilValidate.isNotEmpty(currentCategoryId)) {
             List<String> trail = null;
-            trail = CategoryWorker.adjustTrail(trail, currentCategoryId, previousCategoryId);
+            trail = CategoryWorker.adjustTrail(null, currentCategoryId, previousCategoryId);
             if (trail != null && trail.size() > 1) {
                 String lastCategoryId = trail.get(trail.size() - 1);
                 if (!"TOP".equals(lastCategoryId)) {
@@ -797,7 +806,7 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
         if (!urlBuilder.toString().endsWith("/") && UtilValidate.isNotEmpty(SeoConfigUtil.getCategoryUrlSuffix())) {
             urlBuilder.append(SeoConfigUtil.getCategoryUrlSuffix());
         }
-        
+
         // append view index
         if (UtilValidate.isNotEmpty(viewIndex)) {
             if (!urlBuilder.toString().endsWith("?") && !urlBuilder.toString().endsWith("&")) {
@@ -829,7 +838,7 @@ public class CatalogUrlSeoTransform implements TemplateTransformModel {
         if (urlBuilder.toString().endsWith("&")) {
             return urlBuilder.toString().substring(0, urlBuilder.toString().length()-1);
         }
-        
+
         return urlBuilder.toString();
     }
 }

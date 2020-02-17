@@ -76,6 +76,7 @@ import org.apache.ofbiz.entity.model.ModelReader;
 import org.apache.ofbiz.entity.model.ModelRelation;
 import org.apache.ofbiz.entity.model.ModelUtil;
 import org.apache.ofbiz.entity.model.ModelViewEntity;
+import org.apache.ofbiz.entity.transaction.GenericTransactionException;
 import org.apache.ofbiz.entity.transaction.TransactionUtil;
 import org.apache.ofbiz.entity.util.EntityDataAssert;
 import org.apache.ofbiz.entity.util.EntityDataLoader;
@@ -85,8 +86,8 @@ import org.apache.ofbiz.entity.util.EntitySaxReader;
 import org.apache.ofbiz.entityext.EntityGroupUtil;
 import org.apache.ofbiz.security.Security;
 import org.apache.ofbiz.service.DispatchContext;
-import org.apache.ofbiz.service.LocalDispatcher;
 import org.apache.ofbiz.service.GenericServiceException;
+import org.apache.ofbiz.service.LocalDispatcher;
 import org.apache.ofbiz.service.ServiceUtil;
 import org.apache.ofbiz.webtools.artifactinfo.ArtifactInfoFactory;
 import org.apache.ofbiz.webtools.artifactinfo.ServiceArtifactInfo;
@@ -107,21 +108,21 @@ public class WebToolsServices {
         GenericValue userLogin = (GenericValue) context.get("userLogin");
         LocalDispatcher dispatcher = dctx.getDispatcher();
         Locale locale = (Locale) context.get("locale");
-        List<String> messages = new LinkedList<String>();
+        List<String> messages = new LinkedList<>();
 
         String filename = (String)context.get("filename");
         String fmfilename = (String)context.get("fmfilename");
         String fulltext = (String)context.get("fulltext");
         boolean isUrl = (String)context.get("isUrl") != null;
-        String mostlyInserts = (String)context.get("mostlyInserts");
+        String onlyInserts = (String)context.get("onlyInserts");
         String maintainTimeStamps = (String)context.get("maintainTimeStamps");
         String createDummyFks = (String)context.get("createDummyFks");
         String checkDataOnly = (String) context.get("checkDataOnly");
-        Map<String, Object> placeholderValues = UtilGenerics.checkMap(context.get("placeholderValues"));
+        Map<String, Object> placeholderValues = UtilGenerics.cast(context.get("placeholderValues"));
 
         Integer txTimeout = (Integer)context.get("txTimeout");
         if (txTimeout == null) {
-            txTimeout = Integer.valueOf(7200);
+            txTimeout = 7200;
         }
         URL url = null;
 
@@ -175,7 +176,7 @@ public class WebToolsServices {
         // #############################
         if (fulltext != null || url != null) {
             try {
-                Map<String, Object> inputMap = UtilMisc.toMap("mostlyInserts", mostlyInserts,
+                Map<String, Object> inputMap = UtilMisc.toMap("onlyInserts", onlyInserts,
                                               "createDummyFks", createDummyFks,
                                               "checkDataOnly", checkDataOnly,
                                               "maintainTimeStamps", maintainTimeStamps,
@@ -212,33 +213,33 @@ public class WebToolsServices {
         GenericValue userLogin = (GenericValue) context.get("userLogin");
         LocalDispatcher dispatcher = dctx.getDispatcher();
         Locale locale = (Locale) context.get("locale");
-        List<String> messages = new LinkedList<String>();
+        List<String> messages = new LinkedList<>();
 
         String path = (String) context.get("path");
-        String mostlyInserts = (String) context.get("mostlyInserts");
+        String onlyInserts = (String) context.get("onlyInserts");
         String maintainTimeStamps = (String) context.get("maintainTimeStamps");
         String createDummyFks = (String) context.get("createDummyFks");
         boolean deleteFiles = (String) context.get("deleteFiles") != null;
         String checkDataOnly = (String) context.get("checkDataOnly");
-        Map<String, Object> placeholderValues = UtilGenerics.checkMap(context.get("placeholderValues"));
+        Map<String, Object> placeholderValues = UtilGenerics.cast(context.get("placeholderValues"));
 
         Integer txTimeout = (Integer)context.get("txTimeout");
         Long filePause = (Long)context.get("filePause");
 
         if (txTimeout == null) {
-            txTimeout = Integer.valueOf(7200);
+            txTimeout = 7200;
         }
         if (filePause == null) {
-            filePause = Long.valueOf(0);
+            filePause = 0L;
         }
 
         if (UtilValidate.isNotEmpty(path)) {
-            long pauseLong = filePause != null ? filePause.longValue() : 0;
+            long pauseLong = filePause;
             File baseDir = new File(path);
 
             if (baseDir.isDirectory() && baseDir.canRead()) {
                 File[] fileArray = baseDir.listFiles();
-                List<File> files = new LinkedList<File>();
+                List<File> files = new LinkedList<>();
                 for (File file: fileArray) {
                     if (file.getName().toUpperCase().endsWith("XML")) {
                         files.add(file);
@@ -248,13 +249,13 @@ public class WebToolsServices {
                 int passes=0;
                 int initialListSize = files.size();
                 int lastUnprocessedFilesCount = 0;
-                List<File> unprocessedFiles = new LinkedList<File>();
+                List<File> unprocessedFiles = new LinkedList<>();
                 while (files.size()>0 &&
                         files.size() != lastUnprocessedFilesCount) {
                     lastUnprocessedFilesCount = files.size();
-                    unprocessedFiles = new LinkedList<File>();
+                    unprocessedFiles = new LinkedList<>();
                     for (File f: files) {
-                        Map<String, Object> parseEntityXmlFileArgs = UtilMisc.toMap("mostlyInserts", mostlyInserts,
+                        Map<String, Object> parseEntityXmlFileArgs = UtilMisc.toMap("onlyInserts", onlyInserts,
                                 "createDummyFks", createDummyFks,
                                 "checkDataOnly", checkDataOnly,
                                 "maintainTimeStamps", maintainTimeStamps,
@@ -317,19 +318,19 @@ public class WebToolsServices {
         String overrideGroup = (String) context.get("overrideGroup");
         boolean useDummyFks = "true".equals(context.get("createDummyFks"));
         boolean maintainTxs = "true".equals(context.get("maintainTimeStamps"));
-        boolean tryInserts = "true".equals(context.get("mostlyInserts"));
+        boolean tryInserts = "true".equals(context.get("onlyInserts"));
         boolean checkDataOnly = "true".equals(context.get("checkDataOnly"));
         Locale locale = (Locale) context.get("locale");
         Integer txTimeoutInt = (Integer) context.get("txTimeout");
-        int txTimeout = txTimeoutInt != null ? txTimeoutInt.intValue() : -1;
+        int txTimeout = txTimeoutInt != null ? txTimeoutInt : -1;
 
-        List<Object> messages = new LinkedList<Object>();
+        List<Object> messages = new LinkedList<>();
 
         // parse the pass in list of readers to use
         List<String> readerNames = null;
         if (UtilValidate.isNotEmpty(readers) && !"none".equalsIgnoreCase(readers)) {
             if (readers.indexOf(",") == -1) {
-                readerNames = new LinkedList<String>();
+                readerNames = new LinkedList<>();
                 readerNames.add(readers);
             } else {
                 readerNames = StringUtil.split(readers, ",");
@@ -359,7 +360,7 @@ public class WebToolsServices {
 
         // need a list if it is empty
         if (urlList == null) {
-            urlList = new LinkedList<URL>();
+            urlList = new LinkedList<>();
         }
 
         // process the list of files
@@ -367,8 +368,8 @@ public class WebToolsServices {
         changedFormat.setMinimumIntegerDigits(5);
         changedFormat.setGroupingUsed(false);
 
-        List<Object> errorMessages = new LinkedList<Object>();
-        List<String> infoMessages = new LinkedList<String>();
+        List<Object> errorMessages = new LinkedList<>();
+        List<String> infoMessages = new LinkedList<>();
         int totalRowsChanged = 0;
         if (UtilValidate.isNotEmpty(urlList)) {
             messages.add("=-=-=-=-=-=-= Doing a data " + (checkDataOnly ? "check" : "load") + " with the following files:");
@@ -431,23 +432,23 @@ public class WebToolsServices {
         if (url == null && xmltext == null) {
             return ServiceUtil.returnError(UtilProperties.getMessage(resource, "EntityImportNoXmlFileOrTextSpecified", locale));
         }
-        boolean mostlyInserts = (String) context.get("mostlyInserts") != null;
+        boolean onlyInserts = (String) context.get("onlyInserts") != null;
         boolean maintainTimeStamps = (String) context.get("maintainTimeStamps") != null;
         boolean createDummyFks = (String) context.get("createDummyFks") != null;
         boolean checkDataOnly = (String) context.get("checkDataOnly") != null;
         Integer txTimeout = (Integer) context.get("txTimeout");
-        Map<String, Object> placeholderValues = UtilGenerics.checkMap(context.get("placeholderValues"));
+        Map<String, Object> placeholderValues = UtilGenerics.cast(context.get("placeholderValues"));
 
         if (txTimeout == null) {
-            txTimeout = Integer.valueOf(7200);
+            txTimeout = 7200;
         }
 
         long rowProcessed = 0;
         try {
             EntitySaxReader reader = new EntitySaxReader(delegator);
-            reader.setUseTryInsertMethod(mostlyInserts);
+            reader.setUseTryInsertMethod(onlyInserts);
             reader.setMaintainTxStamps(maintainTimeStamps);
-            reader.setTransactionTimeout(txTimeout.intValue());
+            reader.setTransactionTimeout(txTimeout);
             reader.setCreateDummyFks(createDummyFks);
             reader.setCheckDataOnly(checkDataOnly);
             reader.setPlaceholderValues(placeholderValues);
@@ -469,10 +470,10 @@ public class WebToolsServices {
         Timestamp fromDate = (Timestamp)context.get("fromDate");
         Integer txTimeout = (Integer)context.get("txTimeout");
         if (txTimeout == null) {
-            txTimeout = Integer.valueOf(7200);
+            txTimeout = 7200;
         }
 
-        List<String> results = new LinkedList<String>();
+        List<String> results = new LinkedList<>();
 
         if (UtilValidate.isNotEmpty(outpath)) {
             File outdir = new File(outpath);
@@ -484,7 +485,7 @@ public class WebToolsServices {
                 try {
                     ModelReader reader = delegator.getModelReader();
                     Collection<String> ec = reader.getEntityNames();
-                    passedEntityNames = new TreeSet<String>(ec);
+                    passedEntityNames = new TreeSet<>(ec);
                 } catch (Exception exc) {
                     return ServiceUtil.returnError(UtilProperties.getMessage(resource, "EntityImportErrorRetrievingEntityNames", locale));
                 }
@@ -492,63 +493,53 @@ public class WebToolsServices {
 
                 for (String curEntityName: passedEntityNames) {
                     long numberWritten = 0;
-                    EntityListIterator values = null;
+                    ModelEntity me = delegator.getModelEntity(curEntityName);
+                    if (me instanceof ModelViewEntity) {
+                        results.add("["+fileNumber +"] [vvv] " + curEntityName + " skipping view entity");
+                        continue;
+                    }
+                    List<EntityCondition> conds = new LinkedList<>();
+                    if (UtilValidate.isNotEmpty(fromDate)) {
+                        conds.add(EntityCondition.makeCondition("createdStamp", EntityOperator.GREATER_THAN_EQUAL_TO, fromDate));
+                    }
+                    EntityQuery eq = EntityQuery.use(delegator).from(curEntityName).where(conds).orderBy(me.getPkFieldNames());
 
                     try {
-                        ModelEntity me = delegator.getModelEntity(curEntityName);
-                        if (me instanceof ModelViewEntity) {
-                            results.add("["+fileNumber +"] [vvv] " + curEntityName + " skipping view entity");
-                            continue;
-                        }
-
                         boolean beganTx = TransactionUtil.begin();
                         // some databases don't support cursors, or other problems may happen, so if there is an error here log it and move on to get as much as possible
-                        try {
-                            List<EntityCondition> conds = new LinkedList<EntityCondition>();
-                            if (UtilValidate.isNotEmpty(fromDate)) {
-                                conds.add(EntityCondition.makeCondition("createdStamp", EntityOperator.GREATER_THAN_EQUAL_TO, fromDate));
+                        //Don't bother writing the file if there's nothing to put into it
+                        try (EntityListIterator values = eq.queryIterator()) {
+                            GenericValue value = values.next();
+                            if (value != null) {
+                                try (PrintWriter writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(outdir, curEntityName +".xml")), "UTF-8")))) {
+                                    writer.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+                                    writer.println("<entity-engine-xml>");
+                                    do {
+                                        value.writeXmlText(writer, "");
+                                        numberWritten++;
+                                        if (numberWritten % 500 == 0) {
+                                            TransactionUtil.commit(beganTx);
+                                            beganTx = TransactionUtil.begin();
+                                        }
+                                    } while ((value = values.next()) != null);
+                                    writer.println("</entity-engine-xml>");
+                                } catch (UnsupportedEncodingException | FileNotFoundException e) {
+                                    results.add("["+fileNumber +"] [xxx] Error when writing " + curEntityName + ": " + e);
+                                }
+                                results.add("["+fileNumber +"] [" + numberWritten + "] " + curEntityName + " wrote " + numberWritten + " records");
+                            } else {
+                                results.add("["+fileNumber +"] [---] " + curEntityName + " has no records, not writing file");
                             }
-                            values = EntityQuery.use(delegator).from(curEntityName).where(conds).orderBy(me.getPkFieldNames()).queryIterator();
-                        } catch (Exception entityEx) {
+                            TransactionUtil.commit(beganTx);
+                        } catch (GenericEntityException entityEx) {
                             results.add("["+fileNumber +"] [xxx] Error when writing " + curEntityName + ": " + entityEx);
                             continue;
                         }
-
-                        //Don't bother writing the file if there's nothing
-                        //to put into it
-                        GenericValue value = values.next();
-                        if (value != null) {
-                            PrintWriter writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(outdir, curEntityName +".xml")), "UTF-8")));
-                            writer.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-                            writer.println("<entity-engine-xml>");
-
-                            do {
-                                value.writeXmlText(writer, "");
-                                numberWritten++;
-                                if (numberWritten % 500 == 0) {
-                                    TransactionUtil.commit(beganTx);
-                                    beganTx = TransactionUtil.begin();
-                                }
-                            } while ((value = values.next()) != null);
-                            writer.println("</entity-engine-xml>");
-                            writer.close();
-                            results.add("["+fileNumber +"] [" + numberWritten + "] " + curEntityName + " wrote " + numberWritten + " records");
-                        } else {
-                            results.add("["+fileNumber +"] [---] " + curEntityName + " has no records, not writing file");
-                        }
-                        values.close();
-                        TransactionUtil.commit(beganTx);
-                    } catch (Exception ex) {
-                        if (values != null) {
-                            try {
-                                values.close();
-                            } catch (Exception exc) {
-                                //Debug.warning();
-                            }
-                        }
-                        results.add("["+fileNumber +"] [xxx] Error when writing " + curEntityName + ": " + ex);
+                        fileNumber++;
+                    } catch (GenericTransactionException e) {
+                        Debug.logError(e, module);
+                        results.add(e.getLocalizedMessage());
                     }
-                    fileNumber++;
                 }
             } else {
                 results.add("Path not found or no write access.");
@@ -620,9 +611,9 @@ public class WebToolsServices {
         Map<String, Object> resultMap = ServiceUtil.returnSuccess();
 
         ModelReader reader = delegator.getModelReader();
-        Map<String, TreeSet<String>> entitiesByPackage = new HashMap<String, TreeSet<String>>();
-        Set<String> packageNames = new TreeSet<String>();
-        Set<String> tableNames = new TreeSet<String>();
+        Map<String, TreeSet<String>> entitiesByPackage = new HashMap<>();
+        Set<String> packageNames = new TreeSet<>();
+        Set<String> tableNames = new TreeSet<>();
 
         //put the entityNames TreeSets in a HashMap by packageName
         try {
@@ -636,7 +627,7 @@ public class WebToolsServices {
                 }
                 TreeSet<String> entities = entitiesByPackage.get(ent.getPackageName());
                 if (entities == null) {
-                    entities = new TreeSet<String>();
+                    entities = new TreeSet<>();
                     entitiesByPackage.put(ent.getPackageName(), entities);
                     packageNames.add(ent.getPackageName());
                 }
@@ -647,14 +638,14 @@ public class WebToolsServices {
         }
 
         String search = (String) context.get("search");
-        List<Map<String, Object>> packagesList = new LinkedList<Map<String,Object>>();
+        List<Map<String, Object>> packagesList = new LinkedList<>();
         try {
             for (String pName : packageNames) {
-                Map<String, Object> packageMap = new HashMap<String, Object>();
+                Map<String, Object> packageMap = new HashMap<>();
                 TreeSet<String> entities = entitiesByPackage.get(pName);
-                List<Map<String, Object>> entitiesList = new LinkedList<Map<String,Object>>();
+                List<Map<String, Object>> entitiesList = new LinkedList<>();
                 for (String entityName: entities) {
-                    Map<String, Object> entityMap = new HashMap<String, Object>();
+                    Map<String, Object> entityMap = new HashMap<>();
                     String helperName = delegator.getEntityHelperName(entityName);
                     String groupName = delegator.getEntityGroupName(entityName);
                     if (search == null || entityName.toLowerCase().indexOf(search.toLowerCase()) != -1) {
@@ -671,16 +662,18 @@ public class WebToolsServices {
                         if (bundle != null) {
                             try {
                                 entityDescription = bundle.getString("EntityDescription." + entity.getEntityName());
-                            } catch (Exception exception) {}
+                            } catch (Exception exception) {
+                                Debug.logError(exception, module);
+                            }
                         }
                         if (UtilValidate.isEmpty(entityDescription)) {
                             entityDescription = entity.getDescription();
                         }
 
                         // fields list
-                        List<Map<String, Object>> javaNameList = new LinkedList<Map<String,Object>>();
+                        List<Map<String, Object>> javaNameList = new LinkedList<>();
                         for (Iterator<ModelField> f = entity.getFieldsIterator(); f.hasNext();) {
-                            Map<String, Object> javaNameMap = new HashMap<String, Object>();
+                            Map<String, Object> javaNameMap = new HashMap<>();
                             ModelField field = f.next();
                             ModelFieldType type = delegator.getEntityFieldType(entity, field.getType());
                             javaNameMap.put("isPk", field.getIsPk());
@@ -690,7 +683,9 @@ public class WebToolsServices {
                             if (bundle != null) {
                                 try {
                                     fieldDescription = bundle.getString("FieldDescription." + entity.getEntityName() + "." + field.getName());
-                                } catch (Exception exception) {}
+                                } catch (Exception exception) {
+                                    Debug.logError(exception, module);
+                                }
                             }
                             if (UtilValidate.isEmpty(fieldDescription)) {
                                 fieldDescription = field.getDescription();
@@ -698,7 +693,9 @@ public class WebToolsServices {
                             if (UtilValidate.isEmpty(fieldDescription) && bundle != null) {
                                 try {
                                 fieldDescription = bundle.getString("FieldDescription." + field.getName());
-                                } catch (Exception exception) {}
+                                } catch (Exception exception) {
+                                    Debug.logError(exception, module);
+                                }
                             }
                             if (UtilValidate.isEmpty(fieldDescription)) {
                                 fieldDescription = ModelUtil.javaNameToDbName(field.getName()).toLowerCase();
@@ -714,14 +711,14 @@ public class WebToolsServices {
                         }
 
                         // relations list
-                        List<Map<String, Object>> relationsList = new LinkedList<Map<String,Object>>();
+                        List<Map<String, Object>> relationsList = new LinkedList<>();
                         for (int r = 0; r < entity.getRelationsSize(); r++) {
-                            Map<String, Object> relationMap = new HashMap<String, Object>();
+                            Map<String, Object> relationMap = new HashMap<>();
                             ModelRelation relation = entity.getRelation(r);
-                            List<Map<String, Object>> keysList = new LinkedList<Map<String,Object>>();
+                            List<Map<String, Object>> keysList = new LinkedList<>();
                             int row = 1;
                             for (ModelKeyMap keyMap : relation.getKeyMaps()) {
-                                Map<String, Object> keysMap = new HashMap<String, Object>();
+                                Map<String, Object> keysMap = new HashMap<>();
                                 String fieldName = null;
                                 String relFieldName = null;
                                 if (keyMap.getFieldName().equals(keyMap.getRelFieldName())) {
@@ -747,16 +744,16 @@ public class WebToolsServices {
                         }
 
                         // index list
-                        List<Map<String, Object>> indexList = new LinkedList<Map<String,Object>>();
+                        List<Map<String, Object>> indexList = new LinkedList<>();
                         for (int r = 0; r < entity.getIndexesSize(); r++) {
-                            List<String> fieldNameList = new LinkedList<String>();
+                            List<String> fieldNameList = new LinkedList<>();
 
                             ModelIndex index = entity.getIndex(r);
                             for (Iterator<ModelIndex.Field> fieldIterator = index.getFields().iterator(); fieldIterator.hasNext();) {
                                 fieldNameList.add(fieldIterator.next().getFieldName());
                             }
 
-                            Map<String, Object> indexMap = new HashMap<String, Object>();
+                            Map<String, Object> indexMap = new HashMap<>();
                             indexMap.put("name", index.getName());
                             indexMap.put("description", index.getDescription());
                             indexMap.put("fieldNameList", fieldNameList);
@@ -817,9 +814,9 @@ public class WebToolsServices {
                 return ServiceUtil.returnError(UtilProperties.getMessage(resource, "WebtoolsEomodelFullPathIsNotWriteable", UtilMisc.toMap("eomodeldFullPath", eomodeldFullPath), locale));
             }
 
-            Set<String> entityNames = new TreeSet<String>();
+            Set<String> entityNames = new TreeSet<>();
             if (UtilValidate.isNotEmpty(entityPackageNameOrig)) {
-                Set<String> entityPackageNameSet = new HashSet<String>();
+                Set<String> entityPackageNameSet = new HashSet<>();
                 entityPackageNameSet.addAll(StringUtil.split(entityPackageNameOrig, ","));
 
                 Debug.logInfo("Exporting with entityPackageNameSet: " + entityPackageNameSet, module);
@@ -847,12 +844,12 @@ public class WebToolsServices {
             }
 
             // write the index.eomodeld file
-            Map<String, Object> topLevelMap = new HashMap<String, Object>();
+            Map<String, Object> topLevelMap = new HashMap<>();
             topLevelMap.put("EOModelVersion", "\"2.1\"");
-            List<Map<String, Object>> entitiesMapList = new LinkedList<Map<String,Object>>();
+            List<Map<String, Object>> entitiesMapList = new LinkedList<>();
             topLevelMap.put("entities", entitiesMapList);
             for (String entityName: entityNames) {
-                Map<String, Object> entitiesMap = new HashMap<String, Object>();
+                Map<String, Object> entitiesMap = new HashMap<>();
                 entitiesMapList.add(entitiesMap);
                 entitiesMap.put("className", "EOGenericRecord");
                 entitiesMap.put("name", entityName);
@@ -864,7 +861,7 @@ public class WebToolsServices {
                 ModelEntity modelEntity = reader.getModelEntity(curEntityName);
                 UtilPlist.writePlistFile(modelEntity.createEoModelMap(entityNamePrefix, datasourceName, entityNames, reader), eomodeldFullPath, curEntityName +".plist", true);
             }
-            Integer entityNamesSize = new Integer(entityNames.size());
+            Integer entityNamesSize = entityNames.size();
             return ServiceUtil.returnSuccess(UtilProperties.getMessage(resource, "WebtoolsEomodelExported", UtilMisc.toMap("entityNamesSize", entityNamesSize.toString(), "eomodeldFullPath", eomodeldFullPath), locale));
         } catch (UnsupportedEncodingException e) {
             return ServiceUtil.returnError(UtilProperties.getMessage(resource, "WebtoolsEomodelSavingFileError", UtilMisc.toMap("errorString", e.toString()), locale));

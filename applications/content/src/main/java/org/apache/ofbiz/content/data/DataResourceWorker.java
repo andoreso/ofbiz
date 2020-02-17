@@ -20,15 +20,19 @@ package org.apache.ofbiz.content.data;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.sql.Timestamp;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -48,7 +52,6 @@ import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.ofbiz.base.location.FlexibleLocation;
 import org.apache.ofbiz.base.util.Debug;
@@ -57,6 +60,7 @@ import org.apache.ofbiz.base.util.GeneralException;
 import org.apache.ofbiz.base.util.StringUtil;
 import org.apache.ofbiz.base.util.StringUtil.StringWrapper;
 import org.apache.ofbiz.base.util.UtilCodec;
+import org.apache.ofbiz.base.util.UtilDateTime;
 import org.apache.ofbiz.base.util.UtilGenerics;
 import org.apache.ofbiz.base.util.UtilHttp;
 import org.apache.ofbiz.base.util.UtilIO;
@@ -77,13 +81,17 @@ import org.apache.ofbiz.entity.util.EntityQuery;
 import org.apache.ofbiz.entity.util.EntityUtilProperties;
 import org.apache.ofbiz.service.GenericServiceException;
 import org.apache.ofbiz.service.LocalDispatcher;
+import org.apache.ofbiz.service.ServiceUtil;
 import org.apache.ofbiz.widget.model.FormFactory;
 import org.apache.ofbiz.widget.model.ModelForm;
 import org.apache.ofbiz.widget.model.ModelScreen;
+import org.apache.ofbiz.widget.model.ModelTheme;
 import org.apache.ofbiz.widget.model.ScreenFactory;
+import org.apache.ofbiz.widget.model.ThemeFactory;
 import org.apache.ofbiz.widget.renderer.FormRenderer;
 import org.apache.ofbiz.widget.renderer.ScreenRenderer;
 import org.apache.ofbiz.widget.renderer.ScreenStringRenderer;
+import org.apache.ofbiz.widget.renderer.VisualTheme;
 import org.apache.ofbiz.widget.renderer.macro.MacroFormRenderer;
 import org.apache.ofbiz.widget.renderer.macro.MacroScreenRenderer;
 import org.apache.tika.Tika;
@@ -99,7 +107,6 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
 
     public static final String module = DataResourceWorker.class.getName();
     public static final String err_resource = "ContentErrorUiLabels";
-    private static final String formrenderer = UtilProperties.getPropertyValue("widget", "screen.formrenderer");
 
     /**
      * Traverses the DataCategory parent/child structure and put it in categoryNode. Returns non-null error string if there is an error.
@@ -124,17 +131,18 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
         List<GenericValue> categoryValues = EntityQuery.use(delegator).from("DataCategory")
                 .where("parentCategoryId", parentCategoryId)
                 .cache().queryList();
-        categoryNode.put("count", Integer.valueOf(categoryValues.size()));
-        List<Map<String, Object>> subCategoryIds = new LinkedList<Map<String,Object>>();
+        categoryNode.put("count", categoryValues.size());
+        List<Map<String, Object>> subCategoryIds = new LinkedList<>();
         for (GenericValue category : categoryValues) {
             String id = (String) category.get("dataCategoryId");
             String categoryName = (String) category.get("categoryName");
-            Map<String, Object> newNode = new HashMap<String, Object>();
+            Map<String, Object> newNode = new HashMap<>();
             newNode.put("id", id);
             newNode.put("name", categoryName);
             errorMsg = getDataCategoryMap(delegator, depth + 1, newNode, categoryTypeIds, getAll);
-            if (errorMsg != null)
+            if (errorMsg != null) {
                 break;
+            }
             subCategoryIds.add(newNode);
         }
 
@@ -145,7 +153,7 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
         // The other test is to only get all the children if the "leaf" node where all the
         // children of the leaf are wanted for expansion.
         if (parentCategoryId == null
-            || parentCategoryId.equals("ROOT")
+            || "ROOT".equals(parentCategoryId)
             || (currentDataCategoryId != null && currentDataCategoryId.equals(parentCategoryId))
             || getAll) {
             categoryNode.put("kids", subCategoryIds);
@@ -159,8 +167,9 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
     public static void getDataCategoryAncestry(Delegator delegator, String dataCategoryId, List<String> categoryTypeIds) throws GenericEntityException {
         categoryTypeIds.add(dataCategoryId);
         GenericValue dataCategoryValue = EntityQuery.use(delegator).from("DataCategory").where("dataCategoryId", dataCategoryId).queryOne();
-        if (dataCategoryValue == null)
+        if (dataCategoryValue == null) {
             return;
+        }
         String parentCategoryId = (String) dataCategoryValue.get("parentCategoryId");
         if (parentCategoryId != null) {
             getDataCategoryAncestry(delegator, parentCategoryId, categoryTypeIds);
@@ -174,16 +183,18 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
     public static void buildList(Map<String, Object> nd, List<Map<String, Object>> lst, int depth) {
         String id = (String) nd.get("id");
         String nm = (String) nd.get("name");
-        String spc = "";
-        for (int i = 0; i < depth; i++)
-            spc += "&nbsp;&nbsp;";
-        Map<String, Object> map = new HashMap<String, Object>();
+        StringBuilder spcBuilder = new StringBuilder();
+        for (int i = 0; i < depth; i++) {
+            spcBuilder.append("&nbsp;&nbsp;");
+        }
+        Map<String, Object> map = new HashMap<>();
+        spcBuilder.append(nm);
         map.put("dataCategoryId", id);
-        map.put("categoryName", spc + nm);
-        if (id != null && !id.equals("ROOT") && !id.equals("")) {
+        map.put("categoryName", spcBuilder.toString());
+        if (id != null && !"ROOT".equals(id) && !id.equals("")) {
             lst.add(map);
         }
-        List<Map<String, Object>> kids = UtilGenerics.checkList(nd.get("kids"));
+        List<Map<String, Object>> kids = UtilGenerics.cast(nd.get("kids"));
         for (Map<String, Object> kidNode : kids) {
             buildList(kidNode, lst, depth + 1);
         }
@@ -200,7 +211,7 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
         Locale locale = UtilHttp.getLocale(request);
 
         try {
-            lst = UtilGenerics.checkList(fu.parseRequest(request));
+            lst = UtilGenerics.cast(fu.parseRequest(request));
         } catch (FileUploadException e) {
             request.setAttribute("_ERROR_MESSAGE_", e.toString());
             return "error";
@@ -217,7 +228,7 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
         FileItem fi = null;
         FileItem imageFi = null;
         String imageFileName = null;
-        Map<String, Object> passedParams = new HashMap<String, Object>();
+        Map<String, Object> passedParams = new HashMap<>();
         HttpSession session = request.getSession();
         GenericValue userLogin = (GenericValue)session.getAttribute("userLogin");
         passedParams.put("userLogin", userLogin);
@@ -234,7 +245,9 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
                 passedParams.put(fieldName, imageBytes);
                 imageFileName = imageFi.getName();
                 passedParams.put("drObjectInfo", imageFileName);
-                if (Debug.infoOn()) Debug.logInfo("[UploadContentAndImage]imageData: " + imageBytes.length, module);
+                if (Debug.infoOn()) {
+                    Debug.logInfo("[UploadContentAndImage]imageData: " + imageBytes.length, module);
+                }
             }
         }
 
@@ -244,7 +257,7 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
                 passedParams.put("drMimeTypeId", mimeType);
                 try {
                     String returnMsg = UploadContentAndImage.processContentUpload(passedParams, "", request);
-                    if (returnMsg.equals("error")) {
+                    if ("error".equals(returnMsg)) {
                         return "error";
                     }
                 } catch (GenericServiceException e) {
@@ -261,19 +274,22 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
 
     public static String getMimeTypeFromImageFileName(String imageFileName) {
         String mimeType = null;
-        if (UtilValidate.isEmpty(imageFileName))
-           return mimeType;
+        if (UtilValidate.isEmpty(imageFileName)) {
+            return mimeType;
+        }
 
-        int pos = imageFileName.lastIndexOf(".");
-        if (pos < 0)
-           return mimeType;
+        int pos = imageFileName.lastIndexOf('.');
+        if (pos < 0) {
+            return mimeType;
+        }
 
         String suffix = imageFileName.substring(pos + 1);
-        String suffixLC = suffix.toLowerCase();
-        if (suffixLC.equals("jpg"))
+        String suffixLC = suffix.toLowerCase(Locale.getDefault());
+        if ("jpg".equals(suffixLC)) {
             mimeType = "image/jpeg";
-        else
+        } else {
             mimeType = "image/" + suffixLC;
+        }
 
         return mimeType;
     }
@@ -292,14 +308,16 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
      */
     public static Map<String, Object> callDataResourcePermissionCheckResult(Delegator delegator, LocalDispatcher dispatcher, Map<String, Object> context) {
 
-        Map<String, Object> permResults = new HashMap<String, Object>();
+        Map<String, Object> permResults = new HashMap<>();
         String skipPermissionCheck = (String) context.get("skipPermissionCheck");
-            if (Debug.infoOn()) Debug.logInfo("in callDataResourcePermissionCheckResult, skipPermissionCheck:" + skipPermissionCheck,"");
+        if (Debug.infoOn()) {
+            Debug.logInfo("in callDataResourcePermissionCheckResult, skipPermissionCheck:" + skipPermissionCheck,"");
+        }
 
-        if (UtilValidate.isEmpty(skipPermissionCheck) 
+        if (UtilValidate.isEmpty(skipPermissionCheck)
                 || (!"true".equalsIgnoreCase(skipPermissionCheck) && !"granted".equalsIgnoreCase(skipPermissionCheck))) {
             GenericValue userLogin = (GenericValue) context.get("userLogin");
-            Map<String, Object> serviceInMap = new HashMap<String, Object>();
+            Map<String, Object> serviceInMap = new HashMap<>();
             serviceInMap.put("userLogin", userLogin);
             serviceInMap.put("targetOperationList", context.get("targetOperationList"));
             serviceInMap.put("contentPurposeList", context.get("contentPurposeList"));
@@ -311,14 +329,18 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
             if (UtilValidate.isNotEmpty(ownerContentId)) {
                 try {
                     GenericValue content = EntityQuery.use(delegator).from("Content").where("contentId", ownerContentId).queryOne();
-                    if (content != null)
+                    if (content != null) {
                         serviceInMap.put("currentContent", content);
+                    }
                 } catch (GenericEntityException e) {
                     Debug.logError(e, "e.getMessage()", "ContentServices");
                 }
             }
             try {
                 permResults = dispatcher.runSync("checkContentPermission", serviceInMap);
+                if (ServiceUtil.isError(permResults)) {
+                    return permResults;
+                 }
             } catch (GenericServiceException e) {
                 Debug.logError(e, "Problem checking permissions", "ContentServices");
             }
@@ -335,8 +357,9 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
 
         byte[] b = null;
         GenericValue dataResource = EntityQuery.use(delegator).from("DataResource").where("dataResourceId", dataResourceId).cache().queryOne();
-        if (dataResource == null)
+        if (dataResource == null) {
             return b;
+        }
 
         b = acquireImage(delegator, dataResource);
         return b;
@@ -392,17 +415,17 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
     }
 
     public static String buildRequestPrefix(Delegator delegator, Locale locale, String webSiteId, String https) {
-        Map<String, Object> prefixValues = new HashMap<String, Object>();
+        Map<String, Object> prefixValues = new HashMap<>();
         String prefix;
 
         NotificationServices.setBaseUrl(delegator, webSiteId, prefixValues);
-        if (https != null && https.equalsIgnoreCase("true")) {
+        if (https != null && "true".equalsIgnoreCase(https)) {
             prefix = (String) prefixValues.get("baseSecureUrl");
         } else {
             prefix = (String) prefixValues.get("baseUrl");
         }
         if (UtilValidate.isEmpty(prefix)) {
-            if (https != null && https.equalsIgnoreCase("true")) {
+            if (https != null && "true".equalsIgnoreCase(https)) {
                 prefix = UtilProperties.getMessage("content", "baseSecureUrl", locale);
             } else {
                 prefix = UtilProperties.getMessage("content", "baseUrl", locale);
@@ -415,7 +438,7 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
     public static File getContentFile(String dataResourceTypeId, String objectInfo, String contextRoot)  throws GeneralException, FileNotFoundException{
         File file = null;
 
-        if (dataResourceTypeId.equals("LOCAL_FILE") || dataResourceTypeId.equals("LOCAL_FILE_BIN")) {
+        if ("LOCAL_FILE".equals(dataResourceTypeId) || "LOCAL_FILE_BIN".equals(dataResourceTypeId)) {
             file = FileUtil.getFile(objectInfo);
             if (!file.exists()) {
                 throw new FileNotFoundException("No file found: " + (objectInfo));
@@ -423,24 +446,24 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
             if (!file.isAbsolute()) {
                 throw new GeneralException("File (" + objectInfo + ") is not absolute");
             }
-        } else if (dataResourceTypeId.equals("OFBIZ_FILE") || dataResourceTypeId.equals("OFBIZ_FILE_BIN")) {
+        } else if ("OFBIZ_FILE".equals(dataResourceTypeId) || "OFBIZ_FILE_BIN".equals(dataResourceTypeId)) {
             String prefix = System.getProperty("ofbiz.home");
 
             String sep = "";
-            if (objectInfo.indexOf("/") != 0 && prefix.lastIndexOf("/") != (prefix.length() - 1)) {
+            if (objectInfo.indexOf('/') != 0 && prefix.lastIndexOf('/') != (prefix.length() - 1)) {
                 sep = "/";
             }
             file = FileUtil.getFile(prefix + sep + objectInfo);
             if (!file.exists()) {
                 throw new FileNotFoundException("No file found: " + (prefix + sep + objectInfo));
             }
-        } else if (dataResourceTypeId.equals("CONTEXT_FILE") || dataResourceTypeId.equals("CONTEXT_FILE_BIN")) {
+        } else if ("CONTEXT_FILE".equals(dataResourceTypeId) || "CONTEXT_FILE_BIN".equals(dataResourceTypeId)) {
             if (UtilValidate.isEmpty(contextRoot)) {
                 throw new GeneralException("Cannot find CONTEXT_FILE with an empty context root!");
             }
 
             String sep = "";
-            if (objectInfo.indexOf("/") != 0 && contextRoot.lastIndexOf("/") != (contextRoot.length() - 1)) {
+            if (objectInfo.indexOf('/') != 0 && contextRoot.lastIndexOf('/') != (contextRoot.length() - 1)) {
                 sep = "/";
             }
             file = FileUtil.getFile(contextRoot + sep + objectInfo);
@@ -456,8 +479,9 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
     public static String getDataResourceMimeType(Delegator delegator, String dataResourceId, GenericValue view) throws GenericEntityException {
 
         String mimeType = null;
-        if (view != null)
+        if (view != null) {
             mimeType = view.getString("drMimeTypeId");
+        }
         if (UtilValidate.isEmpty(mimeType) && UtilValidate.isNotEmpty(dataResourceId)) {
                 GenericValue dataResource = EntityQuery.use(delegator).from("DataResource").where("dataResourceId", dataResourceId).cache().queryOne();
                 mimeType = dataResource.getString("mimeTypeId");
@@ -509,10 +533,11 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
 
         // descending comparator
         Comparator<Object> desc = new Comparator<Object>() {
+            @Override
             public int compare(Object o1, Object o2) {
-                if (((Long) o1).longValue() > ((Long) o2).longValue()) {
+                if ((Long) o1 > (Long) o2) {
                     return -1;
-                } else if (((Long) o1).longValue() < ((Long) o2).longValue()) {
+                } else if ((Long) o1 < (Long) o2) {
                     return 1;
                 }
                 return 0;
@@ -522,12 +547,15 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
         // check for the latest subdirectory
         String parentDir = ofbizHome + initialPath;
         File parent = FileUtil.getFile(parentDir);
-        TreeMap<Long, File> dirMap = new TreeMap<Long, File>(desc);
+        TreeMap<Long, File> dirMap = new TreeMap<>(desc);
         if (parent.exists()) {
             File[] subs = parent.listFiles();
-            for (int i = 0; i < subs.length; i++) {
-                if (subs[i].isDirectory()) {
-                    dirMap.put(Long.valueOf(subs[i].lastModified()), subs[i]);
+            if (subs != null) {
+                int length = subs.length;
+                for (int i = 0; i < length; i++) {
+                    if (subs[i].isDirectory()) {
+                        dirMap.put(subs[i].lastModified(), subs[i]);
+                    }
                 }
             }
         } else {
@@ -544,21 +572,26 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
             latestDir = dirMap.values().iterator().next();
             if (latestDir != null) {
                 File[] dirList = latestDir.listFiles();
-                if (dirList.length >= maxFiles) {
-                    latestDir = makeNewDirectory(parent);
+                if (dirList != null) {
+                    int length = dirList.length;
+                    if (length >= maxFiles) {
+                        latestDir = makeNewDirectory(parent);
+                    }
                 }
             }
         } else {
             latestDir = makeNewDirectory(parent);
         }
-
-        Debug.logInfo("Directory Name : " + latestDir.getName(), module);
-        if (absolute) {
-            return latestDir.getAbsolutePath().replace('\\','/');
-        } else {
-            return initialPath + "/" + latestDir.getName();
-
+        String name = "";
+        if (latestDir != null) {
+            name = latestDir.getName();
         }
+
+        Debug.logInfo("Directory Name : " + name, module);
+        if (absolute) {
+            return latestDir.getAbsolutePath().replace('\\', '/');
+        }
+        return initialPath + "/" + name;
     }
 
     private static File makeNewDirectory(File parent) {
@@ -567,7 +600,9 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
         while (!newDir) {
             latestDir = new File(parent, "" + System.currentTimeMillis());
             if (!latestDir.exists()) {
-                latestDir.mkdir();
+                if (!latestDir.mkdir()) {
+                    Debug.logError("Directory: " + latestDir.getName() + ", couldn't be created", module);
+                }
                 newDir = true;
             }
         }
@@ -594,9 +629,10 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
 
     public static String renderDataResourceAsText(LocalDispatcher dispatcher, Delegator delegator, String dataResourceId, Map<String, Object> templateContext,
              Locale locale, String targetMimeTypeId, boolean cache) throws GeneralException, IOException {
-        Writer writer = new StringWriter();
+        try (Writer writer = new StringWriter()) {
         renderDataResourceAsText(dispatcher, delegator, dataResourceId, writer, templateContext, locale, targetMimeTypeId, cache, null);
         return writer.toString();
+        }
     }
 
     public static String renderDataResourceAsText(LocalDispatcher dispatcher, String dataResourceId, Appendable out,
@@ -614,7 +650,7 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
             throw new GeneralException("Cannot lookup data resource with for a null dataResourceId");
         }
         if (templateContext == null) {
-            templateContext = new HashMap<String, Object>();
+            templateContext = new HashMap<>();
         }
         if (UtilValidate.isEmpty(targetMimeTypeId)) {
             targetMimeTypeId = "text/html";
@@ -622,6 +658,10 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
         if (locale == null) {
             locale = Locale.getDefault();
         }
+
+        //FIXME correctly propagate the theme, then fixes also the related FIXME below
+        VisualTheme visualTheme = ThemeFactory.getVisualThemeFromId("COMMON");
+        ModelTheme modelTheme = visualTheme.getModelTheme();
 
         // if the target mimeTypeId is not a text type, throw an exception
         if (!targetMimeTypeId.startsWith("text/")) {
@@ -656,7 +696,7 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
                     // if use web analytics.
                     if (UtilValidate.isNotEmpty(webAnalytics)) {
                         StringBuffer newTemplateText = new StringBuffer(templateText);
-                        String webAnalyticsCode = "<script language=\"JavaScript\" type=\"text/javascript\">";
+                        String webAnalyticsCode = "<script type=\"application/javascript\">";
                         for (GenericValue webAnalytic : webAnalytics) {
                             StringWrapper wrapString = StringUtil.wrapString((String) webAnalytic.get("webAnalyticsCode"));
                             webAnalyticsCode += wrapString.toString();
@@ -668,31 +708,31 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
 
                     // render the FTL template
                     boolean useTemplateCache = cache && !UtilProperties.getPropertyAsBoolean("content", "disable.ftl.template.cache", false);
-                    Timestamp lastUpdatedStamp = dataResource.getTimestamp("lastUpdatedStamp");
+                    //Do not use dataResource.lastUpdatedStamp for dataResource template caching as it may use ftl file or electronicText
+                    // If dataResource using ftl file use nowTimestamp to avoid freemarker caching
+                    Timestamp lastUpdatedStamp = UtilDateTime.nowTimestamp();
+                    //If dataResource is type of ELECTRONIC_TEXT then only use the lastUpdatedStamp of electronicText entity for freemarker caching
+                    if ("ELECTRONIC_TEXT".equals(dataResource.getString("dataResourceTypeId"))) {
+                        GenericValue electronicText = dataResource.getRelatedOne("ElectronicText", true);
+                        if (electronicText != null) {
+                            lastUpdatedStamp = electronicText.getTimestamp("lastUpdatedStamp");
+                        }
+                    }
+
                     FreeMarkerWorker.renderTemplateFromString("delegator:" + delegator.getDelegatorName() + ":DataResource:" + dataResourceId, templateText, templateContext, out, lastUpdatedStamp.getTime(), useTemplateCache);
                 } catch (TemplateException e) {
                     throw new GeneralException("Error rendering FTL template", e);
                 }
 
             } else if ("XSLT".equals(dataTemplateTypeId)) {
-                File sourceFileLocation = null;
                 File targetFileLocation = new File(System.getProperty("ofbiz.home")+"/runtime/tempfiles/docbook.css");
-                if (templateContext.get("visualThemeId") != null) {
-                    Map<String, Object> layoutSettings  = UtilGenerics.checkMap(templateContext.get("layoutSettings"));
-                    List<String> docbookStyleSheets = UtilGenerics.checkList(layoutSettings.get("VT_DOCBOOKSTYLESHEET"));
-                    String docbookStyleLocation = docbookStyleSheets.get(0);
-                    sourceFileLocation = new File(System.getProperty("ofbiz.home")+"/themes"+docbookStyleLocation);
-                }
-                if (sourceFileLocation != null && sourceFileLocation.exists()) {
-                    UtilMisc.copyFile(sourceFileLocation,targetFileLocation);
-                } else {
-                    String defaultVisualThemeId = EntityUtilProperties.getPropertyValue("general", "VISUAL_THEME", delegator);
-                    if (defaultVisualThemeId != null) {
-                        GenericValue themeValue = EntityQuery.use(delegator).from("VisualThemeResource").where("visualThemeId", defaultVisualThemeId, "resourceTypeEnumId", "VT_DOCBOOKSTYLESHEET", "sequenceId", "01").cache().queryOne();
-                        sourceFileLocation = new File(System.getProperty("ofbiz.home") + "/themes" + themeValue.get("resourceValue"));
-                        UtilMisc.copyFile(sourceFileLocation,targetFileLocation);
-                    }
-                }
+                // This is related with the other FIXME above: we need to correctly propagate the theme.
+                String defaultVisualThemeId = EntityUtilProperties.getPropertyValue("general", "VISUAL_THEME", delegator);
+                visualTheme = ThemeFactory.getVisualThemeFromId(defaultVisualThemeId);
+                modelTheme = visualTheme.getModelTheme();
+                String docbookStylesheet = modelTheme.getProperty("VT_DOCBOOKSTYLESHEET").toString();
+                File sourceFileLocation = new File(System.getProperty("ofbiz.home") + "/themes" + docbookStylesheet.substring(1, docbookStylesheet.length() - 1));
+                UtilMisc.copyFile(sourceFileLocation,targetFileLocation);
                 // get the template data for rendering
                 String templateLocation = DataResourceWorker.getContentFile(dataResource.getString("dataResourceTypeId"), dataResource.getString("objectInfo"), (String) templateContext.get("contextRoot")).toString();
                 // render the XSLT template and file
@@ -712,7 +752,7 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
                     // prepare the map for preRenderedContent
                     String textData = (String) context.get("textData");
                     if (UtilValidate.isNotEmpty(textData)) {
-                        Map<String, Object> prc = new HashMap<String, Object>();
+                        Map<String, Object> prc = new HashMap<>();
                         String mapKey = (String) context.get("mapKey");
                         if (mapKey != null) {
                             prc.put(mapKey, mapKey);
@@ -724,7 +764,7 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
                     ScreenRenderer screens = (ScreenRenderer) context.get("screens");
                     if (screens == null) {
                      // TODO: replace "screen" to support dynamic rendering of different output
-                        ScreenStringRenderer screenStringRenderer = new MacroScreenRenderer(EntityUtilProperties.getPropertyValue("widget", "screen.name", delegator), EntityUtilProperties.getPropertyValue("widget", "screen.screenrenderer", delegator));
+                        ScreenStringRenderer screenStringRenderer = new MacroScreenRenderer(modelTheme.getType("screen"), modelTheme.getScreenRendererLocation("screen"));
                         screens = new ScreenRenderer(out, context, screenStringRenderer);
                         screens.getContext().put("screens", screens);
                     }
@@ -754,9 +794,9 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
                 }
             } else if ("FORM_COMBINED".equals(dataTemplateTypeId)){
                 try {
-                    Map<String, Object> context = UtilGenerics.checkMap(templateContext.get("globalContext"));
+                    Map<String, Object> context = UtilGenerics.cast(templateContext.get("globalContext"));
                     context.put("locale", locale);
-                    context.put("simpleEncoder", UtilCodec.getEncoder(UtilProperties.getPropertyValue("widget", "screen.encoder")));
+                    context.put("simpleEncoder", UtilCodec.getEncoder(modelTheme.getEncoder("screen")));
                     HttpServletRequest request = (HttpServletRequest) context.get("request");
                     HttpServletResponse response = (HttpServletResponse) context.get("response");
                     ModelForm modelForm = null;
@@ -769,6 +809,7 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
                         Map.Entry<String, ModelForm> entry = modelFormMap.entrySet().iterator().next(); // get first entry, only one form allowed per file
                         modelForm = entry.getValue();
                     }
+                    String formrenderer = modelTheme.getFormRendererLocation("screen");
                     MacroFormRenderer renderer = new MacroFormRenderer(formrenderer, request, response);
                     FormRenderer formRenderer = new FormRenderer(modelForm, renderer);
                     formRenderer.render(out, context);
@@ -798,26 +839,23 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
 
     public static void writeDataResourceText(GenericValue dataResource, String mimeTypeId, Locale locale, Map<String, Object> templateContext,
             Delegator delegator, Appendable out, boolean cache) throws IOException, GeneralException {
-        Map<String, Object> context = UtilGenerics.checkMap(templateContext.get("context"));
+        Map<String, Object> context = UtilGenerics.cast(templateContext.get("context"));
         if (context == null) {
-            context = new HashMap<String, Object>();
+            context = new HashMap<>();
         }
         String webSiteId = (String) templateContext.get("webSiteId");
         if (UtilValidate.isEmpty(webSiteId)) {
-            if (context != null)
-                webSiteId = (String) context.get("webSiteId");
+            webSiteId = (String) context.get("webSiteId");
         }
 
         String https = (String) templateContext.get("https");
         if (UtilValidate.isEmpty(https)) {
-            if (context != null)
-                https = (String) context.get("https");
+            https = (String) context.get("https");
         }
 
         String rootDir = (String) templateContext.get("rootDir");
         if (UtilValidate.isEmpty(rootDir)) {
-            if (context != null)
-                rootDir = (String) context.get("rootDir");
+            rootDir = (String) context.get("rootDir");
         }
 
         String dataResourceId = dataResource.getString("dataResourceId");
@@ -847,23 +885,22 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
             writeText(dataResource, text, templateContext, mimeTypeId, locale, out);
 
         // resource type
-        } else if (dataResourceTypeId.equals("URL_RESOURCE")) {
+        } else if ("URL_RESOURCE".equals(dataResourceTypeId)) {
             String text = null;
             URL url = FlexibleLocation.resolveLocation(dataResource.getString("objectInfo"));
 
             if (url.getHost() != null) { // is absolute
-                InputStream in = url.openStream();
                 int c;
-                StringWriter sw = new StringWriter();
+                try (InputStream in = url.openStream(); StringWriter sw = new StringWriter()) {
                 while ((c = in.read()) != -1) {
                     sw.write(c);
                 }
-                sw.close();
                 text = sw.toString();
+                }
             } else {
                 String prefix = DataResourceWorker.buildRequestPrefix(delegator, locale, webSiteId, https);
                 String sep = "";
-                if (url.toString().indexOf("/") != 0 && prefix.lastIndexOf("/") != (prefix.length() - 1)) {
+                if (url.toString().indexOf('/') != 0 && prefix.lastIndexOf('/') != (prefix.length() - 1)) {
                     sep = "/";
                 }
                 String fixedUrlStr = prefix + sep + url.toString();
@@ -914,15 +951,13 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
 
             if (mimeTypeTemplate != null && mimeTypeTemplate.get("templateLocation") != null) {
                 // prepare the context
-                Map<String, Object> mimeContext = new HashMap<String, Object>();
+                Map<String, Object> mimeContext = new HashMap<>();
                 mimeContext.putAll(context);
                 mimeContext.put("dataResource", dataResource);
                 mimeContext.put("textData", textData);
 
                 String mimeString = DataResourceWorker.renderMimeTypeTemplate(mimeTypeTemplate, mimeContext);
-                if (mimeString != null) {
-                    out.append(mimeString);
-                }
+                out.append(mimeString);
             } else {
                 if (textData != null) {
                     out.append(textData);
@@ -948,42 +983,43 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
     public static void renderFile(String dataResourceTypeId, String objectInfo, String rootDir, Appendable out) throws GeneralException, IOException {
         // TODO: this method assumes the file is a text file, if it is an image we should respond differently, see the comment above for IMAGE_OBJECT type data resource
 
-        if (dataResourceTypeId.equals("LOCAL_FILE") && UtilValidate.isNotEmpty(objectInfo)) {
+        if ("LOCAL_FILE".equals(dataResourceTypeId) && UtilValidate.isNotEmpty(objectInfo)) {
             File file = FileUtil.getFile(objectInfo);
             if (!file.isAbsolute()) {
                 throw new GeneralException("File (" + objectInfo + ") is not absolute");
             }
-            FileReader in = new FileReader(file);
-            UtilIO.copy(in, true, out);
-        } else if (dataResourceTypeId.equals("OFBIZ_FILE") && UtilValidate.isNotEmpty(objectInfo)) {
+            try (InputStreamReader in = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
+                UtilIO.copy(in, out);
+            }
+        } else if ("OFBIZ_FILE".equals(dataResourceTypeId) && UtilValidate.isNotEmpty(objectInfo)) {
             String prefix = System.getProperty("ofbiz.home");
             String sep = "";
-            if (objectInfo.indexOf("/") != 0 && prefix.lastIndexOf("/") != (prefix.length() - 1)) {
+            if (objectInfo.indexOf('/') != 0 && prefix.lastIndexOf('/') != (prefix.length() - 1)) {
                 sep = "/";
             }
             File file = FileUtil.getFile(prefix + sep + objectInfo);
-            FileReader in = new FileReader(file);
-            UtilIO.copy(in, true, out);
-        } else if (dataResourceTypeId.equals("CONTEXT_FILE") && UtilValidate.isNotEmpty(objectInfo)) {
+            try (InputStreamReader in = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
+                UtilIO.copy(in, out);
+            }
+        } else if ("CONTEXT_FILE".equals(dataResourceTypeId) && UtilValidate.isNotEmpty(objectInfo)) {
             String prefix = rootDir;
             String sep = "";
-            if (objectInfo.indexOf("/") != 0 && prefix.lastIndexOf("/") != (prefix.length() - 1)) {
+            if (objectInfo.indexOf('/') != 0 && prefix.lastIndexOf('/') != (prefix.length() - 1)) {
                 sep = "/";
             }
             File file = FileUtil.getFile(prefix + sep + objectInfo);
-            FileReader in = null;
-            try {
-                in = new FileReader(file);
-                String enc = in.getEncoding();
-                if (Debug.infoOn()) Debug.logInfo("in serveImage, encoding:" + enc, module);
-
+            try (InputStreamReader in = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
+                if (Debug.infoOn()) {
+                    String enc = in.getEncoding();
+                    Debug.logInfo("in serveImage, encoding:" + enc, module);
+                }
+                UtilIO.copy(in, out);
             } catch (FileNotFoundException e) {
                 Debug.logError(e, " in renderDataResourceAsHtml(CONTEXT_FILE), in FNFexception:", module);
                 throw new GeneralException("Could not find context file to render", e);
             } catch (Exception e) {
                 Debug.logError(" in renderDataResourceAsHtml(CONTEXT_FILE), got exception:" + e.getMessage(), module);
             }
-            UtilIO.copy(in, true, out);
         }
     }
 
@@ -1029,11 +1065,12 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
                 throw new GeneralException("Unsupported TEXT type; cannot stream");
             }
 
-            byte[] bytes = text.getBytes();
-            return UtilMisc.toMap("stream", new ByteArrayInputStream(bytes), "length", Long.valueOf(bytes.length));
+            byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+            return UtilMisc.toMap("stream", new ByteArrayInputStream(bytes), "length", (long) bytes.length);
 
         // object (binary) data
-        } else if (dataResourceTypeId.endsWith("_OBJECT")) {
+        }
+        if (dataResourceTypeId.endsWith("_OBJECT")) {
             byte[] bytes = new byte[0];
             GenericValue valObj;
 
@@ -1061,17 +1098,16 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
                 throw new GeneralException("Unsupported OBJECT type [" + dataResourceTypeId + "]; cannot stream");
             }
 
-            return UtilMisc.toMap("stream", new ByteArrayInputStream(bytes), "length", Long.valueOf(bytes.length));
+            return UtilMisc.toMap("stream", new ByteArrayInputStream(bytes), "length", (long) bytes.length);
 
         // file data
         } else if (dataResourceTypeId.endsWith("_FILE") || dataResourceTypeId.endsWith("_FILE_BIN")) {
             String objectInfo = dataResource.getString("objectInfo");
             if (UtilValidate.isNotEmpty(objectInfo)) {
                 File file = DataResourceWorker.getContentFile(dataResourceTypeId, objectInfo, contextRoot);
-                return UtilMisc.toMap("stream", new ByteArrayInputStream(FileUtils.readFileToByteArray(file)), "length", Long.valueOf(file.length()));
-            } else {
-                throw new GeneralException("No objectInfo found for FILE type [" + dataResourceTypeId + "]; cannot stream");
+                return UtilMisc.toMap("stream", Files.newInputStream(file.toPath(), StandardOpenOption.READ), "length", file.length());
             }
+            throw new GeneralException("No objectInfo found for FILE type [" + dataResourceTypeId + "]; cannot stream");
 
         // URL resource data
         } else if ("URL_RESOURCE".equals(dataResourceTypeId)) {
@@ -1088,10 +1124,9 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
                 }
 
                 URLConnection con = url.openConnection();
-                return UtilMisc.toMap("stream", con.getInputStream(), "length", Long.valueOf(con.getContentLength()));
-            } else {
-                throw new GeneralException("No objectInfo found for URL_RESOURCE type; cannot stream");
+                return UtilMisc.toMap("stream", con.getInputStream(), "length", (long) con.getContentLength());
             }
+            throw new GeneralException("No objectInfo found for URL_RESOURCE type; cannot stream");
         }
 
         // unsupported type
@@ -1099,13 +1134,14 @@ public class DataResourceWorker  implements org.apache.ofbiz.widget.content.Data
     }
 
     public static ByteBuffer getContentAsByteBuffer(Delegator delegator, String dataResourceId, String https, String webSiteId, Locale locale, String rootDir) throws IOException, GeneralException {
-        GenericValue dataResource = EntityQuery.use(delegator).from("DataResource").where("dataResourceId", dataResourceId).queryOne(); 
+        GenericValue dataResource = EntityQuery.use(delegator).from("DataResource").where("dataResourceId", dataResourceId).queryOne();
         Map<String, Object> resourceData = DataResourceWorker.getDataResourceStream(dataResource, https, webSiteId, locale, rootDir, false);
-        ByteArrayInputStream stream = (ByteArrayInputStream) resourceData.get("stream");
+        InputStream stream = (InputStream) resourceData.get("stream");
         ByteBuffer byteBuffer = ByteBuffer.wrap(IOUtils.toByteArray(stream));
         return byteBuffer;
     }
 
+    @Override
     public String renderDataResourceAsTextExt(Delegator delegator, String dataResourceId, Map<String, Object> templateContext,
             Locale locale, String targetMimeTypeId, boolean cache) throws GeneralException, IOException {
         return renderDataResourceAsText(null, delegator, dataResourceId, templateContext, locale, targetMimeTypeId, cache);

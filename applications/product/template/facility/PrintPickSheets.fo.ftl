@@ -49,9 +49,9 @@ under the License.
                                 <fo:instream-foreign-object>
                                     <barcode:barcode xmlns:barcode="http://barcode4j.krysalis.org/ns"
                                             message="${orderId}/${shipGroupSeqId}">
-                                        <barcode:code39>
+                                        <barcode:code128>
                                             <barcode:height>8mm</barcode:height>
-                                        </barcode:code39>
+                                        </barcode:code128>
                                     </barcode:barcode>
                                 </fo:instream-foreign-object>
                             </fo:block>
@@ -191,7 +191,7 @@ under the License.
                                                 <fo:table-cell><fo:block font-size="10pt"><@ofbizCurrency amount=orderItem.unitPrice isoCode=currencyUomId/></fo:block></fo:table-cell>
                                             </fo:table-row>
                                             </#if>
-                                            <#if product.productTypeId == "MARKETING_PKG_AUTO">
+                                            <#if "MARKETING_PKG_AUTO" == product.productTypeId>
                                                 <fo:table-row background-color="${rowColor}">
                                                     <fo:table-cell  number-columns-spanned="6">
                                                         <fo:block text-align="left" font-weight="bold">
@@ -205,7 +205,7 @@ under the License.
                                                     <#if workOrderItemFulfillment?has_content>
                                                         <#assign workEffort = workOrderItemFulfillment.getRelatedOne("WorkEffort", false)/>
                                                         <#if workEffort?has_content>
-                                                            <#assign workEffortTask = Static["org.apache.ofbiz.entity.util.EntityUtil"].getFirst(delegator.findByAnd("WorkEffort", {"workEffortParentId" :  workEffort.workEffortId}, null, false))/>
+                                                            <#assign workEffortTask = EntityQuery.use(delegator).from("WorkEffort").where("workEffortParentId", workEffort.workEffortId!).queryFirst()!/>
                                                             <#if workEffortTask?has_content>
                                                                 <#assign workEffortInventoryAssigns = workEffortTask.getRelated("WorkEffortInventoryAssign", null, null, false)/>
                                                                 <#if workEffortInventoryAssigns?has_content>
@@ -250,7 +250,7 @@ under the License.
                                                     </#if>
                                                 </#if>
                                             </#if>
-                                            <#if rowColor == "#D4D0C8">
+                                            <#if "#D4D0C8" == rowColor>
                                                  <#assign rowColor = "white"/>
                                             <#else>
                                                 <#assign rowColor = "#D4D0C8"/>  

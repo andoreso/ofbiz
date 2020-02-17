@@ -18,7 +18,6 @@
  *******************************************************************************/
 package org.apache.ofbiz.content.data;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -58,7 +57,10 @@ public class DataEvents {
         return DataResourceWorker.uploadAndStoreImage(request, "dataResourceId", "imageData");
     }
 
-    /** Streams any binary content data to the browser */
+    /**
+     * Streams any binary content data to the browser.
+     * <p>Supersedes {@link org.apache.ofbiz.content.data.DataEvents#serveImage(HttpServletRequest, HttpServletResponse) DataEvents#serveImage()}</p>
+     */
     public static String serveObjectData(HttpServletRequest request, HttpServletResponse response) {
         Delegator delegator = (Delegator) request.getAttribute("delegator");
         LocalDispatcher dispatcher = (LocalDispatcher) request.getAttribute("dispatcher");
@@ -152,7 +154,7 @@ public class DataEvents {
 
             // no service errors; now check the actual response
             Boolean hasPermission = (Boolean) permSvcResp.get("hasPermission");
-            if (!hasPermission.booleanValue()) {
+            if (!hasPermission) {
                 String errorMsg = (String) permSvcResp.get("failMessage");
                 Debug.logError(errorMsg, module);
                 request.setAttribute("_ERROR_MESSAGE_", errorMsg);
@@ -169,7 +171,7 @@ public class DataEvents {
         String mimeType = DataResourceWorker.getMimeType(dataResource);
 
         // hack for IE and mime types
-        if (userAgent.indexOf("MSIE") > -1) {
+        if (UtilValidate.isNotEmpty(userAgent) && userAgent.indexOf("MSIE") > -1) {
             Debug.logInfo("Found MSIE changing mime type from - " + mimeType, module);
             mimeType = "application/octet-stream";
         }
@@ -185,11 +187,7 @@ public class DataEvents {
         Map<String, Object> resourceData;
         try {
             resourceData = DataResourceWorker.getDataResourceStream(dataResource, https, webSiteId, locale, contextRoot, false);
-        } catch (IOException e) {
-            Debug.logError(e, "Error getting DataResource stream", module);
-            request.setAttribute("_ERROR_MESSAGE_", e.getMessage());
-            return "error";
-        } catch (GeneralException e) {
+        } catch (IOException | GeneralException e) {
             Debug.logError(e, "Error getting DataResource stream", module);
             request.setAttribute("_ERROR_MESSAGE_", e.getMessage());
             return "error";
@@ -226,8 +224,11 @@ public class DataEvents {
         return "success";
     }
 
-    /** Streams ImageDataResource data to the output. */
-    // TODO: remove this method in favor of serveObjectData
+    /**
+     * Streams ImageDataResource data to the output.
+     * <p>Superseded by {@link org.apache.ofbiz.content.data.DataEvents#serveObjectData(HttpServletRequest, HttpServletResponse) DataEvents#serveObjectData}</p>
+     */
+    @Deprecated
     public static String serveImage(HttpServletRequest request, HttpServletResponse response) {
         HttpSession session = request.getSession();
         ServletContext application = session.getServletContext();
@@ -275,7 +276,7 @@ public class DataEvents {
 
             // hack for IE and mime types
             String userAgent = request.getHeader("User-Agent");
-            if (userAgent.indexOf("MSIE") > -1) {
+            if (userAgent != null && userAgent.indexOf("MSIE") > -1) {
                 Debug.logInfo("Found MSIE changing mime type from - " + mimeType, module);
                 mimeType = "application/octet-stream";
             }
@@ -285,19 +286,9 @@ public class DataEvents {
             }
             OutputStream os = response.getOutputStream();
             Map<String, Object> resourceData = DataResourceWorker.getDataResourceStream(dataResource, "", application.getInitParameter("webSiteId"), UtilHttp.getLocale(request), application.getRealPath("/"), false);
-            os.write(IOUtils.toByteArray((ByteArrayInputStream)resourceData.get("stream")));
+            os.write(IOUtils.toByteArray((InputStream)resourceData.get("stream")));
             os.flush();
-        } catch (GenericEntityException e) {
-            String errMsg = "Error downloading digital product content: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            request.setAttribute("_ERROR_MESSAGE_", errMsg);
-            return "error";
-        } catch (GeneralException e) {
-            String errMsg = "Error downloading digital product content: " + e.toString();
-            Debug.logError(e, errMsg, module);
-            request.setAttribute("_ERROR_MESSAGE_", errMsg);
-            return "error";
-        } catch (IOException e) {
+        } catch (GeneralException | IOException e) {
             String errMsg = "Error downloading digital product content: " + e.toString();
             Debug.logError(e, errMsg, module);
             request.setAttribute("_ERROR_MESSAGE_", errMsg);
@@ -317,7 +308,7 @@ public class DataEvents {
         Delegator delegator = (Delegator) request.getAttribute("delegator");
         GenericValue userLogin = (GenericValue) request.getSession().getAttribute("userLogin");
         Map<String, Object> paramMap = UtilHttp.getParameterMap(request);
-        String dataResourceId = (String)paramMap.get("dataResourceId");
+        String dataResourceId;
         GenericValue dataResource = delegator.makeValue("DataResource");
         dataResource.setPKFields(paramMap);
         dataResource.setNonPKFields(paramMap);
@@ -326,39 +317,43 @@ public class DataEvents {
         String mode = (String)paramMap.get("mode");
         Locale locale = UtilHttp.getLocale(request);
 
-        if (mode != null && mode.equals("UPDATE")) {
-            try {
+        try {
+            if (mode != null && "UPDATE".equals(mode)) {
                 result = dispatcher.runSync("updateDataResource", serviceInMap);
-            } catch (GenericServiceException e) {
-                String errMsg = UtilProperties.getMessage(DataEvents.err_resource, "dataEvents.error_call_update_service", locale);
-                String errorMsg = "Error calling the updateDataResource service." + e.toString();
-                Debug.logError(e, errorMsg, module);
-                request.setAttribute("_ERROR_MESSAGE_", errMsg + e.toString());
-                return "error";
-            }
-        } else {
-            mode = "CREATE";
-            try {
+                if (ServiceUtil.isError(result)) {
+                    String errMsg = UtilProperties.getMessage(DataEvents.err_resource, "dataEvents.error_call_update_service", locale);
+                    String errorMsg = ServiceUtil.getErrorMessage(result);
+                    Debug.logError(errorMsg, module);
+                    request.setAttribute("_ERROR_MESSAGE_", errMsg);
+                    return "error";
+                }
+            } else {
+                mode = "CREATE";
                 result = dispatcher.runSync("createDataResource", serviceInMap);
-            } catch (GenericServiceException e) {
-                String errMsg = UtilProperties.getMessage(DataEvents.err_resource, "dataEvents.error_call_create_service", locale);
-                String errorMsg = "Error calling the createDataResource service." + e.toString();
-                Debug.logError(e, errorMsg, module);
-                request.setAttribute("_ERROR_MESSAGE_", errMsg + e.toString());
-                return "error";
+                if (ServiceUtil.isError(result)) {
+                    String errMsg = UtilProperties.getMessage(DataEvents.err_resource, "dataEvents.error_call_create_service", locale);
+                    String errorMsg = ServiceUtil.getErrorMessage(result);
+                    Debug.logError(errorMsg, module);
+                    request.setAttribute("_ERROR_MESSAGE_", errMsg);
+                    return "error";
+                }
+                dataResourceId = (String)result.get("dataResourceId");
+                dataResource.set("dataResourceId", dataResourceId);
             }
-            dataResourceId = (String)result.get("dataResourceId");
-            dataResource.set("dataResourceId", dataResourceId);
+        } catch (GenericServiceException e) {
+            Debug.logError(e, module);
+            request.setAttribute("_ERROR_MESSAGE_", e.toString());
+            return "error";
         }
 
         String returnStr = "success";
-        if (mode.equals("CREATE")) {
+        if ("CREATE".equals(mode)) {
             // Set up return message to guide selection of follow on view
             request.setAttribute("dataResourceId", result.get("dataResourceId"));
             String dataResourceTypeId = (String)serviceInMap.get("dataResourceTypeId");
             if (dataResourceTypeId != null) {
-                 if (dataResourceTypeId.equals("ELECTRONIC_TEXT")
-                     || dataResourceTypeId.equals("IMAGE_OBJECT")) {
+                 if ("ELECTRONIC_TEXT".equals(dataResourceTypeId)
+                     || "IMAGE_OBJECT".equals(dataResourceTypeId)) {
                     returnStr = dataResourceTypeId;
                  }
             }

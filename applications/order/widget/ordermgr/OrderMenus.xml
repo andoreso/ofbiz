@@ -87,6 +87,10 @@ under the License.
         <menu-item name="stats" title="${uiLabelMap.CommonStats}">
             <link target="orderstats"/>
         </menu-item>
+
+        <menu-item name="allocationPlan" title="${uiLabelMap.OrderAllocationPlan}">
+            <link target="FindAllocationPlan"/>
+        </menu-item>
     </menu>
 
     <menu name="RequirementsTabBar" extends="CommonTabBarMenu" extends-resource="component://common/widget/CommonMenus.xml">
@@ -254,9 +258,6 @@ under the License.
                 <parameter param-name="quoteId" from-field="quote.quoteId"/>
                 <parameter param-name="emailType" value="PRDS_QUO_CONFIRM"/>
             </link>
-        </menu-item>
-        <menu-item name="editQuote" title="${uiLabelMap.OrderCreateOrderQuote}">
-            <link target="EditQuote"/>
         </menu-item>
         <menu-item name="createOrder" title="${uiLabelMap.OrderCreateOrder}">
             <condition disabled-style="disabled">

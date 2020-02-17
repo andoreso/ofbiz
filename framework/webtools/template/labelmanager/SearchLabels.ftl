@@ -77,17 +77,18 @@ under the License.
           <label for="onlyNotUsedLabels">${uiLabelMap.WebtoolsLabelManagerOnlyNotUsedLabels}</label>
         </td>
         <td>
-          <input type="checkbox" id="onlyNotUsedLabels" name="onlyNotUsedLabels" value="Y" <#if parameters.onlyNotUsedLabels?? && parameters.onlyNotUsedLabels == "Y">checked="checked"</#if> />
+          <input type="checkbox" id="onlyNotUsedLabels" name="onlyNotUsedLabels" value="Y" <#if parameters.onlyNotUsedLabels?? && "Y" == parameters.onlyNotUsedLabels>checked="checked"</#if> />
         </td>
         <td class="label">
           <label for="onlyMissingTranslations">${uiLabelMap.WebtoolsLabelManagerOnlyMissingTranslations}</label>
         </td>
         <td>
-          <input type="checkbox" id="onlyMissingTranslations" name="onlyMissingTranslations" value="Y" <#if parameters.onlyMissingTranslations?? && parameters.onlyMissingTranslations == "Y">checked="checked"</#if> />
+          <input type="checkbox" id="onlyMissingTranslations" name="onlyMissingTranslations" value="Y" <#if parameters.onlyMissingTranslations?? && "Y" == parameters.onlyMissingTranslations>checked="checked"</#if> />
         </td>
       </tr>
       <tr>
         <td colspan="4" align="center">
+          <input type="submit" name="searchLabels" value="${uiLabelMap.CommonFind}"/>
           <#if (duplicatedLocalesLabels > 0)>
             <br />
             <b>${uiLabelMap.WebtoolsLabelManagerWarningMessage} (${duplicatedLocalesLabels})</b>
@@ -96,8 +97,6 @@ under the License.
                 <br/>${duplicatedLocalesLabel.labelKey}
             </#list>
             <br /><br />${uiLabelMap.WebtoolsLabelManagerClearCacheAfterFixingDuplicateLabels}
-          <#else>
-            <input type="submit" name="searchLabels" value="${uiLabelMap.CommonFind}"/>
           </#if>
         </td>
       </tr>

@@ -21,6 +21,7 @@ package org.apache.ofbiz.webtools.labelmanager;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -62,12 +63,12 @@ public class LabelReferences {
     private static final String getResourceRegex = "ServiceUtil\\.getResource\\(\\)";
     private static final String getResource = "ServiceUtil.getResource  ";
 
-    protected Map<String, Map<String, Integer>> references = new TreeMap<String, Map<String, Integer>>();
+    protected Map<String, Map<String, Integer>> references = new TreeMap<>();
     protected Delegator delegator;
     protected DispatchContext dispatchContext;
     protected Map<String, LabelInfo> labels;
-    protected Set<String> labelSet = new HashSet<String>();
-    protected Set<String> rootFolders = new HashSet<String>();
+    protected Set<String> labelSet = new HashSet<>();
+    protected Set<Path> rootFolders = new HashSet<>();
 
     public LabelReferences(Delegator delegator, LabelManagerFactory factory) {
         this.delegator = delegator;
@@ -93,11 +94,7 @@ public class LabelReferences {
         }
         Collection<ComponentConfig> componentConfigs = ComponentConfig.getAllComponents();
         for (ComponentConfig config : componentConfigs) {
-            String rootFolder = config.getRootLocation();
-            rootFolder = rootFolder.replace('\\', '/');
-            if (!rootFolder.endsWith("/")) {
-                rootFolder = rootFolder + "/";
-            }
+            Path rootFolder = config.rootLocation();
             this.rootFolders.add(rootFolder);
         }
     }
@@ -116,10 +113,10 @@ public class LabelReferences {
         // get labels from simple method files
         getLabelsFromSimpleMethodFiles();
         // get labels from widgets files
-        List<File> fileList = new LinkedList<File>();
-        for (String rootFolder : this.rootFolders) {
-            fileList.addAll(FileUtil.findXmlFiles(rootFolder + "webapp", null, null, null));
-            fileList.addAll(FileUtil.findXmlFiles(rootFolder + "widget", null, null, null));
+        List<File> fileList = new LinkedList<>();
+        for (Path rootFolder : this.rootFolders) {
+            fileList.addAll(FileUtil.findXmlFiles(rootFolder.resolve("webapp").toString(), null, null, null));
+            fileList.addAll(FileUtil.findXmlFiles(rootFolder.resolve("widget").toString(), null, null, null));
         }
         for (File file : fileList) {
             String inFile = FileUtil.readString("UTF-8", file);
@@ -143,7 +140,7 @@ public class LabelReferences {
     private void setLabelReference(String labelKey, String filePath) {
         Map<String, Integer> reference = references.get(labelKey);
         if (UtilValidate.isEmpty(reference)) {
-            reference = new TreeMap<String, Integer>();
+            reference = new TreeMap<>();
             reference.put(filePath, 1);
             references.put(labelKey, reference);
         } else {
@@ -159,8 +156,8 @@ public class LabelReferences {
     }
 
     private void getLabelsFromFtlFiles() throws IOException {
-        for (String rootFolder : this.rootFolders) {
-            List<File> ftlFiles = FileUtil.findFiles("ftl", rootFolder, null, null);
+        for (Path rootFolder : this.rootFolders) {
+            List<File> ftlFiles = FileUtil.findFiles("ftl", rootFolder.toString(), null, null);
             for (File file : ftlFiles) {
                 String inFile = FileUtil.readString("UTF-8", file);
                 inFile = inFile.replaceAll(getResourceRegex, getResource);
@@ -181,47 +178,68 @@ public class LabelReferences {
             }
         }
     }
-
     private void getLabelsFromJavaFiles() throws IOException {
-        for (String rootFolder : this.rootFolders) {
-            List<File> javaFiles = FileUtil.findFiles("java", rootFolder + "src", null, null);
+        for (Path rootFolder : this.rootFolders) {
+            List<File> javaFiles = FileUtil.findFiles("java", rootFolder.resolve("src").toString(), null, null);
             for (File javaFile : javaFiles) {
                 // do not parse this file, else issue with getResourceRegex
                 if ("LabelReferences.java".equals(javaFile.getName())) continue;
                 String inFile = FileUtil.readString("UTF-8", javaFile);
                 inFile = inFile.replaceAll(getResourceRegex, getResource);
-                int pos = inFile.indexOf(getMessage);
-                while (pos >= 0) {
-                    int endLabel = inFile.indexOf(")", pos);
-                    if (endLabel >= 0) {
-                        String[] args = inFile.substring(pos + getMessage.length(), endLabel).split(",");
-                        for (String labelKey : this.labelSet) {
-                            String searchString = "\"" + labelKey + "\"";
-                            if (searchString.equals(args[1].trim())) {
-                                setLabelReference(labelKey, javaFile.getPath());
-                            }
-                        }
-                        pos = endLabel;
-                    } else {
-                        pos = pos + getMessage.length();
-                    }
-                    pos = inFile.indexOf(getMessage, pos);
-                }
+                findUiLabelMapInMessage(inFile, javaFile.getPath());
+                findUiLabelMapInPattern(inFile, "uiLabelMap.get(\"", javaFile.getPath());
             }
         }
     }
-
     private void getLabelsFromGroovyFiles() throws IOException {
-        for (String rootFolder : this.rootFolders) {
-            List<File> groovyFiles = FileUtil.findFiles("groovy", rootFolder + "groovyScripts", null, null);
+        for (Path rootFolder : this.rootFolders) {
+            List<File> groovyFiles =
+                    FileUtil.findFiles("groovy", rootFolder.resolve("groovyScripts").toString(), null, null);
             for (File file : groovyFiles) {
                 String inFile = FileUtil.readString("UTF-8", file);
-                findUiLabelMapInFile(inFile, file.getPath());
+                findUiLabelMapInPattern(inFile, uiLabelMap, file.getPath());
+                findUiLabelMapInPattern(inFile, "uiLabelMap.get(\"", file.getPath());
+                findUiLabelMapInMessage(inFile, file.getPath());
             }
         }
     }
-    
-
+    protected void findUiLabelMapInMessage(String inFile, String filePath) {
+        int pos = inFile.indexOf(getMessage);
+        while (pos >= 0) {
+            int endLabel = inFile.indexOf(")", pos);
+            if (endLabel >= 0) {
+                String[] args = inFile.substring(pos + getMessage.length(), endLabel).split(",");
+                for (String labelKey : this.labelSet) {
+                    String searchString = "\"" + labelKey + "\"";
+                    if (searchString.equals(args[1].trim())) {
+                        setLabelReference(labelKey, filePath);
+                    }
+                }
+                pos = endLabel;
+            } else {
+                pos = pos + getMessage.length();
+            }
+            pos = inFile.indexOf(getMessage, pos);
+        }
+    }
+    protected void findUiLabelMapInPattern(String inFile, String pattern, String filePath) {
+        int pos = inFile.indexOf(pattern);
+        while (pos >= 0) {
+            String label = inFile.substring(pos + pattern.length());
+            String[] realLabel = label.split("\\P{Alpha}+");
+            String labelKey = realLabel[0];
+            int endPos = pos + labelKey.length();
+            if (endPos >= 0) {
+                if (this.labelSet.contains(labelKey)) {
+                    setLabelReference(labelKey, filePath);
+                }
+                pos = endPos;
+            } else {
+                pos = pos + pattern.length();
+            }
+            pos = inFile.indexOf(pattern, pos);
+        }
+    }
     protected void findUiLabelMapInFile(String inFile, String filePath) {
         int pos = inFile.indexOf(uiLabelMap);
         while (pos >= 0) {
@@ -265,19 +283,22 @@ public class LabelReferences {
     }
 
     private void getLabelsFromSimpleMethodFiles() throws IOException {
-        for (String rootFolder : this.rootFolders) {
-            List<File> simpleMethodsFiles = FileUtil.findFiles("xml", rootFolder + "minilang", null, null);
+        for (Path rootFolder : this.rootFolders) {
+            List<File> simpleMethodsFiles =
+                    FileUtil.findFiles("xml", rootFolder.resolve("minilang").toString(), null, null);
             for (File file : simpleMethodsFiles) {
                 String inFile = FileUtil.readString("UTF-8", file);
                 findUiLabelMapInFile(inFile, file.getPath());
                 findLabelKeyInElement(inFile, file.getPath(), "set");
                 findLabelKeyInElement(inFile, file.getPath(), "fail-property");
+                findLabelKeyInElement(inFile, file.getPath(), "property-to-field");
+                findLabelKeyInElement(inFile, file.getPath(), "default-message");
             }
         }
     }
 
     private void getLabelsFromFormWidgets(String inFile, File file) throws MalformedURLException, SAXException, ParserConfigurationException, IOException, GenericServiceException {
-        Set<String> fieldNames = new HashSet<String>();
+        Set<String> fieldNames = new HashSet<>();
         findUiLabelMapInFile(inFile, file.getPath());
         Document formDocument = UtilXml.readXmlDocument(file.toURI().toURL());
         Element rootElem = formDocument.getDocumentElement();
@@ -287,6 +308,9 @@ public class LabelReferences {
             }
             for (Element elem : UtilXml.childElementList(formElement, "auto-fields-entity")) {
                 getAutoFieldsEntityTag(elem, fieldNames);
+            }
+            for (Element elem : UtilXml.childElementList(formElement, "field")) {
+                getAutoFieldsTag(elem, file.getPath());
             }
             for (String field : fieldNames) {
                 String labelKey = formFieldTitle.concat(field);
@@ -330,7 +354,28 @@ public class LabelReferences {
             }
         }
     }
-
+    private void getAutoFieldsTag(Element element, String filePath) {
+        String tooltip = UtilFormatOut.checkNull(element.getAttribute("tooltip"));
+        if (UtilValidate.isNotEmpty(tooltip)) {
+            int pos = tooltip.indexOf(getMessage);
+            while (pos >= 0) {
+                int endLabel = tooltip.indexOf(")", pos);
+                if (endLabel >= 0) {
+                    String[] args = tooltip.substring(pos + getMessage.length(), endLabel).split(",");
+                    for (String labelKey : this.labelSet) {
+                        String xmlSearchString = "\'" + labelKey + "\'";
+                        if (xmlSearchString.equals(args[1].trim())) {
+                            setLabelReference(labelKey, filePath);
+                        }
+                    }
+                    pos = endLabel;
+                } else {
+                    pos = pos + getMessage.length();
+                }
+                pos = tooltip.indexOf(getMessage, pos);
+            }
+        }
+    }
     private void getAutoFieldsServiceTag(Element element, Set<String> fieldNames) throws GenericServiceException {
         String serviceName = UtilFormatOut.checkNull(element.getAttribute("service-name"));
         String defaultFieldType = UtilFormatOut.checkNull(element.getAttribute("default-field-type"));

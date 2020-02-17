@@ -26,8 +26,10 @@ import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.Set;
 
+import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.string.FlexibleStringExpander;
+import org.apache.ofbiz.service.calendar.TemporalExpressions.Frequency;
 
 /**
  * Generic ResourceBundle Map Wrapper, given ResourceBundle allows it to be used as a Map
@@ -36,6 +38,7 @@ import org.apache.ofbiz.base.util.string.FlexibleStringExpander;
 @SuppressWarnings("serial")
 public class ResourceBundleMapWrapper implements Map<String, Object>, Serializable {
 
+    public static final String module = Frequency.class.getName();
     protected MapStack<String> rbmwStack;
     protected ResourceBundle initialResourceBundle;
     protected Map<String, Object> context;
@@ -102,18 +105,23 @@ public class ResourceBundleMapWrapper implements Map<String, Object>, Serializab
         return this.initialResourceBundle;
     }
 
+    @Override
     public void clear() {
         this.rbmwStack.clear();
     }
+    @Override
     public boolean containsKey(Object arg0) {
         return this.rbmwStack.containsKey(arg0);
     }
+    @Override
     public boolean containsValue(Object arg0) {
         return this.rbmwStack.containsValue(arg0);
     }
+    @Override
     public Set<Map.Entry<String, Object>> entrySet() {
         return this.rbmwStack.entrySet();
     }
+    @Override
     public Object get(Object arg0) {
         Object value = this.rbmwStack.get(arg0);
         if (value == null) {
@@ -122,30 +130,37 @@ public class ResourceBundleMapWrapper implements Map<String, Object>, Serializab
             try {
                 String str = (String) value;
                 return FlexibleStringExpander.expandString(str, context);
-            } catch (Exception e) {
-                // Potential ClassCastException - do nothing
+            } catch (ClassCastException e) {
+                Debug.logInfo(e.getMessage(), module);
             }
         }
         return value;
     }
+    @Override
     public boolean isEmpty() {
         return this.rbmwStack.isEmpty();
     }
+    @Override
     public Set<String> keySet() {
         return this.rbmwStack.keySet();
     }
+    @Override
     public Object put(String key, Object value) {
         return this.rbmwStack.put(key, value);
     }
+    @Override
     public void putAll(Map<? extends String, ? extends Object> arg0) {
         this.rbmwStack.putAll(arg0);
     }
+    @Override
     public Object remove(Object arg0) {
         return this.rbmwStack.remove(arg0);
     }
+    @Override
     public int size() {
         return this.rbmwStack.size();
     }
+    @Override
     public Collection<Object> values() {
         return this.rbmwStack.values();
     }
@@ -174,45 +189,36 @@ public class ResourceBundleMapWrapper implements Map<String, Object>, Serializab
             // when the main Map doesn't have a certain value
             if (resourceBundle != null) {
                 Set<String> set = resourceBundle.keySet();
-                topLevelMap = new HashMap<String, Object>(set.size());
+                topLevelMap = new HashMap<>(set.size());
                 for (String key : set) {
                     Object value = resourceBundle.getObject(key);
                     topLevelMap.put(key, value);
                 }
             } else {
-                topLevelMap = new HashMap<String, Object>(1);
+                topLevelMap = new HashMap<>(1);
             }
             topLevelMap.put("_RESOURCE_BUNDLE_", resourceBundle);
             isMapInitialized = true;
         }
 
-
-        /* (non-Javadoc)
-         * @see java.util.Map#size()
-         */
-        public int size() {            
+        @Override
+        public int size() {
             if(isMapInitialized) {
                 // this is an approximate size, won't include elements from parent bundles
                 return topLevelMap.size() -1;
-            } else {
-                return resourceBundle.keySet().size();                        
             }
+            return resourceBundle.keySet().size();
         }
 
-        /* (non-Javadoc)
-         * @see java.util.Map#isEmpty()
-         */
+        @Override
         public boolean isEmpty() {
             if (isMapInitialized) {
                 return topLevelMap.isEmpty();
-            } else {
-                return resourceBundle.keySet().size() == 0;
             }
+            return resourceBundle.keySet().size() == 0;
         }
 
-        /* (non-Javadoc)
-         * @see java.util.Map#containsKey(java.lang.Object)
-         */
+        @Override
         public boolean containsKey(Object arg0) {
             if (isMapInitialized) {
                 if (topLevelMap.containsKey(arg0)) {
@@ -220,9 +226,10 @@ public class ResourceBundleMapWrapper implements Map<String, Object>, Serializab
                 }
             } else {
                 try {
-                    if (this.resourceBundle.getObject((String) arg0) != null) {
-                        return true;
-                    }
+                    //the following will just be executed to check if arg0 is null,
+                    //if so the thrown exception will be caught, if not true will be returned
+                    this.resourceBundle.getObject((String) arg0);
+                    return true;
                 } catch (NullPointerException e) {
                     // happens when arg0 is null
                 } catch (MissingResourceException e) {
@@ -233,16 +240,12 @@ public class ResourceBundleMapWrapper implements Map<String, Object>, Serializab
             return false;
         }
 
-        /* (non-Javadoc)
-         * @see java.util.Map#containsValue(java.lang.Object)
-         */
+        @Override
         public boolean containsValue(Object arg0) {
             throw new RuntimeException("Not implemented for ResourceBundleMapWrapper");
         }
 
-        /* (non-Javadoc)
-         * @see java.util.Map#get(java.lang.Object)
-         */
+        @Override
         public Object get(Object arg0) {
             Object value = null;
             if(isMapInitialized) {
@@ -255,59 +258,46 @@ public class ResourceBundleMapWrapper implements Map<String, Object>, Serializab
                         value = this.resourceBundle.getObject((String) arg0);
                     } catch (MissingResourceException mre) {
                         // do nothing, this will be handled by recognition that the value is still null
+                        Debug.logError(mre, module);
                     }
                 }
             }
             return value;
         }
 
-        /* (non-Javadoc)
-         * @see java.util.Map#put(java.lang.Object, java.lang.Object)
-         */
+        @Override
         public Object put(String arg0, Object arg1) {
             throw new RuntimeException("Not implemented/allowed for ResourceBundleMapWrapper");
         }
 
-        /* (non-Javadoc)
-         * @see java.util.Map#remove(java.lang.Object)
-         */
+        @Override
         public Object remove(Object arg0) {
             throw new RuntimeException("Not implemented for ResourceBundleMapWrapper");
         }
 
-        /* (non-Javadoc)
-         * @see java.util.Map#putAll(java.util.Map)
-         */
+        @Override
         public void putAll(Map<? extends String, ? extends Object> arg0) {
             throw new RuntimeException("Not implemented for ResourceBundleMapWrapper");
         }
 
-        /* (non-Javadoc)
-         * @see java.util.Map#clear()
-         */
+        @Override
         public void clear() {
             throw new RuntimeException("Not implemented for ResourceBundleMapWrapper");
         }
 
-        /* (non-Javadoc)
-         * @see java.util.Map#keySet()
-         */
+        @Override
         public Set<String> keySet() {
             createMapWhenNeeded();
             return this.topLevelMap.keySet();
         }
 
-        /* (non-Javadoc)
-         * @see java.util.Map#values()
-         */
+        @Override
         public Collection<Object> values() {
             createMapWhenNeeded();
             return this.topLevelMap.values();
         }
 
-        /* (non-Javadoc)
-         * @see java.util.Map#entrySet()
-         */
+        @Override
         public Set<Map.Entry<String, Object>> entrySet() {
             createMapWhenNeeded();
             return this.topLevelMap.entrySet();

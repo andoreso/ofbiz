@@ -139,14 +139,13 @@ public class NotificationServices {
                 } else {
                     // otherwise just report the error
                     Debug.logError("prepareNotification failed: " + bodyResult.get(ModelService.ERROR_MESSAGE), module);
-                    body = null;
                 }
             }
 
             // make sure we have a valid body before sending
             if (body != null) {
                 // retain only the required attributes for the sendMail service
-                Map<String, Object> emailContext =  new LinkedHashMap<String, Object>();
+                Map<String, Object> emailContext =  new LinkedHashMap<>();
                 emailContext.put("sendTo", context.get("sendTo"));
                 emailContext.put("body", body);
                 emailContext.put("sendCc", context.get("sendCc"));
@@ -189,12 +188,12 @@ public class NotificationServices {
     public static Map<String, Object> prepareNotification(DispatchContext ctx, Map<String, ? extends Object> context) {
         Delegator delegator = ctx.getDelegator();
         String templateName = (String) context.get("templateName");
-        Map<String, Object> templateData = UtilGenerics.checkMap(context.get("templateData"));
+        Map<String, Object> templateData = UtilGenerics.cast(context.get("templateData"));
         String webSiteId = (String) context.get("webSiteId");
         Locale locale = (Locale) context.get("locale");
         Map<String, Object> result = null;
         if (templateData == null) {
-            templateData =  new LinkedHashMap<String, Object>();
+            templateData =  new LinkedHashMap<>();
         }
 
         try {

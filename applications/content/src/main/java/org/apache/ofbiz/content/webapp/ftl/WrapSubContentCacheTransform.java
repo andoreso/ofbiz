@@ -49,8 +49,8 @@ import freemarker.template.TemplateTransformModel;
 public class WrapSubContentCacheTransform implements TemplateTransformModel {
 
     public static final String module = WrapSubContentCacheTransform.class.getName();
-    public static final String [] upSaveKeyNames = {"globalNodeTrail"};
-    public static final String [] saveKeyNames = {"contentId", "subContentId", "subDataResourceTypeId", "mimeTypeId", "whenMap", "locale",  "wrapTemplateId", "encloseWrapText", "nullThruDatesOnly"};
+    static final String [] upSaveKeyNames = {"globalNodeTrail"};
+    static final String [] saveKeyNames = {"contentId", "subContentId", "subDataResourceTypeId", "mimeTypeId", "whenMap", "locale",  "wrapTemplateId", "encloseWrapText", "nullThruDatesOnly"};
 
     /**
      * @deprecated use FreeMarkerWorker.getWrappedObject()
@@ -77,8 +77,9 @@ public class WrapSubContentCacheTransform implements TemplateTransformModel {
         return FreeMarkerWorker.getArg(args, key, ctx);
     }
 
+    @Override
     @SuppressWarnings("unchecked")
-    public Writer getWriter(final Writer out, Map args) {
+    public Writer getWriter(Writer out, @SuppressWarnings("rawtypes") Map args) {
         final StringBuilder buf = new StringBuilder();
         final Environment env = Environment.getCurrentEnvironment();
         Map<String, Object> envContext = FreeMarkerWorker.getWrappedObject("context", env);
@@ -92,15 +93,15 @@ public class WrapSubContentCacheTransform implements TemplateTransformModel {
         final Delegator delegator = FreeMarkerWorker.getWrappedObject("delegator", env);
         final HttpServletRequest request = FreeMarkerWorker.getWrappedObject("request", env);
         FreeMarkerWorker.getSiteParameters(request, templateCtx);
-        final Map<String, Object> savedValuesUp = new HashMap<String, Object>();
+        final Map<String, Object> savedValuesUp = new HashMap<>();
         FreeMarkerWorker.saveContextValues(templateCtx, upSaveKeyNames, savedValuesUp);
         FreeMarkerWorker.overrideWithArgs(templateCtx, args);
         final String wrapTemplateId = (String)templateCtx.get("wrapTemplateId");
         final GenericValue userLogin = FreeMarkerWorker.getWrappedObject("userLogin", env);
-        List<Map<String, ? extends Object>> trail = UtilGenerics.checkList(templateCtx.get("globalNodeTrail"));
+        List<Map<String, ? extends Object>> trail = UtilGenerics.cast(templateCtx.get("globalNodeTrail"));
         String contentAssocPredicateId = (String)templateCtx.get("contentAssocPredicateId");
         String strNullThruDatesOnly = (String)templateCtx.get("nullThruDatesOnly");
-        Boolean nullThruDatesOnly = (strNullThruDatesOnly != null && strNullThruDatesOnly.equalsIgnoreCase("true")) ? Boolean.TRUE :Boolean.FALSE;
+        Boolean nullThruDatesOnly = (strNullThruDatesOnly != null && "true".equalsIgnoreCase(strNullThruDatesOnly)) ? Boolean.TRUE :Boolean.FALSE;
         GenericValue val = null;
         try {
             val = ContentWorker.getCurrentContent(delegator, trail, userLogin, templateCtx, nullThruDatesOnly, contentAssocPredicateId);
@@ -128,7 +129,7 @@ public class WrapSubContentCacheTransform implements TemplateTransformModel {
             // the parent context. But it will already have one and it is the same context that is
             // being passed.
         }
-        final Map<String, Object> savedValues = new HashMap<String, Object>();
+        final Map<String, Object> savedValues = new HashMap<>();
         FreeMarkerWorker.saveContextValues(templateCtx, saveKeyNames, savedValues);
         // This order is taken so that the mimeType can be overridden in the transform arguments.
         String mimeTypeId = ContentWorker.getMimeTypeId(delegator, view, templateCtx);
@@ -159,7 +160,7 @@ public class WrapSubContentCacheTransform implements TemplateTransformModel {
                 if (UtilValidate.isNotEmpty(wrapTemplateId)) {
                     templateCtx.put("wrappedContent", wrappedContent);
                     Map<String, Object> templateRoot = null;
-                    Map<String, Object> templateRootTemplate = UtilGenerics.checkMap(templateCtx.get("templateRootTemplate"));
+                    Map<String, Object> templateRootTemplate = UtilGenerics.cast(templateCtx.get("templateRootTemplate"));
                     if (templateRootTemplate == null) {
                         Map<String, Object> templateRootTmp = FreeMarkerWorker.createEnvironmentMap(env);
                         templateRoot = UtilMisc.makeMapWritable(templateRootTmp);
@@ -170,8 +171,13 @@ public class WrapSubContentCacheTransform implements TemplateTransformModel {
 
                     templateRoot.put("context", templateCtx);
 
-                    String mimeTypeId = (String)templateCtx.get("mimeTypeId");
-                    Locale locale = null;
+                    String mimeTypeId = (String) templateCtx.get("mimeTypeId");
+                    
+                    Locale locale = (Locale) templateCtx.get("locale");
+                    if (locale == null) {
+                        locale = Locale.getDefault();
+                    }
+                    
                     try {
                         ContentWorker.renderContentAsText(dispatcher, wrapTemplateId, out, templateRoot, locale, mimeTypeId, null, null, true);
                     } catch (IOException e) {

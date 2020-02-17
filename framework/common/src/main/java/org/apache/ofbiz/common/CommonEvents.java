@@ -25,12 +25,10 @@ import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -45,19 +43,18 @@ import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.ofbiz.base.lang.JSON;
 import org.apache.ofbiz.base.util.Debug;
-import org.apache.ofbiz.base.util.StringUtil;
 import org.apache.ofbiz.base.util.UtilGenerics;
 import org.apache.ofbiz.base.util.UtilHttp;
-import org.apache.ofbiz.base.util.UtilMisc;
 import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.UtilValidate;
-import org.apache.ofbiz.base.util.cache.UtilCache;
 import org.apache.ofbiz.entity.Delegator;
 import org.apache.ofbiz.entity.GenericEntityException;
 import org.apache.ofbiz.entity.GenericValue;
-import org.apache.ofbiz.entity.util.EntityQuery;
 import org.apache.ofbiz.entity.util.EntityUtilProperties;
-import org.apache.ofbiz.security.Security;
+import org.apache.ofbiz.webapp.control.JWTManager;
+import org.apache.ofbiz.webapp.control.LoginWorker;
+import org.apache.ofbiz.widget.model.ThemeFactory;
+import org.apache.ofbiz.widget.renderer.VisualTheme;
 
 /**
  * Common Services
@@ -77,124 +74,9 @@ public class CommonEvents {
         "targetRequestUri",
         "_SERVER_ROOT_URL_",
         "_CONTROL_PATH_",
-        "thisRequestUri"
+        "thisRequestUri",
+        "org.apache.tomcat.util.net.secure_protocol_version"
     };
-
-    private static final UtilCache<String, Map<String, String>> appletSessions = UtilCache.createUtilCache("AppletSessions", 0, 600000, true);
-
-    public static String checkAppletRequest(HttpServletRequest request, HttpServletResponse response) {
-        Delegator delegator = (Delegator) request.getAttribute("delegator");
-        String sessionId = request.getParameter("sessionId");
-        String visitId = request.getParameter("visitId");
-        sessionId = sessionId.trim();
-        visitId = visitId.trim();
-
-        String responseString = "";
-
-        GenericValue visit = null;
-        try {
-            visit = EntityQuery.use(delegator).from("Visit").where("visitId", visitId).queryOne();
-        } catch (GenericEntityException e) {
-            Debug.logError(e, "Cannot Visit Object", module);
-        }
-
-        if (visit != null && visit.getString("sessionId").equals(sessionId) && appletSessions.containsKey(sessionId)) {
-            Map<String, String> sessionMap = appletSessions.get(sessionId);
-            if (sessionMap != null && sessionMap.containsKey("followPage"))
-                responseString = sessionMap.remove("followPage");
-        }
-
-        try {
-            PrintWriter out = response.getWriter();
-            response.setContentType("text/plain");
-            out.println(responseString);
-            out.close();
-        } catch (IOException e) {
-            Debug.logError(e, "Problems writing servlet output!", module);
-        }
-
-        return "success";
-    }
-
-    public static String receiveAppletRequest(HttpServletRequest request, HttpServletResponse response) {
-        Delegator delegator = (Delegator) request.getAttribute("delegator");
-        String sessionId = request.getParameter("sessionId");
-        String visitId = request.getParameter("visitId");
-        sessionId = sessionId.trim();
-        visitId = visitId.trim();
-
-        String responseString = "ERROR";
-
-        GenericValue visit = null;
-        try {
-            visit = EntityQuery.use(delegator).from("Visit").where("visitId", visitId).queryOne();
-        } catch (GenericEntityException e) {
-            Debug.logError(e, "Cannot Visit Object", module);
-        }
-
-        if (visit.getString("sessionId").equals(sessionId)) {
-            String currentPage = request.getParameter("currentPage");
-            Map<String, String> sessionMap = appletSessions.get(sessionId);
-            if (sessionMap != null) {
-                String followers = sessionMap.get("followers");
-                List<String> folList = StringUtil.split(followers, ",");
-                for (String follower: folList) {
-                    Map<String, String> folSesMap = UtilMisc.toMap("followPage", currentPage);
-                    appletSessions.put(follower, folSesMap);
-                }
-            }
-            responseString = "OK";
-        }
-
-        try {
-            PrintWriter out = response.getWriter();
-            response.setContentType("text/plain");
-            out.println(responseString);
-            out.close();
-        } catch (IOException e) {
-            Debug.logError(e, "Problems writing servlet output!", module);
-        }
-
-        return "success";
-    }
-
-    public static String setAppletFollower(HttpServletRequest request, HttpServletResponse response) {
-        Security security = (Security) request.getAttribute("security");
-        GenericValue userLogin = (GenericValue) request.getSession().getAttribute("userLogin");
-        String visitId = request.getParameter("visitId");
-        if (visitId != null) request.setAttribute("visitId", visitId);
-        if (security.hasPermission("SEND_CONTROL_APPLET", userLogin)) {
-            String followerSessionId = request.getParameter("followerSid");
-            String followSessionId = request.getParameter("followSid");
-            Map<String, String> follow = appletSessions.get(followSessionId);
-            if (follow == null) follow = new LinkedHashMap<String, String>();
-            String followerListStr = follow.get("followers");
-            if (followerListStr == null) {
-                followerListStr = followerSessionId;
-            } else {
-                followerListStr = followerListStr + "," + followerSessionId;
-            }
-            appletSessions.put(followSessionId, follow);
-            appletSessions.put(followerSessionId, null);
-        }
-        return "success";
-    }
-
-    public static String setFollowerPage(HttpServletRequest request, HttpServletResponse response) {
-        Security security = (Security) request.getAttribute("security");
-        GenericValue userLogin = (GenericValue) request.getSession().getAttribute("userLogin");
-        String visitId = request.getParameter("visitId");
-        if (visitId != null) request.setAttribute("visitId", visitId);
-        if (security.hasPermission("SEND_CONTROL_APPLET", userLogin)) {
-            String followerSessionId = request.getParameter("followerSid");
-            String pageUrl = request.getParameter("pageUrl");
-            Map<String, String> follow = appletSessions.get(followerSessionId);
-            if (follow == null) follow = new LinkedHashMap<String, String>();
-            follow.put("followPage", pageUrl);
-            appletSessions.put(followerSessionId, follow);
-        }
-        return "success";
-    }
 
     /** Simple event to set the users per-session locale setting. The user's locale
      * setting should be passed as a "newLocale" request parameter. */
@@ -249,6 +131,18 @@ public class CommonEvents {
         return "success";
     }
 
+    /** Simple event to set the user's per-session theme setting. */
+    public static String setSessionTheme(HttpServletRequest request, HttpServletResponse response) {
+        String visualThemeId = request.getParameter("userPrefValue");
+        if (UtilValidate.isNotEmpty(visualThemeId)) {
+            VisualTheme visualTheme = ThemeFactory.getVisualThemeFromId(visualThemeId);
+            if (visualTheme != null) {
+                UtilHttp.setVisualTheme(request, visualTheme);
+            }
+        }
+        return "success";
+    }
+
     /** Simple event to set the users per-session currency uom value */
     public static String setSessionCurrencyUom(HttpServletRequest request, HttpServletResponse response) {
         String currencyUom = request.getParameter("currencyUom");
@@ -289,7 +183,7 @@ public class CommonEvents {
         try {
             JSON json = JSON.from(attrMap);
             writeJSONtoResponse(json, request, response);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return "error";
         }
         return "success";
@@ -297,16 +191,12 @@ public class CommonEvents {
 
     private static void writeJSONtoResponse(JSON json, HttpServletRequest request, HttpServletResponse response) throws UnsupportedEncodingException {
         String jsonStr = json.toString();
-        if (jsonStr == null) {
-            Debug.logError("JSON Object was empty; fatal error!", module);
-            return;
-        }
         String httpMethod = request.getMethod();
 
         // This was added for security reason (OFBIZ-5409), you might need to remove the "//" prefix when handling the JSON response
         // Though normally you simply have to access the data you want, so should not be annoyed by the "//" prefix
         if ("GET".equalsIgnoreCase(httpMethod)) {
-            Debug.logWarning("for security reason (OFBIZ-5409) the the '//' prefix was added handling the JSON response.  "
+            Debug.logWarning("for security reason (OFBIZ-5409) the '//' prefix was added handling the JSON response.  "
                     + "Normally you simply have to access the data you want, so should not be annoyed by the '//' prefix."
                     + "You might need to remove it if you use Ajax GET responses (not recommended)."
                     + "In case, the util.js scrpt is there to help you."
@@ -346,13 +236,13 @@ public class CommonEvents {
             return "error";
         }
         Locale locale = UtilHttp.getLocale(request);
-        Map<String, List<String>> uiLabelMap = new HashMap<String, List<String>>();
+        Map<String, List<String>> uiLabelMap = new HashMap<>();
         Set<Map.Entry<String, List<String>>> entrySet = uiLabelObject.entrySet();
         for (Map.Entry<String, List<String>> entry : entrySet) {
             String resource = entry.getKey();
             List<String> resourceKeys = entry.getValue();
             if (resourceKeys != null) {
-                List<String> labels = new ArrayList<String>(resourceKeys.size());
+                List<String> labels = new ArrayList<>(resourceKeys.size());
                 for (String resourceKey : resourceKeys) {
                     String label = UtilProperties.getMessage(resource, resourceKey, locale);
                     labels.add(label);
@@ -380,7 +270,7 @@ public class CommonEvents {
             return "error";
         }
         Locale locale = UtilHttp.getLocale(request);
-        Map<String, String> uiLabelMap = new HashMap<String, String>();
+        Map<String, String> uiLabelMap = new HashMap<>();
         Set<Map.Entry<String, String>> entrySet = uiLabelObject.entrySet();
         for (Map.Entry<String, String> entry : entrySet) {
             String resource = entry.getKey();
@@ -396,7 +286,7 @@ public class CommonEvents {
 
     public static String getCaptcha(HttpServletRequest request, HttpServletResponse response) {
         try {
-            Delegator delegator = (Delegator) request.getAttribute("delegator"); 
+            Delegator delegator = (Delegator) request.getAttribute("delegator");
             final String captchaSizeConfigName = StringUtils.defaultIfEmpty(request.getParameter("captchaSize"), "default");
             final String captchaSizeConfig = EntityUtilProperties.getPropertyValue("captcha", "captcha." + captchaSizeConfigName, delegator);
             final String[] captchaSizeConfigs = captchaSizeConfig.split("\\|");
@@ -479,16 +369,31 @@ public class CommonEvents {
             response.setContentType("image/jpeg");
             ImageIO.write(bufferedImage, "jpg", response.getOutputStream());
             HttpSession session = request.getSession();
-            Map<String, String> captchaCodeMap = UtilGenerics.checkMap(session.getAttribute("_CAPTCHA_CODE_"));
+            Map<String, String> captchaCodeMap = UtilGenerics.cast(session.getAttribute("_CAPTCHA_CODE_"));
             if (captchaCodeMap == null) {
-                captchaCodeMap = new HashMap<String, String>();
+                captchaCodeMap = new HashMap<>();
                 session.setAttribute("_CAPTCHA_CODE_", captchaCodeMap);
             }
             captchaCodeMap.put(captchaCodeId, captchaCode);
-        } catch (Exception ioe) {
+        } catch (IOException | IllegalArgumentException | IllegalStateException ioe) {
             Debug.logError(ioe.getMessage(), module);
         }
         return "success";
     }
 
+    public static String loadJWT(HttpServletRequest request, HttpServletResponse response) throws UnsupportedEncodingException {
+        Delegator delegator = (Delegator) request.getAttribute("delegator");
+        Map<String, String> types = new HashMap<>();
+        String securedUserLoginId = LoginWorker.getSecuredUserLoginId(request);
+        if (securedUserLoginId != null) {
+            types.put("userLoginId", securedUserLoginId);
+            int ttlSeconds =  (int) Long.parseLong(EntityUtilProperties.getPropertyValue("security", "security.jwt.token.expireTime", "10", delegator));
+            String token = JWTManager.createJwt(delegator, types, ttlSeconds);
+            writeJSONtoResponse(JSON.from(token), request, response);
+        } else {
+            Debug.logWarning("No securedUserLoginId cookie was found for this application", module);
+        }
+        return "success";
+    }
+    
 }

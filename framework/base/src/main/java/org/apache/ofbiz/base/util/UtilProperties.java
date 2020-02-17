@@ -19,8 +19,6 @@
 package org.apache.ofbiz.base.util;
 
 import java.io.BufferedInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
@@ -74,7 +72,7 @@ public final class UtilProperties implements Serializable {
      */
     private static final UtilCache<String, Properties> urlCache = UtilCache.createUtilCache("properties.UtilPropertiesUrlCache");
 
-    private static final Set<String> propertiesNotFound = new HashSet<String>();
+    private static final Set<String> propertiesNotFound = new HashSet<>();
 
     /** Compares the specified property to the compareString, returns true if they are the same, false otherwise
      * @param resource The name of the resource - if the properties file is 'webevent.properties', the resource name is 'webevent'
@@ -85,7 +83,6 @@ public final class UtilProperties implements Serializable {
     public static boolean propertyValueEquals(String resource, String name, String compareString) {
         String value = getPropertyValue(resource, name);
 
-        if (value == null) return false;
         return value.trim().equals(compareString);
     }
 
@@ -98,7 +95,6 @@ public final class UtilProperties implements Serializable {
     public static boolean propertyValueEqualsIgnoreCase(String resource, String name, String compareString) {
         String value = getPropertyValue(resource, name);
 
-        if (value == null) return false;
         return value.trim().equalsIgnoreCase(compareString);
     }
 
@@ -112,17 +108,14 @@ public final class UtilProperties implements Serializable {
     public static String getPropertyValue(String resource, String name, String defaultValue) {
         String value = getPropertyValue(resource, name);
 
-        if (UtilValidate.isEmpty(value))
+        if (UtilValidate.isEmpty(value)) {
             return defaultValue;
-        else
-            return value;
+        }
+        return value;
     }
 
     public static double getPropertyNumber(String resource, String name, double defaultValue) {
         String str = getPropertyValue(resource, name);
-        if (str == null) {
-            return defaultValue;
-        }
 
         try {
             return Double.parseDouble(str);
@@ -147,14 +140,14 @@ public final class UtilProperties implements Serializable {
     private static Number getPropertyNumber(String resource, String name, Number defaultNumber, String type) {
         String str = getPropertyValue(resource, name);
         if (UtilValidate.isEmpty(str)) {
-            Debug.logWarning("Error converting String \"" + str + "\" to " + type + "; using defaultNumber " + defaultNumber + ".", module);
+            if (Debug.verboseOn()) Debug.logVerbose("The property " + resource + ":" + name + " is empty, using defaultNumber " + defaultNumber + ".", module);
             return defaultNumber;
-        } else
-            try {
-                return (Number)(ObjectType.simpleTypeConvert(str, type, null, null));
-            } catch (GeneralException e) {
-                Debug.logWarning("Error converting String \"" + str + "\" to " + type + "; using defaultNumber " + defaultNumber + ".", module);
-            }
+        }
+        try {
+            return (Number)(ObjectType.simpleTypeOrObjectConvert(str, type, null, null));
+        } catch (GeneralException e) {
+            Debug.logWarning("Error converting String \"" + str + "\" to " + type + "; using defaultNumber " + defaultNumber + ".", module);
+        }
             return defaultNumber;
     }
 
@@ -168,9 +161,13 @@ public final class UtilProperties implements Serializable {
      */
     public static Boolean getPropertyAsBoolean(String resource, String name, boolean defaultValue) {
         String str = getPropertyValue(resource, name);
-        if ("true".equalsIgnoreCase(str)) return Boolean.TRUE;
-        else if ("false".equalsIgnoreCase(str)) return Boolean.FALSE;
-        else return defaultValue;
+        if ("true".equalsIgnoreCase(str)) {
+            return Boolean.TRUE;
+        } else if ("false".equalsIgnoreCase(str)) {
+            return Boolean.FALSE;
+        } else {
+            return defaultValue;
+        }
     }
 
     /**
@@ -265,8 +262,12 @@ public final class UtilProperties implements Serializable {
      * @return The value of the property in the properties file
      */
     public static String getPropertyValue(String resource, String name) {
-        if (UtilValidate.isEmpty(resource)) return "";
-        if (UtilValidate.isEmpty(name)) return "";
+        if (UtilValidate.isEmpty(resource)) {
+            return "";
+        }
+        if (UtilValidate.isEmpty(name)) {
+            return "";
+        }
 
         Properties properties = getProperties(resource);
         if (properties == null) {
@@ -287,7 +288,7 @@ public final class UtilProperties implements Serializable {
      * Returns a new <code>Properties</code> instance created from <code>fileName</code>.
      * <p>This method is intended for low-level framework classes that need to read
      * properties files before OFBiz has been fully initialized.</p>
-     * 
+     *
      * @param fileName The full name of the properties file ("foo.properties")
      * @return A new <code>Properties</code> instance created from <code>fileName</code>, or
      * <code>null</code> if the file was not found
@@ -313,7 +314,7 @@ public final class UtilProperties implements Serializable {
                 try {
                     inStream.close();
                 } catch (IOException e) {
-                    System.out.println("Exception thrown while closing InputStream: " + e);
+                    Debug.logError(e, "Exception thrown while closing InputStream", module);
                 }
             }
         }
@@ -367,9 +368,7 @@ public final class UtilProperties implements Serializable {
      */
     public static boolean propertyValueEquals(URL url, String name, String compareString) {
         String value = getPropertyValue(url, name);
-
-        if (value == null) return false;
-        return value.trim().equals(compareString);
+        return !(value == null) && value.trim().equals(compareString);
     }
 
     /** Compares Ignoring Case the specified property to the compareString, returns true if they are the same, false otherwise
@@ -380,9 +379,7 @@ public final class UtilProperties implements Serializable {
      */
     public static boolean propertyValueEqualsIgnoreCase(URL url, String name, String compareString) {
         String value = getPropertyValue(url, name);
-
-        if (value == null) return false;
-        return value.trim().equalsIgnoreCase(compareString);
+        return !(value == null) && value.trim().equalsIgnoreCase(compareString);
     }
 
     /** Returns the value of the specified property name from the specified resource/properties file.
@@ -395,10 +392,10 @@ public final class UtilProperties implements Serializable {
     public static String getPropertyValue(URL url, String name, String defaultValue) {
         String value = getPropertyValue(url, name);
 
-        if (UtilValidate.isEmpty(value))
+        if (UtilValidate.isEmpty(value)) {
             return defaultValue;
-        else
-            return value;
+        }
+        return value;
     }
 
     public static double getPropertyNumber(URL url, String name, double defaultValue) {
@@ -424,8 +421,12 @@ public final class UtilProperties implements Serializable {
      * @return The value of the property in the properties file
      */
     public static String getPropertyValue(URL url, String name) {
-        if (url == null) return "";
-        if (UtilValidate.isEmpty(name)) return "";
+        if (url == null) {
+            return "";
+        }
+        if (UtilValidate.isEmpty(name)) {
+            return "";
+        }
         Properties properties = getProperties(url);
 
         if (properties == null) {
@@ -451,8 +452,12 @@ public final class UtilProperties implements Serializable {
      * @return The value of the split property from the properties file
      */
     public static String getSplitPropertyValue(URL url, String name) {
-        if (url == null) return "";
-        if (UtilValidate.isEmpty(name)) return "";
+        if (url == null) {
+            return "";
+        }
+        if (UtilValidate.isEmpty(name)) {
+            return "";
+        }
 
         Properties properties = getProperties(url);
 
@@ -479,90 +484,17 @@ public final class UtilProperties implements Serializable {
         return value == null ? "" : value.trim();
     }
 
-    /** Sets the specified value of the specified property name to the specified resource/properties file
-     * @param resource The name of the resource - must be a file
-     * @param name The name of the property in the properties file
-     * @param value The value of the property in the properties file */
-     public static void setPropertyValue(String resource, String name, String value) {
-         if (UtilValidate.isEmpty(resource)) return;
-         if (UtilValidate.isEmpty(name)) return;
-
-         Properties properties = getProperties(resource);
-         if (properties == null) {
-             return;
-         }
-
-         try {
-             properties.setProperty(name, value);
-             FileOutputStream propFile = new FileOutputStream(resource);
-             if ("XuiLabels".equals(name)) {
-                 properties.store(propFile,
-                     "##############################################################################\n"
-                     +"# Licensed to the Apache Software Foundation (ASF) under one                   \n"
-                     +"# or more contributor license agreements.  See the NOTICE file                 \n"
-                     +"# distributed with this work for additional information                        \n"
-                     +"# regarding copyright ownership.  The ASF licenses this file                   \n"
-                     +"# to you under the Apache License, Version 2.0 (the                            \n"
-                     +"# \"License\"); you may not use this file except in compliance                 \n"
-                     +"# with the License.  You may obtain a copy of the License at                   \n"
-                     +"#                                                                              \n"
-                     +"# http://www.apache.org/licenses/LICENSE-2.0                                   \n"
-                     +"#                                                                              \n"
-                     +"# Unless required by applicable law or agreed to in writing,                   \n"
-                     +"# software distributed under the License is distributed on an                  \n"
-                     +"# \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY                     \n"
-                     +"# KIND, either express or implied.  See the License for the                    \n"
-                     +"# specific language governing permissions and limitations                      \n"
-                     +"# under the License.                                                           \n"
-                     +"###############################################################################\n"
-                     +"#                                                                              \n"
-                     +"# Dynamically modified by OFBiz Framework (org.apache.ofbiz.base.util : UtilProperties.setPropertyValue)\n"
-                     +"#                                                                              \n"
-                     +"# By default the screen is 1024x768 wide. If you want to use another screen size,\n"
-                     +"# you must create a new directory under plugins/pos/screens, like the 800x600.\n"
-                     +"# You must also set the 3 related parameters (StartClass, ClientWidth, ClientHeight) accordingly.\n"
-                     +"#");
-             } else {
-                 properties.store(propFile,
-                     "##############################################################################\n"
-                     +"# Licensed to the Apache Software Foundation (ASF) under one                   \n"
-                     +"# or more contributor license agreements.  See the NOTICE file                 \n"
-                     +"# distributed with this work for additional information                        \n"
-                     +"# regarding copyright ownership.  The ASF licenses this file                   \n"
-                     +"# to you under the Apache License, Version 2.0 (the                            \n"
-                     +"# \"License\"); you may not use this file except in compliance                 \n"
-                     +"# with the License.  You may obtain a copy of the License at                   \n"
-                     +"#                                                                              \n"
-                     +"# http://www.apache.org/licenses/LICENSE-2.0                                   \n"
-                     +"#                                                                              \n"
-                     +"# Unless required by applicable law or agreed to in writing,                   \n"
-                     +"# software distributed under the License is distributed on an                  \n"
-                     +"# \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY                     \n"
-                     +"# KIND, either express or implied.  See the License for the                    \n"
-                     +"# specific language governing permissions and limitations                      \n"
-                     +"# under the License.                                                           \n"
-                     +"###############################################################################\n"
-                     +"#                                                                              \n"
-                     +"# Dynamically modified by OFBiz Framework (org.apache.ofbiz.base.util : UtilProperties.setPropertyValue)\n"
-                     +"# The comments have been removed, you may still find them on the OFBiz repository... \n"
-                     +"#");
-             }
-
-             propFile.close();
-         } catch (FileNotFoundException e) {
-             Debug.logInfo(e, "Unable to located the resource file.", module);
-         } catch (IOException e) {
-             Debug.logError(e, module);
-         }
-     }
-
      /** Sets the specified value of the specified property name to the specified resource/properties in memory, does not persist it
       * @param resource The name of the resource
       * @param name The name of the property in the resource
       * @param value The value of the property to set in memory */
       public static void setPropertyValueInMemory(String resource, String name, String value) {
-          if (UtilValidate.isEmpty(resource)) return;
-          if (UtilValidate.isEmpty(name)) return;
+          if (UtilValidate.isEmpty(resource)) {
+            return;
+        }
+          if (UtilValidate.isEmpty(name)) {
+            return;
+        }
 
           Properties properties = getProperties(resource);
           if (properties == null) {
@@ -581,21 +513,29 @@ public final class UtilProperties implements Serializable {
      * @return The value of the property in the properties file
      */
     public static String getMessage(String resource, String name, Locale locale) {
-        if (UtilValidate.isEmpty(resource)) return "";
-        if (UtilValidate.isEmpty(name)) return "";
+        if (UtilValidate.isEmpty(resource)) {
+            return "";
+        }
+        if (UtilValidate.isEmpty(name)) {
+            return "";
+        }
 
         ResourceBundle bundle = getResourceBundle(resource, locale);
 
-        if (bundle == null) return name;
+        if (bundle == null) {
+            return name;
+        }
 
         String value = null;
         if (bundle.containsKey(name)) {
             value = bundle.getString(name);
         } else {
-            Debug.logInfo(name + " misses in " + resource + " for locale " + locale, module);
+            if (Debug.warningOn()) { 
+                Debug.logWarning(name + " is missing in " + resource + " for locale " + locale, module);
+            }
             return name;
         }
-        return value == null ? name : value.trim();
+        return value.trim();
     }
 
     /** Returns the value of the specified property name from the specified resource/properties file corresponding
@@ -611,12 +551,11 @@ public final class UtilProperties implements Serializable {
 
         if (UtilValidate.isEmpty(value)) {
             return "";
-        } else {
-            if (arguments != null && arguments.length > 0) {
-                value = MessageFormat.format(value, arguments);
-            }
-            return value;
         }
+        if (arguments != null && arguments.length > 0) {
+            value = MessageFormat.format(value, arguments);
+        }
+        return value;
     }
 
     /** Returns the value of the specified property name from the specified resource/properties file corresponding
@@ -632,12 +571,11 @@ public final class UtilProperties implements Serializable {
 
         if (UtilValidate.isEmpty(value)) {
             return "";
-        } else {
-            if (UtilValidate.isNotEmpty(arguments)) {
-                value = MessageFormat.format(value, arguments.toArray());
-            }
-            return value;
         }
+        if (UtilValidate.isNotEmpty(arguments)) {
+            value = MessageFormat.format(value, arguments.toArray());
+        }
+        return value;
     }
 
     public static String getMessageList(String resource, String name, Locale locale, Object... arguments) {
@@ -657,19 +595,18 @@ public final class UtilProperties implements Serializable {
 
         if (UtilValidate.isEmpty(value)) {
             return "";
-        } else {
-            if (UtilValidate.isNotEmpty(context)) {
-                value = FlexibleStringExpander.expandString(value, context, locale);
-            }
-            return value;
         }
+        if (UtilValidate.isNotEmpty(context)) {
+            value = FlexibleStringExpander.expandString(value, context, locale);
+        }
+        return value;
     }
 
     public static String getMessageMap(String resource, String name, Locale locale, Object... context) {
-        return getMessage(resource, name, UtilGenerics.toMap(String.class, context), locale);
+        return getMessage(resource, name, UtilMisc.toMap(context), locale);
     }
 
-    private static Set<String> resourceNotFoundMessagesShown = new HashSet<String>();
+    private static Set<String> resourceNotFoundMessagesShown = new HashSet<>();
     /** Returns the specified resource/properties file as a ResourceBundle
      * @param resource The name of the resource - can be a file, class, or URL
      * @param locale The locale that the given resource will correspond to
@@ -749,7 +686,9 @@ public final class UtilProperties implements Serializable {
             }
         }
         if (UtilValidate.isNotEmpty(properties)) {
-            if (Debug.verboseOn()) Debug.logVerbose("Loaded " + properties.size() + " properties for: " + resource + " (" + locale + ")", module);
+            if (Debug.verboseOn()) {
+                Debug.logVerbose("Loaded " + properties.size() + " properties for: " + resource + " (" + locale + ")", module);
+            }
         }
         return properties;
     }
@@ -790,7 +729,7 @@ public final class UtilProperties implements Serializable {
      * @return A list of candidate locales.
      */
     public static List<Locale> localeToCandidateList(Locale locale) {
-        List<Locale> localeList = new LinkedList<Locale>();
+        List<Locale> localeList = new LinkedList<>();
         localeList.add(locale);
         String localeString = locale.toString();
         int pos = localeString.lastIndexOf("_", localeString.length());
@@ -807,7 +746,7 @@ public final class UtilProperties implements Serializable {
         private static Set<Locale> defaultCandidateLocales = getDefaultCandidateLocales();
 
         private static Set<Locale> getDefaultCandidateLocales() {
-            Set<Locale> defaultCandidateLocales = new LinkedHashSet<Locale>();
+            Set<Locale> defaultCandidateLocales = new LinkedHashSet<>();
             defaultCandidateLocales.addAll(localeToCandidateList(Locale.getDefault()));
             defaultCandidateLocales.addAll(localeToCandidateList(getFallbackLocale()));
             defaultCandidateLocales.add(Locale.ROOT);
@@ -836,10 +775,10 @@ public final class UtilProperties implements Serializable {
         if (Locale.ROOT.equals(locale)) {
             return UtilMisc.toList(locale);
         }
-        Set<Locale> localeSet = new LinkedHashSet<Locale>();
+        Set<Locale> localeSet = new LinkedHashSet<>();
         localeSet.addAll(localeToCandidateList(locale));
         localeSet.addAll(getDefaultCandidateLocales());
-        List<Locale> localeList = new ArrayList<Locale>(localeSet);
+        List<Locale> localeList = new ArrayList<>(localeSet);
         return localeList;
     }
 
@@ -871,7 +810,7 @@ public final class UtilProperties implements Serializable {
         return propertiesNotFound.contains(createResourceName(resource, locale, removeExtension));
     }
 
-    /** 
+    /**
      * Resolve a properties file URL.
      * <p>This method uses the following strategy:</p>
      * <ul>
@@ -964,7 +903,7 @@ public final class UtilProperties implements Serializable {
         return null;
     }
 
-    /** 
+    /**
      * Convert XML property file to Properties instance. This method will convert
      * both the Java XML properties file format and the OFBiz custom XML
      * properties file format.
@@ -1075,7 +1014,7 @@ public final class UtilProperties implements Serializable {
             UtilResourceBundle bundle = bundleCache.get(resourceName);
             if (bundle == null) {
                 double startTime = System.currentTimeMillis();
-                List<Locale> candidateLocales = (List<Locale>) getCandidateLocales(locale);
+                List<Locale> candidateLocales = getCandidateLocales(locale);
                 UtilResourceBundle parentBundle = null;
                 int numProperties = 0;
                 while (candidateLocales.size() > 0) {
@@ -1137,9 +1076,11 @@ public final class UtilProperties implements Serializable {
         public Enumeration<String> getKeys() {
             return new Enumeration<String>() {
                 Iterator<String> i = UtilGenerics.cast(properties.keySet().iterator());
+                @Override
                 public boolean hasMoreElements() {
                     return (i.hasNext());
                 }
+                @Override
                 public String nextElement() {
                     return i.next();
                 }
@@ -1159,22 +1100,16 @@ public final class UtilProperties implements Serializable {
             super(defaults);
         }
         public ExtendedProperties(URL url, Locale locale) throws IOException, InvalidPropertiesFormatException {
-            InputStream in = null;
-            try {
-                in = new BufferedInputStream(url.openStream());
+            try (InputStream in = new BufferedInputStream(url.openStream())) {
                 if (url.getFile().endsWith(".xml")) {
                     xmlToProperties(in, locale, this);
                 } else {
                     load(in);
                 }
-            } finally {
-                if (in != null) {
-                    in.close();
-                }
             }
         }
         @Override
-        public void loadFromXML(InputStream in) throws IOException, InvalidPropertiesFormatException {
+        public synchronized void loadFromXML(InputStream in) throws IOException, InvalidPropertiesFormatException {
             try {
                 xmlToProperties(in, null, this);
             } finally {

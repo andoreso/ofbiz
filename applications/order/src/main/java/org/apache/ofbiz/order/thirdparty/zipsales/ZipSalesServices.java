@@ -62,7 +62,7 @@ public class ZipSalesServices {
     public static final String resource_error = "OrderErrorUiLabels";
 
     // date formatting
-    private static SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+    private static final String DATE_PATTERN = "yyyyMMdd";
 
     // import table service
     public static Map<String, Object> importFlatTable(DispatchContext dctx, Map<String, ? extends Object> context) {
@@ -213,9 +213,9 @@ public class ZipSalesServices {
     // tax calc service
     public static Map<String, Object> flatTaxCalc(DispatchContext dctx, Map<String, ? extends Object> context) {
         Delegator delegator = dctx.getDelegator();
-        List<GenericValue> itemProductList = UtilGenerics.checkList(context.get("itemProductList"));
-        List<BigDecimal> itemAmountList = UtilGenerics.checkList(context.get("itemAmountList"));
-        List<BigDecimal> itemShippingList = UtilGenerics.checkList(context.get("itemShippingList"));
+        List<GenericValue> itemProductList = UtilGenerics.cast(context.get("itemProductList"));
+        List<BigDecimal> itemAmountList = UtilGenerics.cast(context.get("itemAmountList"));
+        List<BigDecimal> itemShippingList = UtilGenerics.cast(context.get("itemShippingList"));
         BigDecimal orderShippingAmount = (BigDecimal) context.get("orderShippingAmount");
         GenericValue shippingAddress = (GenericValue) context.get("shippingAddress");
 
@@ -225,8 +225,8 @@ public class ZipSalesServices {
         String city = shippingAddress.getString("city");
 
         // setup the return lists.
-        List<GenericValue> orderAdjustments = new LinkedList<GenericValue>();
-        List<List<GenericValue>> itemAdjustments = new LinkedList<List<GenericValue>>();
+        List<GenericValue> orderAdjustments = new LinkedList<>();
+        List<List<GenericValue>> itemAdjustments = new LinkedList<>();
 
         // check for a valid state/province geo
         String validStates = EntityUtilProperties.getPropertyValue("zipsales", "zipsales.valid.states", delegator);
@@ -263,7 +263,7 @@ public class ZipSalesServices {
     }
 
     private static List<GenericValue>getItemTaxList(Delegator delegator, GenericValue item, String zipCode, String city, BigDecimal itemAmount, BigDecimal shippingAmount, boolean isUseTax) throws GeneralException {
-        List<GenericValue> adjustments = new LinkedList<GenericValue>();
+        List<GenericValue> adjustments = new LinkedList<>();
 
         // check the item for tax status
         if (item != null && item.get("taxable") != null && "N".equals(item.getString("taxable"))) {
@@ -278,6 +278,7 @@ public class ZipSalesServices {
         }
 
         // the filtered list
+        // TODO: taxLookup is always null, so filter by County will never be executed
         List<GenericValue> taxLookup = null;
 
         // only do filtering if there are more then one zip code found
@@ -484,6 +485,7 @@ public class ZipSalesServices {
     // formatting methods
     private static Timestamp parseDate(String dateString, Timestamp useWhenNull) {
         Timestamp ts = null;
+        SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_PATTERN);
         if (dateString != null) {
             try {
                 ts = new Timestamp(dateFormat.parse(dateString).getTime());

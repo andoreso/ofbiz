@@ -23,10 +23,11 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
 import org.apache.ofbiz.base.container.ContainerException;
 import org.apache.ofbiz.base.start.StartupCommand;
 import org.apache.ofbiz.base.util.UtilMisc;
-import org.apache.ofbiz.testtools.*;
+import org.apache.ofbiz.testtools.TestRunContainer;
 
 /**
  * Event used to run a Junit test
@@ -42,7 +43,7 @@ public class RunTestEvents {
         String caseName = request.getParameter("caseName");
         String result = null;
 
-        List<StartupCommand> ofbizCommands = new ArrayList<StartupCommand>();
+        List<StartupCommand> ofbizCommands = new ArrayList<>();
         if (caseName == null) {
             ofbizCommands.add(new StartupCommand.Builder("test").properties(
                     UtilMisc.toMap("component", component, "suitename", suiteName)).build());

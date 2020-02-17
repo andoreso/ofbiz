@@ -21,6 +21,7 @@ package org.apache.ofbiz.common;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
@@ -41,8 +42,8 @@ public final class KeywordSearchUtil {
 
     public static final String module = KeywordSearchUtil.class.getName();
 
-    private static Set<String> thesaurusRelsToInclude = new HashSet<String>();
-    private static Set<String> thesaurusRelsForReplace = new HashSet<String>();
+    private static Set<String> thesaurusRelsToInclude = new HashSet<>();
+    private static Set<String> thesaurusRelsForReplace = new HashSet<>();
 
     static {
         thesaurusRelsToInclude.add("KWTR_UF");
@@ -76,7 +77,7 @@ public final class KeywordSearchUtil {
     }
     public static Set<String> getStemSet() {
         String stemBag = UtilProperties.getPropertyValue("keywordsearch", "stem.bag");
-        Set<String> stemSet = new TreeSet<String>();
+        Set<String> stemSet = new TreeSet<>();
         if (UtilValidate.isNotEmpty(stemBag)) {
             String curToken;
             StringTokenizer tokenizer = new StringTokenizer(stemBag, ": ");
@@ -150,9 +151,13 @@ public final class KeywordSearchUtil {
 
             if (forSearch) {
                 StringBuilder strSb = new StringBuilder();
-                if (anyPrefix) strSb.append('%');
+                if (anyPrefix) {
+                    strSb.append('%');
+                }
                 strSb.append(token);
-                if (anySuffix) strSb.append('%');
+                if (anySuffix) {
+                    strSb.append('%');
+                }
                 // replace all %% with %
                 int dblPercIdx = -1;
                 while ((dblPercIdx = strSb.indexOf("%%")) >= 0) {
@@ -164,17 +169,19 @@ public final class KeywordSearchUtil {
             // group by word, add up weight
             Long curWeight = keywords.get(token);
             if (curWeight == null) {
-                keywords.put(token, Long.valueOf(1));
+                keywords.put(token, 1L);
             } else {
-                keywords.put(token, Long.valueOf(curWeight.longValue() + 1));
+                keywords.put(token, curWeight + 1);
             }
         }
     }
 
     public static Set<String> makeKeywordSet(String str, String separators, boolean forSearch) {
-        if (separators == null) separators = getSeparators();
+        if (separators == null) {
+            separators = getSeparators();
+        }
 
-        Set<String> keywords = new TreeSet<String>();
+        Set<String> keywords = new TreeSet<>();
         if (str.length() > 0) {
             // strip off weird characters
             str = str.replaceAll("\\\302\\\240|\\\240", " ");
@@ -182,17 +189,25 @@ public final class KeywordSearchUtil {
             if (forSearch) {
                 // remove %_*? from separators if is for a search
                 StringBuilder sb = new StringBuilder(separators);
-                if (sb.indexOf("%") >= 0) sb.deleteCharAt(sb.indexOf("%"));
-                if (sb.indexOf("_") >= 0) sb.deleteCharAt(sb.indexOf("_"));
-                if (sb.indexOf("*") >= 0) sb.deleteCharAt(sb.indexOf("*"));
-                if (sb.indexOf("?") >= 0) sb.deleteCharAt(sb.indexOf("?"));
+                if (sb.indexOf("%") >= 0) {
+                    sb.deleteCharAt(sb.indexOf("%"));
+                }
+                if (sb.indexOf("_") >= 0) {
+                    sb.deleteCharAt(sb.indexOf("_"));
+                }
+                if (sb.indexOf("*") >= 0) {
+                    sb.deleteCharAt(sb.indexOf("*"));
+                }
+                if (sb.indexOf("?") >= 0) {
+                    sb.deleteCharAt(sb.indexOf("?"));
+                }
                 separators = sb.toString();
             }
 
             StringTokenizer tokener = new StringTokenizer(str, separators, false);
             while (tokener.hasMoreTokens()) {
                 // make sure it is lower case before doing anything else
-                String token = tokener.nextToken().toLowerCase();
+                String token = tokener.nextToken().toLowerCase(Locale.getDefault());
 
                 if (forSearch) {
                     // these characters will only be present if it is for a search, ie not for indexing
@@ -207,7 +222,7 @@ public final class KeywordSearchUtil {
 }
 
     public static Set<String> fixKeywordsForSearch(Set<String> keywordSet, boolean anyPrefix, boolean anySuffix, boolean removeStems, boolean isAnd) {
-        Map<String, Long> keywords = new LinkedHashMap<String, Long>();
+        Map<String, Long> keywords = new LinkedHashMap<>();
         fixupKeywordSet(keywordSet, keywords, getStopWordBagAnd(), getStopWordBagOr(), removeStems, getStemSet(), true, anyPrefix, anySuffix, isAnd);
         return keywords.keySet();
     }

@@ -24,8 +24,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
-
+import java.util.Map.Entry;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -50,7 +49,7 @@ public class SagePayServices
 
     private static Map<String, String> buildSagePayProperties(Map<String, Object> context, Delegator delegator) {
 
-        Map<String, String> sagePayConfig = new HashMap<String, String>();
+        Map<String, String> sagePayConfig = new HashMap<>();
 
         String paymentGatewayConfigId = (String) context.get("paymentGatewayConfigId");
 
@@ -58,11 +57,12 @@ public class SagePayServices
             try {
                 GenericValue sagePay = EntityQuery.use(delegator).from("PaymentGatewaySagePay").where("paymentGatewayConfigId", paymentGatewayConfigId).queryOne();
                 if (sagePay != null) {
-                    Map<String, Object> tmp = sagePay.getAllFields();
-                    Set<String> keys = tmp.keySet();
-                    for (String key : keys) {
-                        String value = tmp.get(key).toString();
-                        sagePayConfig.put(key, value);
+                    for (Entry<String, Object> set : sagePay.entrySet()) {
+                        if(set.getValue() == null){
+                            sagePayConfig.put(set.getKey(), null);
+                        } else {
+                            sagePayConfig.put(set.getKey(), set.getValue().toString());
+                        }
                     }
                 }
             } catch (GenericEntityException e) {
@@ -79,7 +79,7 @@ public class SagePayServices
         Debug.logInfo("SagePay paymentAuthentication context : " + context, module);
 
         Delegator delegator = ctx.getDelegator();
-        Map<String, Object> resultMap = new HashMap<String, Object>();
+        Map<String, Object> resultMap = new HashMap<>();
 
         Map<String, String> props = buildSagePayProperties(context, delegator);
 
@@ -124,13 +124,27 @@ public class SagePayServices
         HttpHost host = SagePayUtil.getHost(props);
 
         //start - authentication parameters
-        Map<String, String> parameters = new HashMap<String, String>();
+        Map<String, String> parameters = new HashMap<>();
 
         String vpsProtocol = props.get("protocolVersion");
         String vendor = props.get("vendor");
         String txType = props.get("authenticationTransType");
-
+        
         //start - required parameters
+        StringBuilder errorRequiredParameters = new StringBuilder();
+        if(vpsProtocol == null){
+            errorRequiredParameters.append("Required transaction parameter 'protocolVersion' is missing. ");
+        }
+        if(vendor == null){
+            errorRequiredParameters.append("Required transaction parameter 'vendor' is missing. ");
+        }
+        if(txType == null){
+            errorRequiredParameters.append("Required transaction parameter 'authenticationsTransType' is missing. ");
+        }
+        if(errorRequiredParameters.length() > 0){
+            return ServiceUtil.returnError(UtilProperties.getMessage(resource, "AccountingSagePayPaymentAuthorisationException", UtilMisc.toMap("errorString", errorRequiredParameters), locale));
+        }
+        
         parameters.put("VPSProtocol", vpsProtocol);
         parameters.put("TxType", txType);
         parameters.put("Vendor", vendor);
@@ -285,7 +299,7 @@ public class SagePayServices
         Debug.logInfo("SagePay paymentAuthorisation context : " + context, module);
 
         Delegator delegator = ctx.getDelegator();
-        Map<String, Object> resultMap = new HashMap<String, Object>();
+        Map<String, Object> resultMap = new HashMap<>();
 
         Map<String, String> props = buildSagePayProperties(context, delegator);
 
@@ -299,7 +313,7 @@ public class SagePayServices
         HttpHost host = SagePayUtil.getHost(props);
 
         //start - authorization parameters
-        Map<String, String> parameters = new HashMap<String, String>();
+        Map<String, String> parameters = new HashMap<>();
 
         String vpsProtocol = props.get("protocolVersion");
         String vendor = props.get("vendor");
@@ -377,7 +391,7 @@ public class SagePayServices
         Debug.logInfo("SagePay paymentRelease context : " + context, module);
 
         Delegator delegator = ctx.getDelegator();
-        Map<String, Object> resultMap = new HashMap<String, Object>();
+        Map<String, Object> resultMap = new HashMap<>();
 
         Map<String, String> props = buildSagePayProperties(context, delegator);
 
@@ -390,7 +404,7 @@ public class SagePayServices
         HttpHost host = SagePayUtil.getHost(props);
 
         //start - release parameters
-        Map<String, String> parameters = new HashMap<String, String>();
+        Map<String, String> parameters = new HashMap<>();
 
         String vpsProtocol = props.get("protocolVersion");
         String vendor = props.get("vendor");
@@ -466,7 +480,7 @@ public class SagePayServices
         Debug.logInfo("SagePay paymentVoid context : " + context, module);
 
         Delegator delegator = ctx.getDelegator();
-        Map<String, Object> resultMap = new HashMap<String, Object>();
+        Map<String, Object> resultMap = new HashMap<>();
 
         Map<String, String> props = buildSagePayProperties(context, delegator);
 
@@ -479,7 +493,7 @@ public class SagePayServices
         HttpHost host = SagePayUtil.getHost(props);
 
         //start - void parameters
-        Map<String, String> parameters = new HashMap<String, String>();
+        Map<String, String> parameters = new HashMap<>();
 
         String vpsProtocol = props.get("protocolVersion");
         String vendor = props.get("vendor");
@@ -553,7 +567,7 @@ public class SagePayServices
         Debug.logInfo("SagePay paymentRefund context : " + context, module);
 
         Delegator delegator = ctx.getDelegator();
-        Map<String, Object> resultMap = new HashMap<String, Object>();
+        Map<String, Object> resultMap = new HashMap<>();
 
         Map<String, String> props = buildSagePayProperties(context, delegator);
 
@@ -571,7 +585,7 @@ public class SagePayServices
         HttpHost host = SagePayUtil.getHost(props);
 
         //start - refund parameters
-        Map<String, String> parameters = new HashMap<String, String>();
+        Map<String, String> parameters = new HashMap<>();
 
         String vpsProtocol = props.get("protocolVersion");
         String vendor = props.get("vendor");

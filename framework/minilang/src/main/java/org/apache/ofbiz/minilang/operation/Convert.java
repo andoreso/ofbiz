@@ -74,7 +74,7 @@ public class Convert extends SimpleMapOperation {
         }
         Object convertedObject = null;
         try {
-            convertedObject = ObjectType.simpleTypeConvert(fieldObject, type, format, locale);
+            convertedObject = ObjectType.simpleTypeOrObjectConvert(fieldObject, type, format, locale);
         } catch (GeneralException e) {
             addMessage(messages, loader, locale);
             Debug.logError(e, "Error in convert simple-map-processor operation: " + e.toString(), module);
@@ -86,8 +86,7 @@ public class Convert extends SimpleMapOperation {
             results.put(toField, convertedObject);
             // if (Debug.infoOn()) Debug.logInfo("[SimpleMapProcessor.Converted.exec] Put converted value \"" + convertedObject + "\" in field \"" + toField + "\"", module);
         } else {
-            if (results.containsKey(toField)) {// do nothing
-            } else {
+            if (!results.containsKey(toField)) {
                 results.put(toField, convertedObject);
                 // if (Debug.infoOn()) Debug.logInfo("[SimpleMapProcessor.Converted.exec] Put converted value \"" + convertedObject + "\" in field \"" + toField + "\"", module);
             }

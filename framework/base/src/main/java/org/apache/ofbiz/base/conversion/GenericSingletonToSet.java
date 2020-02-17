@@ -26,8 +26,9 @@ public class GenericSingletonToSet<T> extends AbstractConverter<T, Set<T>> {
         super(sourceClass, Set.class);
     }
 
+    @Override
     public Set<T> convert(T obj) throws ConversionException {
-        Set<T> tempSet = new HashSet<T>();
+        Set<T> tempSet = new HashSet<>();
         tempSet.add(obj);
         return tempSet;
     }

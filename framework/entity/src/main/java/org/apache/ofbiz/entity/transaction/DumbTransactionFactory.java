@@ -46,78 +46,97 @@ public class DumbTransactionFactory implements TransactionFactory {
 
     public static final String module = DumbTransactionFactory.class.getName();
 
+    @Override
     public TransactionManager getTransactionManager() {
         return new TransactionManager() {
+            @Override
             public void begin() throws NotSupportedException, SystemException {
             }
 
+            @Override
             public void commit() throws RollbackException, HeuristicMixedException, HeuristicRollbackException, SecurityException, IllegalStateException, SystemException {
             }
 
+            @Override
             public int getStatus() throws SystemException {
                 return TransactionUtil.STATUS_NO_TRANSACTION;
             }
 
+            @Override
             public Transaction getTransaction() throws SystemException {
                 return null;
             }
 
+            @Override
             public void resume(Transaction transaction) throws InvalidTransactionException, IllegalStateException, SystemException {
             }
 
+            @Override
             public void rollback() throws IllegalStateException, SecurityException, SystemException {
             }
 
+            @Override
             public void setRollbackOnly() throws IllegalStateException, SystemException {
             }
 
+            @Override
             public void setTransactionTimeout(int i) throws SystemException {
             }
 
+            @Override
             public Transaction suspend() throws SystemException {
                 return null;
             }
         };
     }
 
+    @Override
     public UserTransaction getUserTransaction() {
         return new UserTransaction() {
+            @Override
             public void begin() throws NotSupportedException, SystemException {
             }
 
+            @Override
             public void commit() throws RollbackException, HeuristicMixedException, HeuristicRollbackException, SecurityException, IllegalStateException, SystemException {
             }
 
+            @Override
             public int getStatus() throws SystemException {
                 return TransactionUtil.STATUS_NO_TRANSACTION;
             }
 
+            @Override
             public void rollback() throws IllegalStateException, SecurityException, SystemException {
             }
 
+            @Override
             public void setRollbackOnly() throws IllegalStateException, SystemException {
             }
 
+            @Override
             public void setTransactionTimeout(int i) throws SystemException {
             }
         };
     }
 
+    @Override
     public String getTxMgrName() {
         return "dumb";
     }
 
+    @Override
     public Connection getConnection(GenericHelperInfo helperInfo) throws SQLException, GenericEntityException {
         Datasource datasourceInfo = EntityConfig.getDatasource(helperInfo.getHelperBaseName());
 
         if (datasourceInfo.getInlineJdbc() != null) {
             Connection otherCon = ConnectionFactoryLoader.getInstance().getConnection(helperInfo, datasourceInfo.getInlineJdbc());
             return TransactionUtil.getCursorConnection(helperInfo, otherCon);
-        } else {
-            Debug.logError("Dumb/Empty is the configured transaction manager but no inline-jdbc element was specified in the " + helperInfo.getHelperBaseName() + " datasource. Please check your configuration", module);
-            return null;
         }
+        Debug.logError("Dumb/Empty is the configured transaction manager but no inline-jdbc element was specified in the " + helperInfo.getHelperBaseName() + " datasource. Please check your configuration", module);
+        return null;
     }
 
+    @Override
     public void shutdown() {}
 }

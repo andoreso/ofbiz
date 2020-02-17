@@ -26,7 +26,6 @@
         <entity-xml action="load" entity-xml-url="component://accounting/testdef/data/AccountingTestsData.xml"/>
     </test-case>
 
-
     <test-case case-name="accounting-tests">
         <junit-test-suite class-name="org.apache.ofbiz.accounting.test.FinAccountTests"/>
     </test-case>
@@ -38,13 +37,13 @@
         <simple-method-test location="component://accounting/minilang/test/AutoAcctgTransTestsPurchase.xml"/>
     </test-case>
     <test-case case-name="auto-accounting-admin-tests">
-        <simple-method-test location="component://accounting/minilang/test/AutoAcctgAdminTests.xml"/>
+        <junit-test-suite class-name="org.apache.ofbiz.accounting.AutoAcctgAdminTests"/>
     </test-case>
     <test-case case-name="auto-accounting-agreement-tests">
-        <simple-method-test location="component://accounting/minilang/test/AutoAcctgAgreementTests.xml"/>
+        <junit-test-suite class-name="org.apache.ofbiz.accounting.AutoAcctgAgreementTests"/>
     </test-case>
     <test-case case-name="auto-accounting-budget-tests">
-        <simple-method-test location="component://accounting/minilang/test/AutoAcctgBudgetTests.xml"/>
+        <junit-test-suite class-name="org.apache.ofbiz.accounting.AutoAcctgBudgetTests"/>
     </test-case>
     <test-case case-name="auto-accounting-cost-tests">
         <simple-method-test location="component://accounting/minilang/test/AutoAcctgCostTests.xml"/>
@@ -57,5 +56,17 @@
     </test-case>
     <test-case case-name="auto-accounting-invoice-tests">
         <simple-method-test location="component://accounting/minilang/test/AutoAcctgInvoiceTests.xml"/>
+    </test-case>
+    <test-case case-name="auto-accounting-invoice-tests">
+        <junit-test-suite class-name="org.apache.ofbiz.accounting.AutoAcctgInvoiceTests"/>
+    </test-case>
+    <test-case case-name="auto-accounting-payment-tests">
+        <junit-test-suite class-name="org.apache.ofbiz.accounting.AutoAcctgPaymentTests"/>
+    </test-case>
+    <test-case case-name="auto-accounting-paymentgateway-tests">
+        <junit-test-suite class-name="org.apache.ofbiz.accounting.AutoAcctgPaymentGatewayTests"/>
+    </test-case>
+    <test-case case-name="auto-accounting-ledger-tests">
+        <junit-test-suite class-name="org.apache.ofbiz.accounting.AutoAcctgLedgerTests"/>
     </test-case>
 </test-suite>

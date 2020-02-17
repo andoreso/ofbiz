@@ -19,17 +19,17 @@
 package org.apache.ofbiz.base.util.collections;
 
 import java.io.Serializable;
-import java.util.ConcurrentModificationException;
 import java.util.Collection;
+import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.apache.ofbiz.base.lang.Appender;
 import org.apache.ofbiz.base.util.UtilGenerics;
-import org.apache.ofbiz.base.util.UtilObject;
 
 @SuppressWarnings("serial")
 public abstract class GenericMap<K, V> implements Appender<StringBuilder>, Map<K, V>, Serializable {
@@ -51,25 +51,42 @@ public abstract class GenericMap<K, V> implements Appender<StringBuilder>, Map<K
         modCountUpdater.getAndIncrement(this);
     }
 
+    @Override
     public final void clear() {
-        if (isEmpty()) return;
+        if (isEmpty()) {
+            return;
+        }
         incrementModCount();
         clearInternal();
     }
 
     protected abstract void clearInternal();
 
+    @Override
     public boolean containsValue(Object value) {
         return values().contains(value);
     }
 
     @Override
+    public int hashCode() {
+        return Objects.hash(entrySet, keySet, values);
+    }
+
+    @Override
     public boolean equals(Object o) {
-        if (!(o instanceof Map<?, ?>)) return false;
-        if (this == o) return true;
+        if (!(o instanceof Map<?, ?>)) {
+            return false;
+        }
+        if (this == o) {
+            return true;
+        }
         Map<?, ?> map = (Map<?, ?>) o;
-        if (size() != map.size()) return false;
-        if (o instanceof GenericMap<?, ?>) return equalsGenericMap((GenericMap<?, ?>) o);
+        if (size() != map.size()) {
+            return false;
+        }
+        if (o instanceof GenericMap<?, ?>) {
+            return equalsGenericMap((GenericMap<?, ?>) o);
+        }
         return equalsMap(map);
     }
 
@@ -80,11 +97,17 @@ public abstract class GenericMap<K, V> implements Appender<StringBuilder>, Map<K
             K key = entry.getKey();
             V value = entry.getValue();
             if (value != null) {
-                if (!value.equals(map.get(key, false))) return false;
+                if (!value.equals(map.get(key, false))) {
+                    return false;
+                }
             } else {
                 Object otherValue = map.get(key, false);
-                if (otherValue != null) return false;
-                if (!map.containsKey(key)) return false;
+                if (otherValue != null) {
+                    return false;
+                }
+                if (!map.containsKey(key)) {
+                    return false;
+                }
             }
         }
         return true;
@@ -97,16 +120,23 @@ public abstract class GenericMap<K, V> implements Appender<StringBuilder>, Map<K
             K key = entry.getKey();
             V value = entry.getValue();
             if (value != null) {
-                if (!value.equals(map.get(key))) return false;
+                if (!value.equals(map.get(key))) {
+                    return false;
+                }
             } else {
                 Object otherValue = map.get(key);
-                if (otherValue != null) return false;
-                if (!map.containsKey(key)) return false;
+                if (otherValue != null) {
+                    return false;
+                }
+                if (!map.containsKey(key)) {
+                    return false;
+                }
             }
         }
         return true;
     }
 
+    @Override
     public final V get(Object key) {
         return get(key, true);
     }
@@ -121,17 +151,20 @@ public abstract class GenericMap<K, V> implements Appender<StringBuilder>, Map<K
         }
 
         protected boolean isValid(Map.Entry<K, V> src) {
-            if (currentModCount != getModCount()) throw new ConcurrentModificationException();
+            if (currentModCount != getModCount()) {
+                throw new ConcurrentModificationException();
+            }
             return true;
         }
     }
 
+    @Override
     public final Set<Map.Entry<K, V>> entrySet() {
         if (entrySet == null) {
             entrySetUpdater.compareAndSet(this, null, new GenericMapEntrySet<K, V, GenericMap<K, V>>(this) {
                 @Override
                 protected boolean contains(Object key, Object value) {
-                    return UtilObject.equalsHelper(get(key, false), value);
+                    return Objects.equals(get(key, false), value);
                 }
 
                 @Override
@@ -155,9 +188,11 @@ public abstract class GenericMap<K, V> implements Appender<StringBuilder>, Map<K
 
     protected abstract Iterator<Map.Entry<K, V>> iterator(boolean noteAccess);
 
+    @Override
     public final Set<K> keySet() {
         if (keySet == null) {
             keySetUpdater.compareAndSet(this, null, new GenericMapKeySet<K, V, GenericMap<K, V>>(this) {
+                @Override
                 public boolean contains(Object key) {
                     return containsKey(key);
                 }
@@ -181,6 +216,7 @@ public abstract class GenericMap<K, V> implements Appender<StringBuilder>, Map<K
         return keySet;
     }
 
+    @Override
     public final Collection<V> values() {
         if (values == null) {
             valuesUpdater.compareAndSet(this, null, new GenericMapValues<K, V, GenericMap<K, V>>(this) {
@@ -203,18 +239,22 @@ public abstract class GenericMap<K, V> implements Appender<StringBuilder>, Map<K
         return values;
     }
 
+    @Override
     public final V remove(Object key) {
         return removeInternal(key, true);
     }
 
     protected abstract V removeInternal(Object key, boolean incrementModCount);
 
+    @Override
     public final void putAll(Map<? extends K, ? extends V> map) {
         putAllInternal(map);
     }
 
     private <KE extends K, VE extends V> void putAllInternal(Map<KE, VE> map) {
-        if (map.isEmpty()) return;
+        if (map.isEmpty()) {
+            return;
+        }
         incrementModCount();
         Iterator<Map.Entry<KE, VE>> it;
         if (map instanceof GenericMap<?, ?>) {
@@ -233,13 +273,16 @@ public abstract class GenericMap<K, V> implements Appender<StringBuilder>, Map<K
         return appendTo(new StringBuilder()).toString();
     }
 
+    @Override
     public StringBuilder appendTo(StringBuilder sb) {
         sb.append("{");
         Iterator<Map.Entry<K, V>> it = iterator(false);
         while (it.hasNext()) {
             Map.Entry<K, V> entry = it.next();
             sb.append(entry.getKey()).append("=").append(entry.getValue());
-            if (it.hasNext()) sb.append(",");
+            if (it.hasNext()) {
+                sb.append(",");
+            }
         }
         return sb.append("}");
     }

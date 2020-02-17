@@ -18,27 +18,27 @@
  *******************************************************************************/
 package org.apache.ofbiz.product.category;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.apache.oro.text.regex.MalformedPatternException;
-import org.apache.oro.text.regex.Pattern;
-import org.apache.oro.text.regex.Perl5Compiler;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.StringUtil;
 import org.apache.ofbiz.base.util.UtilURL;
 import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.base.util.UtilXml;
+import org.apache.oro.text.regex.MalformedPatternException;
+import org.apache.oro.text.regex.Pattern;
+import org.apache.oro.text.regex.Perl5Compiler;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -70,7 +70,6 @@ public final class SeoConfigUtil {
     private static Map<String, String> specialProductIds = null;
     private static final String ELEMENT_REGEXPIFMATCH = "regexpifmatch";
     private static final String ELEMENT_URL_CONFIG = "url-config";
-    private static final String ELEMENT_DESCRIPTION = "description";
     private static final String ELEMENT_FORWARD = "forward";
     private static final String ELEMENT_SEO = "seo";
     private static final String ELEMENT_URLPATTERN = "url-pattern";
@@ -81,7 +80,6 @@ public final class SeoConfigUtil {
     private static final String ELEMENT_VALUE = "value";
     private static final String ELEMENT_USER = "user";
     private static final String ELEMENT_EXCEPTIONS = "exceptions";
-    private static final String ELEMENT_CHAR_FILTERS = "char-filters";
     private static final String ELEMENT_CHAR_FILTER = "char-filter";
     private static final String ELEMENT_CHARACTER_PATTERN = "character-pattern";
     private static final String ELEMENT_CATEGORY_URL = "category-url";
@@ -102,15 +100,14 @@ public final class SeoConfigUtil {
      * Initialize url regular express configuration.
      */
     public static void init() {
-        FileInputStream configFileIS = null;
         String result = "success";
-        seoPatterns = new HashMap<String, Pattern>();
-        seoReplacements = new HashMap<String, String>();
-        forwardReplacements = new HashMap<String, String>();
-        forwardResponseCodes = new HashMap<String, Integer>();
-        userExceptionPatterns = new LinkedList<Pattern>();
-        specialProductIds = new HashMap<String, String>();
-        charFilters = new HashMap<String, String>();
+        seoPatterns = new HashMap<>();
+        seoReplacements = new HashMap<>();
+        forwardReplacements = new HashMap<>();
+        forwardResponseCodes = new HashMap<>();
+        userExceptionPatterns = new LinkedList<>();
+        specialProductIds = new HashMap<>();
+        charFilters = new HashMap<>();
         try {
             URL seoConfigFilename = UtilURL.fromResource(SEO_CONFIG_FILENAME);
             Document configDoc = UtilXml.readXmlDocument(seoConfigFilename, false);
@@ -138,7 +135,7 @@ public final class SeoConfigUtil {
                     
                     if (categoryUrlEnabled) {
                         String allowedContextValue = UtilXml.childElementValue(categoryUrlElement, ELEMENT_ALLOWED_CONTEXT_PATHS, null);
-                        allowedContextPaths = new HashSet<String>();
+                        allowedContextPaths = new HashSet<>();
                         if (UtilValidate.isNotEmpty(allowedContextValue)) {
                             List<String> allowedContextPathList = StringUtil.split(allowedContextValue, ALLOWED_CONTEXT_PATHS_SEPERATOR);
                             for (String path : allowedContextPathList) {
@@ -189,7 +186,7 @@ public final class SeoConfigUtil {
                             jSessionIdAnonEnabled = true;
                         }
                     } else {
-                        jSessionIdAnonEnabled = Boolean.valueOf(DEFAULT_ANONYMOUS_VALUE).booleanValue();
+                        jSessionIdAnonEnabled = Boolean.valueOf(DEFAULT_ANONYMOUS_VALUE);
                     }
                     Debug.logInfo("  " + ELEMENT_ANONYMOUS + ": " + jSessionIdAnonEnabled, module);
                     
@@ -221,7 +218,7 @@ public final class SeoConfigUtil {
                             }
                         }
                     } else {
-                        jSessionIdUserEnabled = Boolean.valueOf(DEFAULT_USER_VALUE).booleanValue();
+                        jSessionIdUserEnabled = Boolean.valueOf(DEFAULT_USER_VALUE);
                     }
                     Debug.logInfo("  " + ELEMENT_USER + ": " + jSessionIdUserEnabled, module);
                 }
@@ -233,7 +230,8 @@ public final class SeoConfigUtil {
             try {
                 NodeList configs = rootElement.getElementsByTagName(ELEMENT_URL_CONFIG);
                 Debug.logInfo("Parsing " + ELEMENT_URL_CONFIG, module);
-                for (int j = 0; j < configs.getLength(); j++) {
+                int length = configs.getLength();
+                for (int j = 0; j < length; j++) {
                     Element config = (Element) configs.item(j);
                     String urlpattern = UtilXml.childElementValue(config, ELEMENT_URLPATTERN, null);
                     if (UtilValidate.isEmpty(urlpattern)) {
@@ -291,7 +289,8 @@ public final class SeoConfigUtil {
                 NodeList nameFilterNodes = rootElement
                         .getElementsByTagName(ELEMENT_CHAR_FILTER);
                 Debug.logInfo("Parsing " + ELEMENT_CHAR_FILTER + ": ", module);
-                for (int i = 0; i < nameFilterNodes.getLength(); i++) {
+                int length = nameFilterNodes.getLength();
+                for (int i = 0; i < length; i++) {
                     Element element = (Element) nameFilterNodes.item(i);
                     String charaterPattern = UtilXml.childElementValue(element, ELEMENT_CHARACTER_PATTERN, null);
                     String replacement = UtilXml.childElementValue(element, ELEMENT_REPLACEMENT, null);
@@ -321,22 +320,13 @@ public final class SeoConfigUtil {
         } catch (IOException e) {
             result = "error";
             Debug.logError(e, module);
-        } finally {
-            if (configFileIS != null) {
-                try {
-                    configFileIS.close();
-                } catch (IOException e) {
-                    result = "error";
-                    Debug.logError(e, module);
-                }
-            }
         }
         if (seoReplacements.keySet().isEmpty()) {
             useUrlRegexp = false;
         } else {
             useUrlRegexp = true;
         }
-        if (result.equals("success")) {
+        if ("success".equals(result)) {
             isInitialed = true;
         }
     }
@@ -390,11 +380,7 @@ public final class SeoConfigUtil {
             contextPath = "/";
         }
         if (categoryUrlEnabled) {
-            if (allowedContextPaths.contains(contextPath.trim())) {
-                return true;
-            } else {
-                return false;
-            }
+            return allowedContextPaths.contains(contextPath.trim());
         }
         return false;
     }
@@ -509,17 +495,17 @@ public final class SeoConfigUtil {
      */
     @Deprecated
     public static boolean addSpecialProductId(String productId) throws Exception {
-        if (productId.toLowerCase().equals(productId) || productId.toUpperCase().equals(productId)) {
+        if (productId.toLowerCase(Locale.getDefault()).equals(productId) || productId.toUpperCase(Locale.getDefault()).equals(productId)) {
             return false;
         }
-        if (isSpecialProductId(productId.toLowerCase())) {
+        if (isSpecialProductId(productId.toLowerCase(Locale.getDefault()))) {
             if (specialProductIds.containsValue(productId)) {
                 return true;
             } else {
                 throw new Exception("This product Id cannot be lower cased for SEO URL purpose: " + productId);
             }
         }
-        specialProductIds.put(productId.toLowerCase(), productId);
+        specialProductIds.put(productId.toLowerCase(Locale.getDefault()), productId);
         return true;
     }
     

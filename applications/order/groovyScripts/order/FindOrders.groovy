@@ -19,9 +19,6 @@
 
 import java.util.*
 import java.sql.Timestamp
-import org.apache.ofbiz.entity.*
-import org.apache.ofbiz.base.util.*
-import org.apache.ofbiz.entity.util.*
 
 module = "FindOrders.groovy"
 
@@ -117,6 +114,9 @@ if (currentGoodIdentificationTypeId) {
     context.currentGoodIdentificationType = currentGoodIdentificationType
 }
 
+//for countries drop down, set the list on empty value by default
+context.doNotPreselectDefaultCountryGeoId = 'Y'
+
 // create the fromDate for calendar
 fromCal = Calendar.getInstance()
 fromCal.setTime(new java.util.Date())
@@ -146,8 +146,7 @@ context.thruDateStr = toStr
 viewIndex = request.getParameter("viewIndex") ? Integer.valueOf(request.getParameter("viewIndex")) : 1
 context.viewIndex = viewIndex
 
-viewSize = request.getParameter("viewSize") ? Integer.valueOf(request.getParameter("viewSize")) : 
-                                                                EntityUtilProperties.getPropertyValue("widget", "widget.form.defaultViewSize", "20", delegator)
+viewSize = request.getParameter("viewSize") ? Integer.valueOf(request.getParameter("viewSize")) : modelTheme.getDefaultViewSize()?:20
 context.viewSize = viewSize
 
 // get the lookup flag

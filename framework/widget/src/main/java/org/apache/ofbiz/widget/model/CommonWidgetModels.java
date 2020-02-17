@@ -59,7 +59,7 @@ public final class CommonWidgetModels {
 
     public static class AutoEntityParameters {
         private String entityName;
-        List<String> excludeList = new ArrayList<String>();
+        List<String> excludeList = new ArrayList<>();
         boolean includeNonPk;
         boolean includePk;
         private String includeType;
@@ -83,7 +83,7 @@ public final class CommonWidgetModels {
 
         @SuppressWarnings("unchecked")
         public Map<String, String> getParametersMap(Map<String, Object> context, String defaultEntityName) {
-            Map<String, String> autEntityParams = new HashMap<String, String>();
+            Map<String, String> autEntityParams = new HashMap<>();
             Delegator delegator = (Delegator) context.get("delegator");
             if (delegator == null) {
                 Debug.logError(
@@ -91,8 +91,9 @@ public final class CommonWidgetModels {
                         module);
                 return autEntityParams;
             }
-            if (UtilValidate.isEmpty(entityName))
+            if (UtilValidate.isEmpty(entityName)) {
                 entityName = defaultEntityName;
+            }
             FlexibleStringExpander toExpand = FlexibleStringExpander.getInstance(entityName);
             ModelEntity entity = delegator.getModelEntity(toExpand.expandString(context));
             if (entity == null) {
@@ -102,21 +103,19 @@ public final class CommonWidgetModels {
             }
 
             Iterator<ModelField> fieldsIter = entity.getFieldsIterator();
-            if (fieldsIter != null) {
-                while (fieldsIter.hasNext()) {
-                    ModelField field = fieldsIter.next();
-                    String fieldName = field.getName();
-                    FlexibleMapAccessor<Object> fma = FlexibleMapAccessor.getInstance(fieldName);
-                    boolean shouldExclude = excludeList.contains(fieldName);
-                    if ((!shouldExclude) && (!field.getIsAutoCreatedInternal())
-                            && ((field.getIsPk() && includePk) || (!field.getIsPk() && includeNonPk))) {
-                        Object flexibleValue = fma.get(context);
-                        if (UtilValidate.isEmpty(flexibleValue) && context.containsKey("parameters")) {
-                            flexibleValue = fma.get((Map<String, Object>) context.get("parameters"));
-                        }
-                        if (UtilValidate.isNotEmpty(flexibleValue) || sendIfEmpty) {
-                            autEntityParams.put(fieldName, String.valueOf(flexibleValue));
-                        }
+            while (fieldsIter.hasNext()) {
+                ModelField field = fieldsIter.next();
+                String fieldName = field.getName();
+                FlexibleMapAccessor<Object> fma = FlexibleMapAccessor.getInstance(fieldName);
+                boolean shouldExclude = excludeList.contains(fieldName);
+                if ((!shouldExclude) && (!field.getIsAutoCreatedInternal())
+                    && ((field.getIsPk() && includePk) || (!field.getIsPk() && includeNonPk))) {
+                    Object flexibleValue = fma.get(context);
+                    if (UtilValidate.isEmpty(flexibleValue) && context.containsKey("parameters")) {
+                        flexibleValue = fma.get((Map<String, Object>) context.get("parameters"));
+                    }
+                    if (UtilValidate.isNotEmpty(flexibleValue) || sendIfEmpty) {
+                        autEntityParams.put(fieldName, String.valueOf(flexibleValue));
                     }
                 }
             }
@@ -125,9 +124,7 @@ public final class CommonWidgetModels {
     }
 
     public static class AutoServiceParameters {
-        List<String> excludeList = new ArrayList<String>();
-        boolean includeNonPk;
-        boolean includePk;
+        List<String> excludeList = new ArrayList<>();
         boolean sendIfEmpty;
         private String serviceName;
 
@@ -146,7 +143,7 @@ public final class CommonWidgetModels {
 
         @SuppressWarnings("unchecked")
         public Map<String, String> getParametersMap(Map<String, Object> context, String defaultServiceName) {
-            Map<String, String> autServiceParams = new HashMap<String, String>();
+            Map<String, String> autServiceParams = new HashMap<>();
             LocalDispatcher dispatcher = (LocalDispatcher) context.get("dispatcher");
             if (dispatcher == null) {
                 Debug.logError(
@@ -154,8 +151,9 @@ public final class CommonWidgetModels {
                         module);
                 return autServiceParams;
             }
-            if (UtilValidate.isEmpty(serviceName))
+            if (UtilValidate.isEmpty(serviceName)) {
                 serviceName = defaultServiceName;
+            }
             FlexibleStringExpander toExpand = FlexibleStringExpander.getInstance(serviceName);
             ModelService service = null;
             try {
@@ -172,8 +170,9 @@ public final class CommonWidgetModels {
             if (paramsIter != null) {
                 while (paramsIter.hasNext()) {
                     ModelParam param = paramsIter.next();
-                    if (param.getInternal())
+                    if (param.getInternal()) {
                         continue;
+                    }
                     String paramName = param.getName();
                     FlexibleMapAccessor<Object> fma = FlexibleMapAccessor.getInstance(paramName);
                     if (!excludeList.contains(paramName)) {
@@ -358,14 +357,17 @@ public final class CommonWidgetModels {
                     this.image = null;
                 }
             }
-            //Backwards compatibility 
-            if ("ajax-window".equals(linkElement.getAttribute("link-type"))) this.linkType = "layered-modal";
-            else this.linkType = linkElement.getAttribute("link-type");
+            //Backwards compatibility
+            if ("ajax-window".equals(linkElement.getAttribute("link-type"))) {
+                this.linkType = "layered-modal";
+            } else {
+                this.linkType = linkElement.getAttribute("link-type");
+            }
             List<? extends Element> parameterElementList = UtilXml.childElementList(linkElement, "parameter");
             if (parameterElementList.isEmpty()) {
                 this.parameterList = Collections.emptyList();
             } else {
-                List<Parameter> parameterList = new ArrayList<Parameter>(
+                List<Parameter> parameterList = new ArrayList<>(
                         parameterElementList.size());
                 for (Element parameterElement : parameterElementList) {
                     parameterList.add(new Parameter(parameterElement));
@@ -482,7 +484,7 @@ public final class CommonWidgetModels {
         }
 
         public Map<String, String> getParameterMap(Map<String, Object> context, String defaultEntityName, String defaultServiceName) {
-            Map<String, String> fullParameterMap = new HashMap<String, String>();
+            Map<String, String> fullParameterMap = new HashMap<>();
             for (Parameter parameter : this.parameterList) {
                 fullParameterMap.put(parameter.getName(), parameter.getValue(context));
             }
@@ -496,7 +498,7 @@ public final class CommonWidgetModels {
         }
 
         public Map<String, String> getParameterMap(Map<String, Object> context) {
-            Map<String, String> fullParameterMap = new HashMap<String, String>();
+            Map<String, String> fullParameterMap = new HashMap<>();
             for (Parameter parameter : this.parameterList) {
                 fullParameterMap.put(parameter.getName(), parameter.getValue(context));
             }
@@ -584,7 +586,7 @@ public final class CommonWidgetModels {
 
     /**
      * Models the &lt;parameter&gt; element.
-     * 
+     *
      * @see <code>widget-form.xsd</code>
      */
     public static class Parameter {
@@ -633,8 +635,9 @@ public final class CommonWidgetModels {
             }
             if (retVal != null) {
                 TimeZone timeZone = (TimeZone) context.get("timeZone");
-                if (timeZone == null)
+                if (timeZone == null) {
                     timeZone = TimeZone.getDefault();
+                }
                 String returnValue = null;
                 // format string based on the user's time zone (not locale because these are parameters)
                 if (retVal instanceof Double || retVal instanceof Float || retVal instanceof BigDecimal) {
@@ -655,9 +658,8 @@ public final class CommonWidgetModels {
                     returnValue = retVal.toString();
                 }
                 return returnValue;
-            } else {
-                return null;
             }
+            return null;
         }
     }
 }

@@ -17,16 +17,13 @@
  * under the License.
  */
 
-import org.apache.ofbiz.entity.*
-import org.apache.ofbiz.base.util.*
-
 custRequestId = parameters.custRequestId
 custRequestItemSeqId = parameters.custRequestItemSeqId
 showAll = parameters.showAll ?: "false"
 context.showAll = showAll
 
 fields = [custRequestId : custRequestId]
-if (showAll.equals("false")) {
+if ("false".equals(showAll)) {
     fields.custRequestItemSeqId = custRequestItemSeqId
 }
 notes = from("CustRequestItemNoteView").where(fields).orderBy("-noteDateTime").queryList()

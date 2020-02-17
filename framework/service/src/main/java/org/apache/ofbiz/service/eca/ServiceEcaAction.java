@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.UtilGenerics;
@@ -112,31 +113,31 @@ public class ServiceEcaAction implements java.io.Serializable {
         }
 
         if (eventName.startsWith("global-")) {
-            if (eventName.equals("global-rollback")) {
+            if ("global-rollback".equals(eventName)) {
                 ServiceSynchronization.registerRollbackService(dctx, serviceName, runAsUser, context, "async".equals(serviceMode), persist); // using the actual context so we get updates
-            } else if (eventName.equals("global-commit")) {
+            } else if ("global-commit".equals(eventName)) {
                 ServiceSynchronization.registerCommitService(dctx, serviceName, runAsUser, context, "async".equals(serviceMode), persist); // using the actual context so we get updates
-            } else if (eventName.equals("global-commit-post-run")) {
+            } else if ("global-commit-post-run".equals(eventName)) {
                 ServiceSynchronization.registerCommitService(dctx, serviceName, runAsUser, context, "async".equals(serviceMode), persist); // using the actual context so we get updates
             }
         } else {
             // standard ECA
-            if (this.serviceMode.equals("sync")) {
+            if ("sync".equals(this.serviceMode)) {
                 if (newTransaction) {
                     actionResult = dispatcher.runSync(this.serviceName, actionContext, -1, true);
                 } else {
                     actionResult = dispatcher.runSync(this.serviceName, actionContext);
                 }
-            } else if (this.serviceMode.equals("async")) {
+            } else if ("async".equals(this.serviceMode)) {
                 dispatcher.runAsync(serviceName, actionContext, persist);
             }
         }
 
         // put the results in to the defined map
         if (UtilValidate.isNotEmpty(resultMapName)) {
-            Map<String, Object> resultMap = UtilGenerics.checkMap(context.get(resultMapName));
+            Map<String, Object> resultMap = UtilGenerics.cast(context.get(resultMapName));
             if (resultMap == null) {
-                resultMap = new HashMap<String, Object>();
+                resultMap = new HashMap<>();
             }
             resultMap.putAll(dctx.getModelService(this.serviceName).makeValid(actionResult, ModelService.OUT_PARAM, false, null));
             context.put(resultMapName, resultMap);
@@ -184,17 +185,17 @@ public class ServiceEcaAction implements java.io.Serializable {
         if ((!success || resultToResult) && UtilValidate.isNotEmpty(actionResult)) {
             String errorMessage = (String) actionResult.get(ModelService.ERROR_MESSAGE);
             String failMessage = (String) actionResult.get("failMessage");
-            List<? extends Object> errorMessageList = UtilGenerics.checkList(actionResult.get(ModelService.ERROR_MESSAGE_LIST));
-            Map<String, ? extends Object> errorMessageMap = UtilGenerics.checkMap(actionResult.get(ModelService.ERROR_MESSAGE_MAP));
+            List<? extends Object> errorMessageList = UtilGenerics.cast(actionResult.get(ModelService.ERROR_MESSAGE_LIST));
+            Map<String, ? extends Object> errorMessageMap = UtilGenerics.cast(actionResult.get(ModelService.ERROR_MESSAGE_MAP));
 
             // do something with the errorMessage
             if (UtilValidate.isNotEmpty(errorMessage)) {
                 if (UtilValidate.isEmpty(result.get(ModelService.ERROR_MESSAGE))) {
                     result.put(ModelService.ERROR_MESSAGE, errorMessage);
                 } else {
-                    List<Object> origErrorMessageList = UtilGenerics.checkList(result.get(ModelService.ERROR_MESSAGE_LIST));
+                    List<Object> origErrorMessageList = UtilGenerics.cast(result.get(ModelService.ERROR_MESSAGE_LIST));
                     if (origErrorMessageList == null) {
-                        origErrorMessageList = new LinkedList<Object>();
+                        origErrorMessageList = new LinkedList<>();
                         result.put(ModelService.ERROR_MESSAGE_LIST, origErrorMessageList);
                     }
                     origErrorMessageList.add(0, errorMessage);
@@ -202,7 +203,7 @@ public class ServiceEcaAction implements java.io.Serializable {
             }
             // do something with the errorMessageList
             if (UtilValidate.isNotEmpty(errorMessageList)) {
-                List<Object> origErrorMessageList = UtilGenerics.checkList(result.get(ModelService.ERROR_MESSAGE_LIST));
+                List<Object> origErrorMessageList = UtilGenerics.cast(result.get(ModelService.ERROR_MESSAGE_LIST));
                 if (origErrorMessageList == null) {
                     result.put(ModelService.ERROR_MESSAGE_LIST, errorMessageList);
                 } else {
@@ -211,7 +212,7 @@ public class ServiceEcaAction implements java.io.Serializable {
             }
             // do something with the errorMessageMap
             if (UtilValidate.isNotEmpty(errorMessageMap)) {
-                Map<String, Object> origErrorMessageMap = UtilGenerics.checkMap(result.get(ModelService.ERROR_MESSAGE_MAP));
+                Map<String, Object> origErrorMessageMap = UtilGenerics.cast(result.get(ModelService.ERROR_MESSAGE_MAP));
                 if (origErrorMessageMap == null) {
                     result.put(ModelService.ERROR_MESSAGE_MAP, errorMessageMap);
                 } else {
@@ -233,15 +234,50 @@ public class ServiceEcaAction implements java.io.Serializable {
     }
 
     @Override
+    public String toString() {
+        StringBuilder buf = new StringBuilder();
+        if (UtilValidate.isNotEmpty(eventName)) buf.append("[").append(eventName).append("]");
+        if (UtilValidate.isNotEmpty(ignoreError)) buf.append("[").append(ignoreError).append("]");
+        if (UtilValidate.isNotEmpty(ignoreFailure)) buf.append("[").append(ignoreFailure).append("]");
+        if (UtilValidate.isNotEmpty(newTransaction)) buf.append("[").append(newTransaction).append("]");
+        if (UtilValidate.isNotEmpty(persist)) buf.append("[").append(persist).append("]");
+        if (UtilValidate.isNotEmpty(resultMapName)) buf.append("[").append(resultMapName).append("]");
+        if (UtilValidate.isNotEmpty(resultToContext)) buf.append("[").append(resultToContext).append("]");
+        if (UtilValidate.isNotEmpty(resultToResult)) buf.append("[").append(resultToResult).append("]");
+        if (UtilValidate.isNotEmpty(runAsUser)) buf.append("[").append(runAsUser).append("]");
+        if (UtilValidate.isNotEmpty(serviceMode)) buf.append("[").append(serviceMode).append("]");
+        if (UtilValidate.isNotEmpty(serviceName)) buf.append("[").append(serviceName).append("]");
+        return buf.toString();
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((eventName == null) ? 0 : eventName.hashCode());
+        result = prime * result + (ignoreError ? 1231 : 1237);
+        result = prime * result + (ignoreFailure ? 1231 : 1237);
+        result = prime * result + (newTransaction ? 1231 : 1237);
+        result = prime * result + (persist ? 1231 : 1237);
+        result = prime * result + ((resultMapName == null) ? 0 : resultMapName.hashCode());
+        result = prime * result + (resultToContext ? 1231 : 1237);
+        result = prime * result + (resultToResult ? 1231 : 1237);
+        result = prime * result + ((runAsUser == null) ? 0 : runAsUser.hashCode());
+        result = prime * result + ((serviceMode == null) ? 0 : serviceMode.hashCode());
+        result = prime * result + ((serviceName == null) ? 0 : serviceName.hashCode());
+        return result;
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (obj instanceof ServiceEcaAction) {
             ServiceEcaAction other = (ServiceEcaAction) obj;
 
-            if (!UtilValidate.areEqual(this.eventName, other.eventName)) return false;
-            if (!UtilValidate.areEqual(this.serviceName, other.serviceName)) return false;
-            if (!UtilValidate.areEqual(this.serviceMode, other.serviceMode)) return false;
-            if (!UtilValidate.areEqual(this.resultMapName, other.resultMapName)) return false;
-            if (!UtilValidate.areEqual(this.runAsUser, other.runAsUser)) return false;
+            if (!Objects.equals(this.eventName, other.eventName)) return false;
+            if (!Objects.equals(this.serviceName, other.serviceName)) return false;
+            if (!Objects.equals(this.serviceMode, other.serviceMode)) return false;
+            if (!Objects.equals(this.resultMapName, other.resultMapName)) return false;
+            if (!Objects.equals(this.runAsUser, other.runAsUser)) return false;
 
             if (this.newTransaction != other.newTransaction) return false;
             if (this.resultToContext != other.resultToContext) return false;

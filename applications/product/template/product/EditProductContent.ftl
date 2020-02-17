@@ -17,7 +17,7 @@ specific language governing permissions and limitations
 under the License.
 -->
 <#if product??>
-<script language="JavaScript" type="text/javascript">
+<script type="application/javascript">
     function insertNowTimestamp(field) {
         eval('document.productForm.' + field + '.value="${nowTimestampString}";');
     };
@@ -45,7 +45,7 @@ under the License.
                 <td width="20%" align="right" valign="top"><b>${uiLabelMap.ProductProductName}</b></td>
                 <td>&nbsp;</td>
                 <td width="80%" colspan="4" valign="top">
-                    <input type="text" name="productName" value="${(product.productName?html)!}" size="30" maxlength="60"/>
+                    <input type="text" name="productName" value="${StringUtil.wrapString(product.productName)!}" size="30" maxlength="60"/>
                 </td>
             </tr>
             <tr>
@@ -177,7 +177,7 @@ under the License.
             </tr>
         </table>
     </form>
-    <script language="JavaScript" type="text/javascript">
+    <script type="application/javascript">
         function setUploadUrl(newUrl) {
             var toExec = 'document.imageUploadForm.action="' + newUrl + '";';
             eval(toExec);

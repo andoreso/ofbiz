@@ -39,7 +39,7 @@ import org.w3c.dom.Element;
 /**
  * Implements the &lt;if-compare-field&gt; element.
  * 
- * @see <a href="https://cwiki.apache.org/confluence/display/OFBADMIN/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
+ * @see <a href="https://cwiki.apache.org/confluence/display/OFBIZ/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
  */
 public final class CompareFieldCondition extends MethodOperation implements Conditional {
 
@@ -158,6 +158,7 @@ public final class CompareFieldCondition extends MethodOperation implements Cond
         }
     }
 
+    @Override
     public void prettyPrint(StringBuilder messageBuffer, MethodContext methodContext) {
         String format = formatFse.expandString(methodContext.getEnvMap());
         Object fieldVal = fieldFma.get(methodContext.getEnvMap());
@@ -207,6 +208,7 @@ public final class CompareFieldCondition extends MethodOperation implements Cond
             return new CompareFieldCondition(element, simpleMethod);
         }
 
+        @Override
         public CompareFieldCondition createMethodOperation(Element element, SimpleMethod simpleMethod) throws MiniLangException {
             return new CompareFieldCondition(element, simpleMethod);
         }

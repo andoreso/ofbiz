@@ -22,7 +22,6 @@ under the License.
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="http://ofbiz.apache.org/dtds/ofbiz-component.xsd">
     <resource-loader name="main" type="component"/>
-    <classpath type="dir" location="dtd"/>
     <classpath type="dir" location="config"/>
 
     <test-suite loader="main" location="testdef/basetests.xml"/>
@@ -32,5 +31,7 @@ under the License.
         <property name="host" value="0.0.0.0"/>
         <property name="port" value="1099"/>
     </container>
+    <!-- load the administration server -->
+    <container name="admin-container" loaders="main" class="org.apache.ofbiz.base.container.AdminServerContainer"/>
 
 </ofbiz-component>

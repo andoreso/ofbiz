@@ -25,7 +25,6 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.apache.ofbiz.base.util.UtilGenerics;
 
-
 import freemarker.core.Environment;
 import freemarker.ext.beans.BeanModel;
 import freemarker.template.TemplateDirectiveBody;
@@ -48,8 +47,9 @@ public class CatalogUrlDirective implements TemplateDirectiveModel {
     public final static String module = CatalogUrlDirective.class.getName();
 
     @Override
-    public void execute(Environment env, Map args, TemplateModel[] loopVars, TemplateDirectiveBody body) throws TemplateException, IOException {
-        Map<String, TemplateModel> params = UtilGenerics.checkMap(args);
+    public void execute(Environment env, @SuppressWarnings("rawtypes") Map args, TemplateModel[] loopVars,
+            TemplateDirectiveBody body) throws TemplateException, IOException {
+        Map<String, TemplateModel> params = UtilGenerics.cast(args);
         String productId = (String) DeepUnwrap.unwrap(params.get("productId"));
         String currentCategoryId = (String) DeepUnwrap.unwrap(params.get("currentCategoryId"));
         String previousCategoryId = (String) DeepUnwrap.unwrap(params.get("previousCategoryId"));

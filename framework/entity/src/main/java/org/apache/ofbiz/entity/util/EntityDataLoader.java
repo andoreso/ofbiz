@@ -19,10 +19,12 @@
 package org.apache.ofbiz.entity.util;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.StringTokenizer;
 
 import org.apache.ofbiz.base.component.ComponentConfig;
@@ -30,6 +32,7 @@ import org.apache.ofbiz.base.config.GenericConfigException;
 import org.apache.ofbiz.base.config.MainResourceHandler;
 import org.apache.ofbiz.base.config.ResourceHandler;
 import org.apache.ofbiz.base.util.Debug;
+import org.apache.ofbiz.base.util.UtilDateTime;
 import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.entity.Delegator;
@@ -47,6 +50,7 @@ import org.apache.ofbiz.entity.model.ModelReader;
 import org.apache.ofbiz.entity.model.ModelUtil;
 import org.apache.ofbiz.entity.model.ModelViewEntity;
 import org.w3c.dom.Element;
+import org.xml.sax.SAXException;
 
 /**
  * Some utility routines for loading seed data.
@@ -88,7 +92,7 @@ public class EntityDataLoader {
 
     public static <E> List<URL> getUrlList(String helperName, String componentName, List<E> readerNames) {
         String paths = getPathsString(helperName);
-        List<URL> urlList = new LinkedList<URL>();
+        List<URL> urlList = new LinkedList<>();
 
         // first get files from resources
         if (readerNames != null) {
@@ -104,7 +108,7 @@ public class EntityDataLoader {
                     throw new IllegalArgumentException("Reader name list does not contain String(s) or Element(s)");
                 }
                 readerName = readerName.trim();
-                
+
                 // ignore the "tenant" reader if multitenant is disabled
                 if ("tenant".equals(readerName) && !EntityUtil.isMultiTenantEnabled()) {
                     continue;
@@ -159,14 +163,16 @@ public class EntityDataLoader {
         if (UtilValidate.isNotEmpty(paths)) {
             StringTokenizer tokenizer = new StringTokenizer(paths, ";");
             while (tokenizer.hasMoreTokens()) {
-                String path = tokenizer.nextToken().toLowerCase();
+                String path = tokenizer.nextToken().toLowerCase(Locale.getDefault());
                 File loadDir = new File(path);
                 if (loadDir.exists() && loadDir.isDirectory()) {
                     File[] files = loadDir.listFiles();
-                    List<File> tempFileList = new LinkedList<File>();
-                    for (File file: files) {
-                        if (file.getName().toLowerCase().endsWith(".xml")) {
-                            tempFileList.add(file);
+                    List<File> tempFileList = new LinkedList<>();
+                    if (files != null) {
+                        for (File file : files) {
+                            if (file.getName().toLowerCase(Locale.getDefault()).endsWith(".xml")) {
+                                tempFileList.add(file);
+                            }
                         }
                     }
                     Collections.sort(tempFileList);
@@ -193,9 +199,9 @@ public class EntityDataLoader {
     }
 
     public static List<URL> getUrlByComponentList(String helperName, List<String> components, List<String> readerNames) {
-        List<URL> urlList = new LinkedList<URL>();
+        List<URL> urlList = new LinkedList<>();
         for (String readerName:  readerNames) {
-            List<String> loadReaderNames = new LinkedList<String>();
+            List<String> loadReaderNames = new LinkedList<>();
             loadReaderNames.add(readerName);
             for (String component : components) {
                 urlList.addAll(getUrlList(helperName, component, loadReaderNames));
@@ -206,14 +212,14 @@ public class EntityDataLoader {
 
     public static List<URL> getUrlByComponentList(String helperName, List<String> components) {
         Datasource datasourceInfo = EntityConfig.getDatasource(helperName);
-        List<String> readerNames = new LinkedList<String>();
+        List<String> readerNames = new LinkedList<>();
         for (ReadData readerInfo :  datasourceInfo.getReadDataList()) {
             String readerName = readerInfo.getReaderName();
             // ignore the "tenant" reader if the multitenant property is "N"
             if ("tenant".equals(readerName) && "N".equals(UtilProperties.getPropertyValue("general", "multitenant"))) {
                 continue;
             }
-            
+
             readerNames.add(readerName);
         }
         return getUrlByComponentList(helperName, components, readerNames);
@@ -228,6 +234,10 @@ public class EntityDataLoader {
     }
 
     public static int loadData(URL dataUrl, String helperName, Delegator delegator, List<Object> errorMessages, int txTimeout, boolean dummyFks, boolean maintainTxs, boolean tryInsert) throws GenericEntityException {
+        return loadData(dataUrl, helperName, delegator, errorMessages, txTimeout, false, false, false, true);
+    }
+
+    public static int loadData(URL dataUrl, String helperName, Delegator delegator, List<Object> errorMessages, int txTimeout, boolean dummyFks, boolean maintainTxs, boolean tryInsert, boolean continueOnFail) throws GenericEntityException {
         int rowsChanged = 0;
 
         if (dataUrl == null) {
@@ -237,7 +247,7 @@ public class EntityDataLoader {
             return 0;
         }
 
-        Debug.logVerbose("[loadData] Loading XML Resource: \"" + dataUrl.toExternalForm() + "\"", module);
+        if (Debug.verboseOn()) Debug.logVerbose("[loadData] Loading XML Resource: \"" + dataUrl.toExternalForm() + "\"", module);
 
         try {
             /* The OLD way
@@ -254,11 +264,16 @@ public class EntityDataLoader {
             }
             reader.setCreateDummyFks(dummyFks);
             reader.setMaintainTxStamps(maintainTxs);
+            reader.setContinueOnFail(continueOnFail);
             rowsChanged += reader.parse(dataUrl);
-        } catch (Exception e) {
+        } catch (IOException | SAXException e) {
             String xmlError = "[loadData]: Error loading XML Resource \"" + dataUrl.toExternalForm() + "\"; Error was: " + e.getMessage();
             errorMessages.add(xmlError);
-            Debug.logError(e, xmlError, module);
+            if (continueOnFail) {
+                Debug.logError(e, xmlError, module);
+            } else {
+                throw new GenericEntityException(xmlError, e);
+            }
         }
 
         return rowsChanged;
@@ -276,7 +291,7 @@ public class EntityDataLoader {
 
             if (baseName != null) {
                 try {
-                    List<GenericValue> toBeStored = new LinkedList<GenericValue>();
+                    List<GenericValue> toBeStored = new LinkedList<>();
                     toBeStored.add(
                         delegator.makeValue(
                             "SecurityPermission",
@@ -284,7 +299,7 @@ public class EntityDataLoader {
                                 baseName + "_ADMIN",
                                 "description",
                                 "Permission to Administer a " + entity.getEntityName() + " entity."));
-                    toBeStored.add(delegator.makeValue("SecurityGroupPermission", "groupId", "FULLADMIN", "permissionId", baseName + "_ADMIN"));
+                    toBeStored.add(delegator.makeValue("SecurityGroupPermission", "groupId", "FULLADMIN", "permissionId", baseName + "_ADMIN", "fromDate", UtilDateTime.nowTimestamp()));
                     rowsChanged += delegator.storeAll(toBeStored);
                 } catch (GenericEntityException e) {
                     errorMessages.add("[generateData] ERROR: Failed Security Generation for entity \"" + baseName + "\"");

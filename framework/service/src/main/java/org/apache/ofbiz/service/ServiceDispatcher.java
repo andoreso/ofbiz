@@ -18,6 +18,7 @@
  *******************************************************************************/
 package org.apache.ofbiz.service;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -63,29 +64,29 @@ import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap;
  * The global service dispatcher. This is the "engine" part of the
  * Service Engine.
  */
-public class ServiceDispatcher {
+public final class ServiceDispatcher {
 
     public static final String module = ServiceDispatcher.class.getName();
     public static final int lruLogSize = 200;
     public static final int LOCK_RETRIES = 3;
 
-    protected static final Map<RunningService, ServiceDispatcher> runLog = new ConcurrentLinkedHashMap.Builder<RunningService, ServiceDispatcher>().maximumWeightedCapacity(lruLogSize).build();
-    protected static ConcurrentHashMap<String, ServiceDispatcher> dispatchers = new ConcurrentHashMap<String, ServiceDispatcher>();
+    private static final Map<RunningService, ServiceDispatcher> runLog = new ConcurrentLinkedHashMap.Builder<RunningService, ServiceDispatcher>().maximumWeightedCapacity(lruLogSize).build();
+    private static ConcurrentHashMap<String, ServiceDispatcher> dispatchers = new ConcurrentHashMap<>();
     // FIXME: These fields are not thread-safe. They are modified by EntityDataLoadContainer.
     // We need a better design - like have this class query EntityDataLoadContainer if data is being loaded.
-    protected static boolean enableJM = true;
-    protected static boolean enableJMS = true;
-    protected static boolean enableSvcs = true;
+    private static boolean enableJM = true;
+    private static boolean enableJMS = UtilProperties.getPropertyAsBoolean("service", "enableJMS", true);
+    private static boolean enableSvcs = true;
 
-    protected Delegator delegator = null;
-    protected GenericEngineFactory factory = null;
-    protected Security security = null;
-    protected Map<String, DispatchContext> localContext = new HashMap<String, DispatchContext>();
-    protected Map<String, List<GenericServiceCallback>> callbacks = new HashMap<String, List<GenericServiceCallback>>();
-    protected JobManager jm = null;
-    protected JmsListenerFactory jlf = null;
+    private Delegator delegator = null;
+    private GenericEngineFactory factory = null;
+    private Security security = null;
+    private Map<String, DispatchContext> localContext = new HashMap<>();
+    private Map<String, List<GenericServiceCallback>> callbacks = new HashMap<>();
+    private JobManager jm = null;
+    private JmsListenerFactory jlf = null;
 
-    protected ServiceDispatcher(Delegator delegator, boolean enableJM, boolean enableJMS) {
+    private ServiceDispatcher(Delegator delegator, boolean enableJM, boolean enableJMS) {
         factory = new GenericEngineFactory(this);
         ServiceGroupReader.readConfig();
         ServiceEcaUtil.readConfig();
@@ -98,10 +99,8 @@ public class ServiceDispatcher {
             } catch (SecurityConfigurationException e) {
                 Debug.logError(e, "[ServiceDispatcher.init] : No instance of security implementation found.", module);
             }
-        }
 
         // clean up the service semaphores of same instance
-        if (delegator != null) {
             try {
                 int rn = delegator.removeByAnd("ServiceSemaphore", "lockedByInstanceId", JobManager.instanceId);
                 if (rn > 0) {
@@ -111,25 +110,29 @@ public class ServiceDispatcher {
                 Debug.logError(e, module);
             }
         }
-        
-        // job manager needs to always be running, but the poller thread does not
-        try {
-            Delegator origDelegator = this.delegator;
-            if (!this.delegator.getOriginalDelegatorName().equals(this.delegator.getDelegatorName())) {
-                origDelegator = DelegatorFactory.getDelegator(this.delegator.getOriginalDelegatorName());
-            }
-            this.jm = JobManager.getInstance(origDelegator, enableJM);
-        } catch (GeneralRuntimeException e) {
-            Debug.logWarning(e.getMessage(), module);
-        }
 
+        // job manager needs to always be running, but the poller thread does not
+        if (this.delegator != null) {
+            try {
+                Delegator origDelegator = this.delegator;
+                if (!this.delegator.getOriginalDelegatorName().equals(this.delegator.getDelegatorName())) {
+                    origDelegator = DelegatorFactory.getDelegator(this.delegator.getOriginalDelegatorName());
+                }
+                this.jm = JobManager.getInstance(origDelegator, enableJM);
+            }
+            catch (GeneralRuntimeException e) {
+                Debug.logWarning(e.getMessage(), module);
+            }
+        } else {
+            Debug.logError("[ServiceDispatcher.init] : Delegator parameter was null and caused an exception.", module);
+        }
         // make sure we haven't disabled these features from running
         if (enableJMS) {
             this.jlf = JmsListenerFactory.getInstance(delegator);
         }
     }
 
-    protected ServiceDispatcher(Delegator delegator) {
+    private ServiceDispatcher(Delegator delegator) {
         this(delegator, enableJM, enableJMS);
     }
 
@@ -160,8 +163,7 @@ public class ServiceDispatcher {
         String dispatcherKey = delegator != null ? delegator.getDelegatorName() : "null";
         sd = dispatchers.get(dispatcherKey);
         if (sd == null) {
-            if (Debug.verboseOn())
-                Debug.logVerbose("[ServiceDispatcher.getInstance] : No instance found (" + dispatcherKey + ").", module);
+            if (Debug.verboseOn()) Debug.logVerbose("[ServiceDispatcher.getInstance] : No instance found (" + dispatcherKey + ").", module);
             sd = new ServiceDispatcher(delegator);
             ServiceDispatcher cachedDispatcher = dispatchers.putIfAbsent(dispatcherKey, sd);
             if (cachedDispatcher == null) {
@@ -181,7 +183,7 @@ public class ServiceDispatcher {
      * @param context the context of the local dispatcher
      */
     public void register(DispatchContext context) {
-        if (Debug.infoOn()) Debug.logInfo("Registering dispatcher: " + context.getName(), module);
+        Debug.logInfo("Registering dispatcher: " + context.getName(), module);
         this.localContext.put(context.getName(), context);
     }
     /**
@@ -189,7 +191,7 @@ public class ServiceDispatcher {
      * @param local the LocalDispatcher to de-register
      */
     public void deregister(LocalDispatcher local) {
-        if (Debug.infoOn()) Debug.logInfo("De-Registering dispatcher: " + local.getName(), module);
+        Debug.logInfo("De-Registering dispatcher: " + local.getName(), module);
         localContext.remove(local.getName());
         if (localContext.size() == 0) {
             try {
@@ -200,17 +202,28 @@ public class ServiceDispatcher {
         }
     }
 
+    /**
+     * Registers a callback by associating it to a service.
+     *
+     * @param serviceName the name of the service to associate the callback with
+     * @param cb the callback to register
+     */
     public synchronized void registerCallback(String serviceName, GenericServiceCallback cb) {
-        List<GenericServiceCallback> callBackList = callbacks.get(serviceName);
-        if (callBackList == null) {
-            callBackList = new LinkedList<GenericServiceCallback>();
-        }
-        callBackList.add(cb);
-        callbacks.put(serviceName, callBackList);
+        callbacks.computeIfAbsent(serviceName, x -> new LinkedList<>()).add(cb);
     }
 
+    /**
+     * Provides a list of the enabled callbacks corresponding to a service.
+     *
+     * As a side effect, disabled callbacks are removed.
+     *
+     * @param serviceName the name of service whose callbacks should be called
+     * @return a list of callbacks corresponding to {@code serviceName}
+     */
     public List<GenericServiceCallback> getCallbacks(String serviceName) {
-        return callbacks.get(serviceName);
+        List<GenericServiceCallback> res = callbacks.getOrDefault(serviceName, Collections.emptyList());
+        res.removeIf(gsc -> !gsc.isEnabled());
+        return res;
     }
 
     /**
@@ -253,7 +266,7 @@ public class ServiceDispatcher {
      */
     public Map<String, Object> runSync(String localName, ModelService modelService, Map<String, ? extends Object> params, boolean validateOut) throws ServiceAuthException, ServiceValidationException, GenericServiceException {
         long serviceStartTime = System.currentTimeMillis();
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         ServiceSemaphore lock = null;
         Map<String, List<ServiceEcaRule>> eventMap = null;
         Map<String, Object> ecaContext = null;
@@ -272,16 +285,16 @@ public class ServiceDispatcher {
             }
 
             if (Debug.verboseOn() || modelService.debug) {
-                Debug.logVerbose("[ServiceDispatcher.runSync] : invoking service " + modelService.name + " [" + modelService.location +
+                if (Debug.verboseOn()) Debug.logVerbose("[ServiceDispatcher.runSync] : invoking service " + modelService.name + " [" + modelService.location +
                     "/" + modelService.invoke + "] (" + modelService.engineName + ")", module);
             }
 
-            Map<String, Object> context = new HashMap<String, Object>();
+            Map<String, Object> context = new HashMap<>();
             if (params != null) {
                 context.putAll(params);
             }
             // check the locale
-            Locale locale = this.checkLocale(context);
+            Locale locale = checkLocale(context);
 
             // set up the running service log
             rs = this.logService(localName, modelService, GenericEngine.SYNC_MODE);
@@ -290,16 +303,17 @@ public class ServiceDispatcher {
             eventMap = ServiceEcaUtil.getServiceEventMap(modelService.name);
             engine = this.getGenericEngine(modelService.engineName);
 
+            modelService.informIfDeprecated();
 
             // set IN attributes with default-value as applicable
             modelService.updateDefaultValues(context, ModelService.IN_PARAM);
-            //Debug.logInfo("=========================== " + modelService.name + " 1 tx status =" + TransactionUtil.getStatusString() + ", modelService.requireNewTransaction=" + modelService.requireNewTransaction + ", modelService.useTransaction=" + modelService.useTransaction + ", TransactionUtil.isTransactionInPlace()=" + TransactionUtil.isTransactionInPlace(), module);
             if (modelService.useTransaction) {
                 if (TransactionUtil.isTransactionInPlace()) {
                     // if a new transaction is needed, do it here; if not do nothing, just use current tx
                     if (modelService.requireNewTransaction) {
                         parentTransaction = TransactionUtil.suspend();
                         if (TransactionUtil.isTransactionInPlace()) {
+                            rs.setEndStamp();
                             throw new GenericTransactionException("In service " + modelService.name + " transaction is still in place after suspend, status is " + TransactionUtil.getStatusString());
                         }
                         // now start a new transaction
@@ -337,22 +351,27 @@ public class ServiceDispatcher {
 
 
                     // setup global transaction ECA listeners to execute later
-                    if (eventMap != null) ServiceEcaUtil.evalRules(modelService.name, eventMap, "global-rollback", ctx, context, result, isError, isFailure);
-                    if (eventMap != null) ServiceEcaUtil.evalRules(modelService.name, eventMap, "global-commit", ctx, context, result, isError, isFailure);
+                    if (eventMap != null) {
+                        ServiceEcaUtil.evalRules(modelService.name, eventMap, "global-rollback", ctx, context, result, isError, isFailure);
+                    }
+                    if (eventMap != null) {
+                        ServiceEcaUtil.evalRules(modelService.name, eventMap, "global-commit", ctx, context, result, isError, isFailure);
+                    }
 
                     // pre-auth ECA
-                    if (eventMap != null) ServiceEcaUtil.evalRules(modelService.name, eventMap, "auth", ctx, context, result, isError, isFailure);
+                    if (eventMap != null) {
+                        ServiceEcaUtil.evalRules(modelService.name, eventMap, "auth", ctx, context, result, isError, isFailure);
+                    }
 
                     // check for pre-auth failure/errors
                     isFailure = ServiceUtil.isFailure(result);
                     isError = ServiceUtil.isError(result);
 
-                    //Debug.logInfo("After [" + modelService.name + "] pre-auth ECA, before auth; isFailure=" + isFailure + ", isError=" + isError, module);
-
                     context = checkAuth(localName, context, modelService);
                     GenericValue userLogin = (GenericValue) context.get("userLogin");
 
                     if (modelService.auth && userLogin == null) {
+                        rs.setEndStamp();
                         throw new ServiceAuthException("User authorization is required for this service: " + modelService.name + modelService.debugInfo());
                     }
 
@@ -362,32 +381,35 @@ public class ServiceDispatcher {
                     }
 
                     // pre-validate ECA
-                    if (eventMap != null) ServiceEcaUtil.evalRules(modelService.name, eventMap, "in-validate", ctx, context, result, isError, isFailure);
+                    if (eventMap != null) {
+                        ServiceEcaUtil.evalRules(modelService.name, eventMap, "in-validate", ctx, context, result, isError, isFailure);
+                    }
 
                     // check for pre-validate failure/errors
                     isFailure = ServiceUtil.isFailure(result);
                     isError = ServiceUtil.isError(result);
 
-                    //Debug.logInfo("After [" + modelService.name + "] pre-in-validate ECA, before in-validate; isFailure=" + isFailure + ", isError=" + isError, module);
-
                     // validate the context
                     if (modelService.validate && !isError && !isFailure) {
                         try {
+                            // FIXME without this line all simple test failed
+                            context = ctx.makeValidContext(modelService.name, ModelService.IN_PARAM, context);
                             modelService.validate(context, ModelService.IN_PARAM, locale);
                         } catch (ServiceValidationException e) {
                             Debug.logError(e, "Incoming context (in runSync : " + modelService.name + ") does not match expected requirements", module);
+                            rs.setEndStamp();
                             throw e;
                         }
                     }
 
                     // pre-invoke ECA
-                    if (eventMap != null) ServiceEcaUtil.evalRules(modelService.name, eventMap, "invoke", ctx, context, result, isError, isFailure);
+                    if (eventMap != null) {
+                        ServiceEcaUtil.evalRules(modelService.name, eventMap, "invoke", ctx, context, result, isError, isFailure);
+                    }
 
                     // check for pre-invoke failure/errors
                     isFailure = ServiceUtil.isFailure(result);
                     isError = ServiceUtil.isError(result);
-
-                    //Debug.logInfo("After [" + modelService.name + "] pre-invoke ECA, before invoke; isFailure=" + isFailure + ", isError=" + isError, module);
 
                     // ===== invoke the service =====
                     if (!isError && !isFailure) {
@@ -405,8 +427,6 @@ public class ServiceDispatcher {
                     isFailure = ServiceUtil.isFailure(result);
                     isError = ServiceUtil.isError(result);
 
-                    //Debug.logInfo("After [" + modelService.name + "] invoke; isFailure=" + isFailure + ", isError=" + isError, module);
-
                     if (beganTrans) {
                         // crazy stuff here: see if there was a deadlock or other such error and if so retry... which we can ONLY do if we own the transaction!
 
@@ -422,7 +442,7 @@ public class ServiceDispatcher {
                         // NOTE DEJ20070908 are there other things we need to check? I don't think so because these will
                         //be Entity Engine errors that will be caught and come back in an error message... IFF the
                         //service is written to not ignore it of course!
-                        if (errMsg != null && errMsg.toUpperCase().indexOf("DEADLOCK") >= 0) {
+                        if (errMsg != null && errMsg.toUpperCase(Locale.getDefault()).indexOf("DEADLOCK") >= 0) {
                             // it's a deadlock! retry...
                             String retryMsg = "RETRYING SERVICE [" + modelService.name + "]: Deadlock error found in message [" + errMsg + "]; retry [" + (LOCK_RETRIES - lockRetriesRemaining) + "] of [" + LOCK_RETRIES + "]";
 
@@ -450,7 +470,7 @@ public class ServiceDispatcher {
                                 needsLockRetry = true;
 
                                 // reset state variables
-                                result = new HashMap<String, Object>();
+                                result = new HashMap<>();
                                 isFailure = false;
                                 isError = false;
 
@@ -460,8 +480,8 @@ public class ServiceDispatcher {
                             // look for lock wait timeout error, retry in a different way by running after the parent transaction finishes, ie attach to parent tx
                             // - Derby 10.2.2.0 lock wait timeout string: "A lock could not be obtained within the time requested"
                             // - MySQL ? lock wait timeout string: "Lock wait timeout exceeded; try restarting transaction"
-                            if (errMsg != null && (errMsg.indexOf("A lock could not be obtained within the time requested") >= 0 ||
-                                    errMsg.indexOf("Lock wait timeout exceeded") >= 0)) {
+                            if (errMsg.indexOf("A lock could not be obtained within the time requested") >= 0 ||
+                                    errMsg.indexOf("Lock wait timeout exceeded") >= 0) {
                                 // TODO: add to run after parent tx
                             }
                         }
@@ -469,7 +489,7 @@ public class ServiceDispatcher {
                 } while (needsLockRetry && lockRetriesRemaining > 0);
 
                 // create a new context with the results to pass to ECA services; necessary because caller may reuse this context
-                ecaContext = new HashMap<String, Object>();
+                ecaContext = new HashMap<>();
                 ecaContext.putAll(context);
                 // copy all results: don't worry parameters that aren't allowed won't be passed to the ECA services
                 ecaContext.putAll(result);
@@ -480,23 +500,31 @@ public class ServiceDispatcher {
                 // validate the result
                 if (modelService.validate && validateOut) {
                     // pre-out-validate ECA
-                    if (eventMap != null) ServiceEcaUtil.evalRules(modelService.name, eventMap, "out-validate", ctx, ecaContext, result, isError, isFailure);
+                    if (eventMap != null) {
+                        ServiceEcaUtil.evalRules(modelService.name, eventMap, "out-validate", ctx, ecaContext, result, isError, isFailure);
+                    }
                     try {
+                        result = ctx.makeValidContext(modelService.name, ModelService.OUT_PARAM, result);
                         modelService.validate(result, ModelService.OUT_PARAM, locale);
                     } catch (ServiceValidationException e) {
+                        rs.setEndStamp();
                         throw new GenericServiceException("Outgoing result (in runSync : " + modelService.name + ") does not match expected requirements", e);
                     }
                 }
 
                 // pre-commit ECA
-                if (eventMap != null) ServiceEcaUtil.evalRules(modelService.name, eventMap, "commit", ctx, ecaContext, result, isError, isFailure);
+                if (eventMap != null) {
+                    ServiceEcaUtil.evalRules(modelService.name, eventMap, "commit", ctx, ecaContext, result, isError, isFailure);
+                }
 
                 // check for pre-commit failure/errors
                 isFailure = ServiceUtil.isFailure(result);
                 isError = ServiceUtil.isError(result);
 
                 // global-commit-post-run ECA, like global-commit but gets the context after the service is run
-                if (eventMap != null) ServiceEcaUtil.evalRules(modelService.name, eventMap, "global-commit-post-run", ctx, ecaContext, result, isError, isFailure);
+                if (eventMap != null) {
+                    ServiceEcaUtil.evalRules(modelService.name, eventMap, "global-commit-post-run", ctx, ecaContext, result, isError, isFailure);
+                }
 
                 // check for failure and log on info level; this is used for debugging
                 if (isFailure) {
@@ -546,6 +574,7 @@ public class ServiceDispatcher {
                         if (e.getMessage() != null) {
                             errMsg = errMsg + ": " + e.getMessage();
                         }
+                        rs.setEndStamp();
                         throw new GenericServiceException(errMsg);
                     }
                 }
@@ -558,15 +587,12 @@ public class ServiceDispatcher {
             }
         } catch (GenericTransactionException te) {
             Debug.logError(te, "Problems with the transaction", module);
+            rs.setEndStamp();
             throw new GenericServiceException("Problems with the transaction.", te.getNested());
         } finally {
             if (lock != null) {
                 // release the semaphore lock
-                try {
-                    lock.release();
-                } catch (GenericServiceException e) {
-                    Debug.logWarning(e, "Exception thrown while unlocking semaphore: ", module);
-                }
+                lock.release();
             }
 
             // resume the parent transaction
@@ -575,20 +601,23 @@ public class ServiceDispatcher {
                     TransactionUtil.resume(parentTransaction);
                 } catch (GenericTransactionException ite) {
                     Debug.logWarning(ite, "Transaction error, not resumed", module);
+                    rs.setEndStamp();
                     throw new GenericServiceException("Resume transaction exception, see logs");
                 }
             }
         }
 
         // pre-return ECA
-        if (eventMap != null) ServiceEcaUtil.evalRules(modelService.name, eventMap, "return", ctx, ecaContext, result, isError, isFailure);
+        if (eventMap != null) {
+            ServiceEcaUtil.evalRules(modelService.name, eventMap, "return", ctx, ecaContext, result, isError, isFailure);
+        }
 
         rs.setEndStamp();
 
         long timeToRun = System.currentTimeMillis() - serviceStartTime;
         long showServiceDurationThreshold = UtilProperties.getPropertyAsLong("service", "showServiceDurationThreshold", 0);
         long showSlowServiceThreshold = UtilProperties.getPropertyAsLong("service", "showSlowServiceThreshold", 1000);
-                
+
         if (Debug.timingOn() && timeToRun > showServiceDurationThreshold) {
             Debug.logTiming("Sync service [" + localName + "/" + modelService.name + "] finished in [" + timeToRun + "] milliseconds", module);
         } else if (Debug.infoOn() && timeToRun > showSlowServiceThreshold) {
@@ -600,7 +629,7 @@ public class ServiceDispatcher {
             if (resultStr.length() > 10240) {
                 resultStr = resultStr.substring(0, 10226) + "...[truncated]";
             }
-            Debug.logVerbose("Sync service [" + localName + "/" + modelService.name + "] finished with response [" + resultStr + "]", module);
+            if (Debug.verboseOn()) Debug.logVerbose("Sync service [" + localName + "/" + modelService.name + "] finished with response [" + resultStr + "]", module);
         }
         if (modelService.metrics != null) {
             modelService.metrics.recordServiceRate(1, timeToRun);
@@ -624,16 +653,16 @@ public class ServiceDispatcher {
             UtilTimer.timerLog(localName + " / " + service.name, "ASync service started...", module);
         }
         if (Debug.verboseOn() || service.debug) {
-            Debug.logVerbose("[ServiceDispatcher.runAsync] : preparing service " + service.name + " [" + service.location + "/" + service.invoke +
+            if (Debug.verboseOn()) Debug.logVerbose("[ServiceDispatcher.runAsync] : preparing service " + service.name + " [" + service.location + "/" + service.invoke +
                 "] (" + service.engineName + ")", module);
         }
 
-        Map<String, Object> context = new HashMap<String, Object>();
+        Map<String, Object> context = new HashMap<>();
         if (params != null) {
             context.putAll(params);
         }
         // setup the result map
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         boolean isFailure = false;
         boolean isError = false;
 
@@ -641,7 +670,7 @@ public class ServiceDispatcher {
         this.logService(localName, service, GenericEngine.ASYNC_MODE);
 
         // check the locale
-        Locale locale = this.checkLocale(context);
+        Locale locale = checkLocale(context);
 
         // setup the engine and context
         DispatchContext ctx = localContext.get(localName);
@@ -680,7 +709,9 @@ public class ServiceDispatcher {
                 Map<String, List<ServiceEcaRule>> eventMap = ServiceEcaUtil.getServiceEventMap(service.name);
 
                 // pre-auth ECA
-                if (eventMap != null) ServiceEcaUtil.evalRules(service.name, eventMap, "auth", ctx, context, result, isError, isFailure);
+                if (eventMap != null) {
+                    ServiceEcaUtil.evalRules(service.name, eventMap, "auth", ctx, context, result, isError, isFailure);
+                }
 
                 context = checkAuth(localName, context, service);
                 Object userLogin = context.get("userLogin");
@@ -690,7 +721,9 @@ public class ServiceDispatcher {
                 }
 
                 // pre-validate ECA
-                if (eventMap != null) ServiceEcaUtil.evalRules(service.name, eventMap, "in-validate", ctx, context, result, isError, isFailure);
+                if (eventMap != null) {
+                    ServiceEcaUtil.evalRules(service.name, eventMap, "in-validate", ctx, context, result, isError, isFailure);
+                }
 
                 // check for pre-validate failure/errors
                 isFailure = ModelService.RESPOND_FAIL.equals(result.get(ModelService.RESPONSE_MESSAGE));
@@ -846,7 +879,7 @@ public class ServiceDispatcher {
         return localContext.containsKey(name);
     }
 
-    protected void shutdown() throws GenericServiceException {
+    private void shutdown() throws GenericServiceException {
         Debug.logImportant("Shutting down the service engine...", module);
         if (jlf != null) {
             // shutdown JMS listeners
@@ -857,6 +890,7 @@ public class ServiceDispatcher {
     // checks if parameters were passed for authentication
     private Map<String, Object> checkAuth(String localName, Map<String, Object> context, ModelService origService) throws ServiceAuthException, GenericServiceException {
         String service = null;
+        Locale locale = (Locale) context.get("locale");
         try {
             service = ServiceConfigUtil.getServiceEngine().getAuthorization().getServiceName();
         } catch (GenericConfigException e) {
@@ -877,11 +911,10 @@ public class ServiceDispatcher {
 
             if (UtilValidate.isNotEmpty(context.get("login.password"))) {
                 String password = (String) context.get("login.password");
-
-                context.put("userLogin", getLoginObject(service, localName, username, password, (Locale) context.get("locale")));
+                context.put("userLogin", getLoginObject(service, localName, username, password, null, locale));
                 context.remove("login.password");
             } else {
-                context.put("userLogin", getLoginObject(service, localName, username, null, (Locale) context.get("locale")));
+                context.put("userLogin", getLoginObject(service, localName, username, null, (String) context.get("login.token"), locale));
             }
             context.remove("login.username");
         } else {
@@ -915,37 +948,26 @@ public class ServiceDispatcher {
 
         // evaluate permissions for the service or throw exception if fail.
         DispatchContext dctx = this.getLocalContext(localName);
-        if (UtilValidate.isNotEmpty(origService.permissionServiceName)) {
-            Map<String, Object> permResp = origService.evalPermission(dctx, context);
-            Boolean hasPermission = (Boolean) permResp.get("hasPermission");
-            if (hasPermission == null) {
-                throw new ServiceAuthException("ERROR: the permission-service [" + origService.permissionServiceName + "] did not return a result. Not running the service [" + origService.name + "]");
-            }
-            if (hasPermission.booleanValue()) {
-                context.putAll(permResp);
-                context = origService.makeValid(context, ModelService.IN_PARAM);
-            } else {
-                String message = (String) permResp.get("failMessage");
-                if (UtilValidate.isEmpty(message)) {
-                    message = ServiceUtil.getErrorMessage(permResp);
-                }
-                if (UtilValidate.isEmpty(message)) {
-                    message = "You do not have permission to invoke the service [" + origService.name + "]";
-                }
-                throw new ServiceAuthException(message);
+        Map<String, Object> permResp = null;
+        if (origService.modelPermission != null) {
+            permResp = origService.evalPermission(dctx, context);
+            if (ServiceUtil.isSuccess(permResp)) {
+                //Ok the service have authorization to run, complete the context with the permission response map
+                context.putAll(origService.makeValid(permResp, ModelService.IN_PARAM));
             }
         } else {
-            if (!origService.evalPermissions(dctx, context)) {
-                throw new ServiceAuthException("You do not have permission to invoke the service [" + origService.name + "]");
-            }
+            permResp = origService.evalPermissions(dctx, context);
         }
-
-        return context;
+        if (ServiceUtil.isFailure(permResp) || ServiceUtil.isError(permResp)) {
+            throw new ServiceAuthException(UtilProperties.getMessage("ServiceErrorUiLabels", "ServicePermissionError",
+                    UtilMisc.toMap("serviceName", origService.name, "failMessage", ServiceUtil.getErrorMessage(permResp)), locale));
+        }
+        return origService.makeValid(context, ModelService.IN_PARAM);
     }
 
     // gets a value object from name/password pair
-    private GenericValue getLoginObject(String service, String localName, String username, String password, Locale locale) throws GenericServiceException {
-        Map<String, Object> context = UtilMisc.toMap("login.username", username, "login.password", password, "isServiceAuth", true, "locale", locale);
+    private GenericValue getLoginObject(String service, String localName, String username, String password, String jwtToken, Locale locale) throws GenericServiceException {
+        Map<String, Object> context = UtilMisc.toMap("login.username", username, "login.password", password, "login.token", jwtToken, "isServiceAuth", true, "locale", locale);
 
         if (Debug.verboseOn()) Debug.logVerbose("[ServiceDispathcer.authenticate] : Invoking UserLogin Service", module);
 
@@ -962,7 +984,7 @@ public class ServiceDispatcher {
     }
 
     // checks the locale object in the context
-    private Locale checkLocale(Map<String, Object> context) {
+    private static Locale checkLocale(Map<String, Object> context) {
         Object locale = context.get("locale");
         Locale newLocale = null;
 

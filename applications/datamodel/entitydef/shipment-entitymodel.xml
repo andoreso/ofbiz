@@ -43,11 +43,11 @@ under the License.
 
     <entity entity-name="ItemIssuance"
             package-name="org.apache.ofbiz.shipment.issuance"
-            title="Item Issuance Entity">
-      <field name="itemIssuanceId" type="id-ne"></field>
-      <field name="orderId" type="id-ne"></field>
-      <field name="orderItemSeqId" type="id-ne"></field>
-      <field name="shipGroupSeqId" type="id-ne"></field>
+            title="Item Issuance">
+      <field name="itemIssuanceId" type="id"></field>
+      <field name="orderId" type="id"></field>
+      <field name="orderItemSeqId" type="id"></field>
+      <field name="shipGroupSeqId" type="id"></field>
       <field name="inventoryItemId" type="id"></field>
       <field name="shipmentId" type="id"></field>
       <field name="shipmentItemSeqId" type="id"></field>
@@ -127,10 +127,10 @@ under the License.
     </view-entity>
     <entity entity-name="ItemIssuanceRole"
             package-name="org.apache.ofbiz.shipment.issuance"
-            title="Item Issuance Role Entity">
-      <field name="itemIssuanceId" type="id-ne"></field>
-      <field name="partyId" type="id-ne"></field>
-      <field name="roleTypeId" type="id-ne"></field>
+            title="Item Issuance Role">
+      <field name="itemIssuanceId" type="id"></field>
+      <field name="partyId" type="id"></field>
+      <field name="roleTypeId" type="id"></field>
       <prim-key field="itemIssuanceId"/>
       <prim-key field="partyId"/>
       <prim-key field="roleTypeId"/>
@@ -152,15 +152,17 @@ under the License.
 
     <entity entity-name="Picklist"
             package-name="org.apache.ofbiz.shipment.picklist"
-            title="Picklist Entity">
-      <field name="picklistId" type="id-ne"></field>
+            title="Picklist">
+      <field name="picklistId" type="id"></field>
       <field name="description" type="description"></field>
-      <field name="facilityId" type="id-ne"></field>
-      <field name="shipmentMethodTypeId" type="id-ne"></field>
-      <field name="statusId" type="id-ne"></field>
+      <field name="facilityId" type="id"></field>
+      <field name="shipmentMethodTypeId" type="id"></field>
+      <field name="statusId" type="id"></field>
       <field name="picklistDate" type="date-time"></field>
-      <field name="createdByUserLogin" type="id-vlong"></field>
-      <field name="lastModifiedByUserLogin" type="id-vlong"></field>
+      <field name="createdDate" type="date-time"/>
+      <field name="createdByUserLogin" type="id-vlong"/>
+      <field name="lastModifiedDate" type="date-time"/>
+      <field name="lastModifiedByUserLogin" type="id-vlong"/>
       <prim-key field="picklistId"/>
       <relation type="one" fk-name="PICKLST_FLTY" rel-entity-name="Facility">
         <key-map field-name="facilityId"/>
@@ -177,7 +179,7 @@ under the License.
     </entity>
     <view-entity entity-name="PicklistAndBinAndItem"
             package-name="org.apache.ofbiz.shipment.picklist"
-            title="Picklist and PicklistBin and PicklistItem View Entity">
+            title="Picklist and PicklistBin and PicklistItem View">
       <member-entity entity-alias="PL" entity-name="Picklist"/>
       <member-entity entity-alias="PLB" entity-name="PicklistBin"/>
       <member-entity entity-alias="PLI" entity-name="PicklistItem"/>
@@ -193,10 +195,10 @@ under the License.
     </view-entity>
     <entity entity-name="PicklistBin"
             package-name="org.apache.ofbiz.shipment.picklist"
-            title="Picklist Entity">
+            title="Picklist">
       <!-- The PicklistBin has its own ID to make it easy to put on the pack sheet of the picklist as a barcode, also so it can be moved to another picklist or bin location if necessary -->
-      <field name="picklistBinId" type="id-ne"></field>
-      <field name="picklistId" type="id-ne"></field>
+      <field name="picklistBinId" type="id"></field>
+      <field name="picklistId" type="id"></field>
       <field name="binLocationNumber" type="numeric"></field>
       <field name="primaryOrderId" type="id"></field>
       <field name="primaryShipGroupSeqId" type="id"></field>
@@ -214,13 +216,13 @@ under the License.
     </entity>
     <entity entity-name="PicklistItem"
             package-name="org.apache.ofbiz.shipment.picklist"
-            title="Picklist Entity">
-      <field name="picklistBinId" type="id-ne"></field>
-      <field name="orderId" type="id-ne"></field>
-      <field name="orderItemSeqId" type="id-ne"></field>
-      <field name="shipGroupSeqId" type="id-ne"></field>
-      <field name="inventoryItemId" type="id-ne"></field>
-      <field name="itemStatusId" type="id-ne"></field>
+            title="Picklist">
+      <field name="picklistBinId" type="id"></field>
+      <field name="orderId" type="id"></field>
+      <field name="orderItemSeqId" type="id"></field>
+      <field name="shipGroupSeqId" type="id"></field>
+      <field name="inventoryItemId" type="id"></field>
+      <field name="itemStatusId" type="id"></field>
       <field name="quantity" type="fixed-point"></field>
       <prim-key field="picklistBinId"/>
       <prim-key field="orderId"/>
@@ -266,7 +268,7 @@ under the License.
     </entity>
     <view-entity entity-name="PicklistItemAndBin"
                  package-name="org.apache.ofbiz.shipment.picklist"
-                 title="Picklist Item and Bin View Entity">
+                 title="Picklist Item and Bin View">
       <member-entity entity-alias="PB" entity-name="PicklistBin"/>
       <member-entity entity-alias="PIM" entity-name="PicklistItem"/>
       <alias-all entity-alias="PB"/>
@@ -277,10 +279,10 @@ under the License.
     </view-entity>
     <entity entity-name="PicklistRole"
             package-name="org.apache.ofbiz.shipment.picklist"
-            title="Picklist Role Entity">
-      <field name="picklistId" type="id-ne"></field>
-      <field name="partyId" type="id-ne"></field>
-      <field name="roleTypeId" type="id-ne"></field>
+            title="Picklist Role">
+      <field name="picklistId" type="id"></field>
+      <field name="partyId" type="id"></field>
+      <field name="roleTypeId" type="id"></field>
       <field name="fromDate" type="date-time"></field>
       <field name="thruDate" type="date-time"></field>
       <field name="createdByUserLogin" type="id-vlong"></field>
@@ -309,14 +311,15 @@ under the License.
         <key-map field-name="lastModifiedByUserLogin" rel-field-name="userLoginId"/>
       </relation>
     </entity>
-    <entity entity-name="PicklistStatusHistory"
+    <entity entity-name="OldPicklistStatusHistory" table-name="PICKLIST_STATUS_HISTORY"
             package-name="org.apache.ofbiz.shipment.picklist"
-            title="Picklist Status History Entity">
-      <field name="picklistId" type="id-ne"></field>
+            title="Picklist Status History">
+      <description>Deprecated since branch release: PicklistStatus instead</description>
+      <field name="picklistId" type="id"></field>
       <field name="changeDate" type="date-time"></field>
       <field name="changeUserLoginId" type="id-vlong"></field>
-      <field name="statusId" type="id-ne"></field>
-      <field name="statusIdTo" type="id-ne"></field>
+      <field name="statusId" type="id"></field>
+      <field name="statusIdTo" type="id"></field>
       <prim-key field="picklistId"/>
       <prim-key field="changeDate"/>
       <relation type="one" fk-name="PCKLST_STHST_PKLT" rel-entity-name="Picklist">
@@ -338,6 +341,30 @@ under the License.
       </relation>
     </entity>
 
+    <entity entity-name="PicklistStatus"
+            package-name="org.apache.ofbiz.shipment.picklist"
+            title="Picklist Status History">
+        <field name="picklistId" type="id"/>
+        <field name="statusDate" type="date-time"/>
+        <field name="changeByUserLoginId" type="id-vlong"/>
+        <field name="statusId" type="id"/>
+        <field name="statusIdTo" type="id"/>
+        <prim-key field="picklistId"/>
+        <prim-key field="statusDate"/>
+        <relation type="one" fk-name="PCKLST_STST_PKLT" rel-entity-name="Picklist">
+            <key-map field-name="picklistId"/>
+        </relation>
+        <relation type="one" fk-name="PCKLST_STST_CUL" title="Change" rel-entity-name="UserLogin">
+            <key-map field-name="changeByUserLoginId" rel-field-name="userLoginId"/>
+        </relation>
+        <relation type="one" fk-name="PCKLST_STST_FSI" rel-entity-name="StatusItem">
+            <key-map field-name="statusId"/>
+        </relation>
+        <relation type="one" fk-name="PCKLST_STST_TSI" title="To" rel-entity-name="StatusItem">
+            <key-map field-name="statusIdTo" rel-field-name="statusId"/>
+        </relation>
+    </entity>
+
   <!-- ========================================================= -->
   <!-- org.apache.ofbiz.shipment.receipt -->
   <!-- ========================================================= -->
@@ -345,15 +372,15 @@ under the License.
     <entity entity-name="RejectionReason"
             package-name="org.apache.ofbiz.shipment.receipt"
             default-resource-name="ProductEntityLabels"
-            title="Rejection Reason Entity">
-      <field name="rejectionId" type="id-ne"></field>
+            title="Rejection Reason">
+      <field name="rejectionId" type="id"></field>
       <field name="description" type="description"></field>
       <prim-key field="rejectionId"/>
     </entity>
     <entity entity-name="ShipmentReceipt"
             package-name="org.apache.ofbiz.shipment.receipt"
-            title="Shipment Receipt Entity">
-      <field name="receiptId" type="id-ne"></field>
+            title="Shipment Receipt">
+      <field name="receiptId" type="id"></field>
       <field name="inventoryItemId" type="id"></field>
       <field name="productId" type="id"></field>
       <field name="shipmentId" type="id"></field>
@@ -407,10 +434,10 @@ under the License.
     </entity>
     <entity entity-name="ShipmentReceiptRole"
             package-name="org.apache.ofbiz.shipment.receipt"
-            title="Shipment Receipt Role Entity">
-      <field name="receiptId" type="id-ne"></field>
-      <field name="partyId" type="id-ne"></field>
-      <field name="roleTypeId" type="id-ne"></field>
+            title="Shipment Receipt Role">
+      <field name="receiptId" type="id"></field>
+      <field name="partyId" type="id"></field>
+      <field name="roleTypeId" type="id"></field>
       <prim-key field="receiptId"/>
       <prim-key field="partyId"/>
       <prim-key field="roleTypeId"/>
@@ -427,7 +454,7 @@ under the License.
     </entity>
     <view-entity entity-name="ShipmentReceiptAndItem"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="ShipmentReceipt And Inventory Item View Entity">
+            title="ShipmentReceipt And Inventory Item View">
       <member-entity entity-alias="SR" entity-name="ShipmentReceipt"/>
       <member-entity entity-alias="II" entity-name="InventoryItem"/>
       <alias-all entity-alias="SR"/>
@@ -448,7 +475,7 @@ under the License.
 
     <view-entity entity-name="CarrierAndShipmentMethod"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Carrier And Shipment Method Type View Entity">
+            title="Carrier And Shipment Method Type View">
       <member-entity entity-alias="CS" entity-name="CarrierShipmentMethod"/>
       <member-entity entity-alias="SM" entity-name="ShipmentMethodType"/>
       <alias entity-alias="CS" name="shipmentMethodTypeId"/>
@@ -462,10 +489,10 @@ under the License.
     </view-entity>
     <entity entity-name="CarrierShipmentMethod"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Carrier Shipment Method Entity">
-      <field name="shipmentMethodTypeId" type="id-ne"></field>
-      <field name="partyId" type="id-ne"></field>
-      <field name="roleTypeId" type="id-ne"></field>
+            title="Carrier Shipment Method">
+      <field name="shipmentMethodTypeId" type="id"></field>
+      <field name="partyId" type="id"></field>
+      <field name="roleTypeId" type="id"></field>
       <field name="sequenceNumber" type="numeric"></field>
       <field name="carrierServiceCode" type="short-varchar"></field>
       <prim-key field="shipmentMethodTypeId"/>
@@ -484,9 +511,9 @@ under the License.
     </entity>
     <entity entity-name="CarrierShipmentBoxType"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Carrier Shipment Method Entity">
-      <field name="shipmentBoxTypeId" type="id-ne"></field>
-      <field name="partyId" type="id-ne"></field>
+            title="Carrier Shipment Method">
+      <field name="shipmentBoxTypeId" type="id"></field>
+      <field name="partyId" type="id"></field>
       <field name="packagingTypeCode" type="id"></field>
       <field name="oversizeCode" type="very-short"></field>
       <prim-key field="shipmentBoxTypeId"/>
@@ -500,8 +527,8 @@ under the License.
     </entity>
     <entity entity-name="Delivery"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Delivery Entity">
-      <field name="deliveryId" type="id-ne"></field>
+            title="Delivery">
+      <field name="deliveryId" type="id"></field>
       <field name="originFacilityId" type="id"></field>
       <field name="destFacilityId" type="id"></field>
       <field name="actualStartDate" type="date-time"></field>
@@ -525,7 +552,7 @@ under the License.
     </entity>
     <view-entity entity-name="OrderShipmentInfoSummary"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Order Shipment Information View Entity">
+            title="Order Shipment Information View">
       <description>This view is meant for getting all tracking information for all shipments associated with an order, it does not include information to determine which packages in a given shipment correspond to that order, or to determine what information applies to each line item of the order.</description>
       <member-entity entity-alias="II" entity-name="ItemIssuance"/>
       <member-entity entity-alias="SRS" entity-name="ShipmentRouteSegment"/>
@@ -554,10 +581,10 @@ under the License.
     </view-entity>
     <entity entity-name="Shipment"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Entity">
-      <field name="shipmentId" type="id-ne"></field>
+            title="Shipment">
+      <field name="shipmentId" type="id"></field>
       <field name="shipmentTypeId" type="id"></field>
-      <field name="statusId" type="id-ne"></field>
+      <field name="statusId" type="id"></field>
       <field name="primaryOrderId" type="id"></field>
       <field name="primaryReturnId" type="id"></field>
       <field name="primaryShipGroupSeqId" type="id"></field>
@@ -665,7 +692,7 @@ under the License.
     </entity>
     <view-entity entity-name="ShipmentAndItem"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment and Item View Entity">
+            title="Shipment and Item View">
       <member-entity entity-alias="SH" entity-name="Shipment"/>
       <member-entity entity-alias="SITM" entity-name="ShipmentItem"/>
       <alias entity-alias="SH" name="shipmentId"/>
@@ -701,9 +728,9 @@ under the License.
     </view-entity>
     <entity entity-name="ShipmentAttribute"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Attribute Entity">
-      <field name="shipmentId" type="id-ne"></field>
-      <field name="attrName" type="id-long-ne"></field>
+            title="Shipment Attribute">
+      <field name="shipmentId" type="id"></field>
+      <field name="attrName" type="id-long"></field>
       <field name="attrValue" type="value"></field>
       <field name="attrDescription" type="description"></field>
       <prim-key field="shipmentId"/>
@@ -717,8 +744,8 @@ under the License.
     </entity>
     <entity entity-name="ShipmentBoxType"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Contact Mechanism Type Entity">
-      <field name="shipmentBoxTypeId" type="id-ne"></field>
+            title="Shipment Contact Mechanism Type">
+      <field name="shipmentBoxTypeId" type="id"></field>
       <field name="description" type="description"></field>
       <field name="dimensionUomId" type="id"></field>
       <field name="boxLength" type="fixed-point"></field>
@@ -736,10 +763,10 @@ under the License.
     </entity>
     <entity entity-name="ShipmentContactMech"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Contact Mechanism Entity">
-      <field name="shipmentId" type="id-ne"></field>
-      <field name="shipmentContactMechTypeId" type="id-ne"></field>
-      <field name="contactMechId" type="id-ne"></field>
+            title="Shipment Contact Mechanism">
+      <field name="shipmentId" type="id"></field>
+      <field name="shipmentContactMechTypeId" type="id"></field>
+      <field name="contactMechId" type="id"></field>
       <prim-key field="shipmentId"/>
       <prim-key field="shipmentContactMechTypeId"/>
       <relation type="one" fk-name="SHPMT_CMECH" rel-entity-name="Shipment">
@@ -754,15 +781,15 @@ under the License.
     </entity>
     <entity entity-name="ShipmentContactMechType"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Contact Mechanism Type Entity">
-      <field name="shipmentContactMechTypeId" type="id-ne"></field>
+            title="Shipment Contact Mechanism Type">
+      <field name="shipmentContactMechTypeId" type="id"></field>
       <field name="description" type="description"></field>
       <prim-key field="shipmentContactMechTypeId"/>
     </entity>
     <entity entity-name="ShipmentCostEstimate"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Cost Estimate Entity">
-      <field name="shipmentCostEstimateId" type="id-ne"></field>
+            title="Shipment Cost Estimate">
+      <field name="shipmentCostEstimateId" type="id"></field>
       <field name="shipmentMethodTypeId" type="id"></field>
       <field name="carrierPartyId" type="id"></field>
       <field name="carrierRoleTypeId" type="id"></field>
@@ -834,10 +861,43 @@ under the License.
         <key-map field-name="priceBreakId" rel-field-name="quantityBreakId"/>
       </relation>
     </entity>
+    <entity entity-name="ShipmentTimeEstimate" package-name="org.apache.ofbiz.shipment.shipment"
+        title="Shipment Time Estimation Entity">
+        <field name="shipmentMethodTypeId" type="id"/>
+        <field name="partyId" type="id"/>
+        <field name="roleTypeId" type="id"/>
+        <field name="geoIdTo" type="id"/>
+        <field name="geoIdFrom" type="id"/>
+        <field name="fromDate" type="date-time"/>
+        <field name="thruDate" type="date-time"/>
+        <field name="leadTime" type="fixed-point"/>
+        <field name="leadTimeUomId" type="id"/>
+        <field name="sequenceNumber" type="numeric"/>
+        <prim-key field="shipmentMethodTypeId"/>
+        <prim-key field="partyId"/>
+        <prim-key field="roleTypeId"/>
+        <prim-key field="geoIdTo"/>
+        <prim-key field="geoIdFrom"/>
+        <prim-key field="fromDate"/>
+        <relation rel-entity-name="CarrierShipmentMethod" type="one" fk-name="SHIPT_EST_METHOD">
+            <key-map field-name="shipmentMethodTypeId"/>
+            <key-map field-name="partyId"/>
+            <key-map field-name="roleTypeId"/>
+        </relation>
+        <relation rel-entity-name="Geo" type="one" title="To" fk-name="SHIPT_EST_GEO_TO">
+            <key-map field-name="geoIdTo" rel-field-name="geoId"/>
+        </relation>
+        <relation rel-entity-name="Geo" type="one" title="from" fk-name="SHIPT_EST_GEO_FROM">
+            <key-map field-name="geoIdFrom" rel-field-name="geoId"/>
+        </relation>
+        <relation rel-entity-name="Uom" type="one" title="Time unit" fk-name="SHIPT_EST_UOM">
+            <key-map field-name="leadTimeUomId" rel-field-name="uomId"/>
+        </relation>
+    </entity>
     <entity entity-name="ShipmentGatewayConfigType"
             package-name="org.apache.ofbiz.shipment.shipment"
             title="Shipment Gateway Config Type">
-      <field name="shipmentGatewayConfTypeId" type="id-ne"></field>
+      <field name="shipmentGatewayConfTypeId" type="id"></field>
       <field name="parentTypeId" type="id"></field>
       <field name="hasTable" type="indicator"></field>
       <field name="description" type="description"></field>
@@ -852,8 +912,8 @@ under the License.
     <entity entity-name="ShipmentGatewayConfig"
             package-name="org.apache.ofbiz.shipment.shipment"
             title="Shipment Gateway Config">
-      <field name="shipmentGatewayConfigId" type="id-ne"></field>
-      <field name="shipmentGatewayConfTypeId" type="id-ne"></field>
+      <field name="shipmentGatewayConfigId" type="id"></field>
+      <field name="shipmentGatewayConfTypeId" type="id"></field>
       <field name="description" type="description"></field>
       <prim-key field="shipmentGatewayConfigId"/>
       <relation type="one" fk-name="SGC_SGCT" rel-entity-name="ShipmentGatewayConfigType">
@@ -863,7 +923,7 @@ under the License.
     <entity entity-name="ShipmentGatewayDhl"
             package-name="org.apache.ofbiz.shipment.shipment"
             title="DHL Shipment Gateway Configuration">
-      <field name="shipmentGatewayConfigId" type="id-ne"></field>
+      <field name="shipmentGatewayConfigId" type="id"></field>
       <field name="connectUrl" type="value"><description>DHL Connection URL</description></field>
       <field name="connectTimeout" type="numeric"><description>Timeout in seconds</description></field>
       <field name="headVersion" type="short-varchar"><description>Head version attribute</description></field>
@@ -882,7 +942,7 @@ under the License.
     <entity entity-name="ShipmentGatewayFedex"
             package-name="org.apache.ofbiz.shipment.shipment"
             title="Fedex Shipment Gateway Configuration">
-      <field name="shipmentGatewayConfigId" type="id-ne"></field>
+      <field name="shipmentGatewayConfigId" type="id"></field>
       <field name="connectUrl" type="value"><description>Fedex Connection URL</description></field>
       <field name="connectSoapUrl" type="value"><description>Fedex Soap Connection URL</description></field>
       <field name="connectTimeout" type="numeric"><description>Timeout in seconds</description></field>
@@ -904,7 +964,7 @@ under the License.
     <entity entity-name="ShipmentGatewayUps"
             package-name="org.apache.ofbiz.shipment.shipment"
             title="UPS Shipment Gateway Configuration">
-      <field name="shipmentGatewayConfigId" type="id-ne"></field>
+      <field name="shipmentGatewayConfigId" type="id"></field>
       <field name="connectUrl" type="value"><description>UPS Connection URL</description></field>
       <field name="connectTimeout" type="numeric"><description>Timeout in seconds</description></field>
       <field name="shipperNumber" type="value"><description>UPS Shipper Number</description></field>
@@ -933,7 +993,7 @@ under the License.
     <entity entity-name="ShipmentGatewayUsps"
             package-name="org.apache.ofbiz.shipment.shipment"
             title="USPS Shipment Gateway Configuration">
-      <field name="shipmentGatewayConfigId" type="id-ne"></field>
+      <field name="shipmentGatewayConfigId" type="id"></field>
       <field name="connectUrl" type="value"><description>USPS Connection URL</description></field>
       <field name="connectUrlLabels" type="value"><description>USPS Connection URL for Labels</description></field>
       <field name="connectTimeout" type="numeric"><description>Timeout in seconds</description></field>
@@ -948,9 +1008,9 @@ under the License.
     </entity>
     <entity entity-name="ShipmentItem"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Item Entity">
-      <field name="shipmentId" type="id-ne"></field>
-      <field name="shipmentItemSeqId" type="id-ne"></field>
+            title="Shipment Item">
+      <field name="shipmentId" type="id"></field>
+      <field name="shipmentItemSeqId" type="id"></field>
       <field name="productId" type="id"></field>
       <field name="quantity" type="fixed-point"></field>
       <field name="shipmentContentDescription" type="description"></field>
@@ -965,11 +1025,11 @@ under the License.
     </entity>
     <entity entity-name="ShipmentItemBilling"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Item Billing Entity">
-      <field name="shipmentId" type="id-ne"></field>
-      <field name="shipmentItemSeqId" type="id-ne"></field>
-      <field name="invoiceId" type="id-ne"></field>
-      <field name="invoiceItemSeqId" type="id-ne"></field>
+            title="Shipment Item Billing">
+      <field name="shipmentId" type="id"></field>
+      <field name="shipmentItemSeqId" type="id"></field>
+      <field name="invoiceId" type="id"></field>
+      <field name="invoiceItemSeqId" type="id"></field>
       <prim-key field="shipmentId"/>
       <prim-key field="shipmentItemSeqId"/>
       <prim-key field="invoiceId"/>
@@ -991,10 +1051,10 @@ under the License.
     </entity>
     <entity entity-name="ShipmentItemFeature"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Item Feature Entity">
-      <field name="shipmentId" type="id-ne"></field>
-      <field name="shipmentItemSeqId" type="id-ne"></field>
-      <field name="productFeatureId" type="id-ne"></field>
+            title="Shipment Item Feature">
+      <field name="shipmentId" type="id"></field>
+      <field name="shipmentItemSeqId" type="id"></field>
+      <field name="productFeatureId" type="id"></field>
       <prim-key field="shipmentId"/>
       <prim-key field="shipmentItemSeqId"/>
       <prim-key field="productFeatureId"/>
@@ -1011,7 +1071,7 @@ under the License.
     </entity>
     <view-entity entity-name="ShipmentManifestView"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Manifest View Entity">
+            title="Shipment Manifest View">
       <member-entity entity-alias="SITM" entity-name="ShipmentItem"/>
       <member-entity entity-alias="PROD" entity-name="Product"/>
       <member-entity entity-alias="ITMI" entity-name="ItemIssuance"/>
@@ -1153,17 +1213,17 @@ under the License.
     </view-entity>
     <entity entity-name="ShipmentMethodType"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Method Type Entity">
-      <field name="shipmentMethodTypeId" type="id-ne"></field>
+            title="Shipment Method Type">
+      <field name="shipmentMethodTypeId" type="id"></field>
       <field name="description" type="description"></field>
       <field name="sequenceNum" type="numeric"></field>
       <prim-key field="shipmentMethodTypeId"/>
     </entity>
     <entity entity-name="ShipmentPackage"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Package Entity">
-      <field name="shipmentId" type="id-ne"></field>
-      <field name="shipmentPackageSeqId" type="id-ne"></field>
+            title="Shipment Package">
+      <field name="shipmentId" type="id"></field>
+      <field name="shipmentPackageSeqId" type="id"></field>
       <field name="shipmentBoxTypeId" type="id"></field>
       <field name="dateCreated" type="date-time"></field>
       <field name="boxLength" type="fixed-point"><description>This field store the length of package; if a shipmentBoxTypeId is specified then this overrides the dimension specified there; this field is meant to be used when there is no applicable ShipmentBoxType</description></field>
@@ -1193,10 +1253,10 @@ under the License.
     </entity>
     <entity entity-name="ShipmentPackageContent"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Package Content Entity">
-      <field name="shipmentId" type="id-ne"></field>
-      <field name="shipmentPackageSeqId" type="id-ne"></field>
-      <field name="shipmentItemSeqId" type="id-ne"></field>
+            title="Shipment Package Content">
+      <field name="shipmentId" type="id"></field>
+      <field name="shipmentPackageSeqId" type="id"></field>
+      <field name="shipmentItemSeqId" type="id"></field>
       <field name="quantity" type="fixed-point"></field>
       <field name="subProductId" type="id"></field>
       <field name="subProductQuantity" type="fixed-point"></field>
@@ -1220,10 +1280,10 @@ under the License.
     </entity>
     <entity entity-name="ShipmentPackageRouteSeg"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Package Route Segment Entity">
-      <field name="shipmentId" type="id-ne"></field>
-      <field name="shipmentPackageSeqId" type="id-ne"></field>
-      <field name="shipmentRouteSegmentId" type="id-ne"></field>
+            title="Shipment Package Route Segment">
+      <field name="shipmentId" type="id"></field>
+      <field name="shipmentPackageSeqId" type="id"></field>
+      <field name="shipmentRouteSegmentId" type="id"></field>
       <field name="trackingCode" type="short-varchar"></field>
       <field name="boxNumber" type="short-varchar"></field>
       <field name="labelImage" type="byte-array"></field>
@@ -1257,9 +1317,9 @@ under the License.
     </entity>
     <entity entity-name="ShipmentRouteSegment"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Route Segment Entity">
-      <field name="shipmentId" type="id-ne"></field>
-      <field name="shipmentRouteSegmentId" type="id-ne"></field>
+            title="Shipment Route Segment">
+      <field name="shipmentId" type="id"></field>
+      <field name="shipmentRouteSegmentId" type="id"></field>
       <field name="deliveryId" type="id"></field>
       <field name="originFacilityId" type="id"></field>
       <field name="destFacilityId" type="id"></field>
@@ -1350,7 +1410,7 @@ under the License.
     </entity>
     <view-entity entity-name="ShipmentPackageRouteDetail"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Package Route Detail View Entity">
+            title="Shipment Package Route Detail View">
       <description>View to list information about individual packages with route information, for getting the carrier labels for a package.</description>
       <member-entity entity-alias="SPRS" entity-name="ShipmentPackageRouteSeg"/>
       <member-entity entity-alias="SRS" entity-name="ShipmentRouteSegment"/>
@@ -1375,7 +1435,7 @@ under the License.
     </view-entity>
     <view-entity entity-name="ShipmentRouteSegmentDetail"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Route Segment Detail View Entity">
+            title="Shipment Route Segment Detail View">
       <description>View to list a shipment route segment with extra shipment information, for scheduling shipment route segments</description>
       <member-entity entity-alias="SRS" entity-name="ShipmentRouteSegment"/>
       <member-entity entity-alias="S" entity-name="Shipment"/>
@@ -1395,9 +1455,9 @@ under the License.
     </view-entity>
     <entity entity-name="ShipmentStatus"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Status Entity">
-      <field name="statusId" type="id-ne"></field>
-      <field name="shipmentId" type="id-ne"></field>
+            title="Shipment Status">
+      <field name="statusId" type="id"></field>
+      <field name="shipmentId" type="id"></field>
       <field name="statusDate" type="date-time"></field>
       <field name="changeByUserLoginId" type="id-vlong"/>
       <prim-key field="statusId"/>
@@ -1415,9 +1475,9 @@ under the License.
     <entity entity-name="ShipmentType"
             package-name="org.apache.ofbiz.shipment.shipment"
             default-resource-name="ProductEntityLabels"
-            title="Shipment Type Entity">
-      <field name="shipmentTypeId" type="id-ne"></field>
-      <field name="parentTypeId" type="id-ne"></field>
+            title="Shipment Type">
+      <field name="shipmentTypeId" type="id"></field>
+      <field name="parentTypeId" type="id"></field>
       <field name="hasTable" type="indicator"></field>
       <field name="description" type="description"></field>
       <prim-key field="shipmentTypeId"/>
@@ -1427,9 +1487,9 @@ under the License.
     </entity>
     <entity entity-name="ShipmentTypeAttr"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Type Attribute Entity">
-      <field name="shipmentTypeId" type="id-ne"></field>
-      <field name="attrName" type="id-long-ne"></field>
+            title="Shipment Type Attribute">
+      <field name="shipmentTypeId" type="id"></field>
+      <field name="attrName" type="id-long"></field>
       <field name="description" type="description"></field>
       <prim-key field="shipmentTypeId"/>
       <prim-key field="attrName"/>
@@ -1445,8 +1505,8 @@ under the License.
     </entity>
     <entity entity-name="ShippingDocument"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipping Document Entity">
-      <field name="documentId" type="id-ne"></field>
+            title="Shipping Document">
+      <field name="documentId" type="id"></field>
       <field name="shipmentId" type="id"></field>
       <field name="shipmentItemSeqId" type="id"></field>
       <field name="shipmentPackageSeqId" type="id"></field>
@@ -1467,7 +1527,7 @@ under the License.
 
     <view-entity entity-name="PackedQtyVsOrderItemQuantity"
             package-name="org.apache.ofbiz.shipment.shipment"
-            title="Shipment Route Segment Detail View Entity">
+            title="Shipment Route Segment Detail View">
       <description>View to report ShipmentPackageContent quantity vs. OrderItem quantity via
         ItemIssuance</description>
       <member-entity entity-alias="SPC" entity-name="ShipmentPackageContent"/>

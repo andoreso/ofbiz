@@ -18,14 +18,15 @@
  *******************************************************************************/
 package org.apache.ofbiz.webapp.event;
 
-import javax.servlet.ServletRequest;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.servlet.ServletRequest;
+
 /** Factory class that provides the proper <code>RequestBodyMapHandler</code> based on the content type of the <code>ServletRequest</code> */
 public class RequestBodyMapHandlerFactory {
-    private final static Map<String, RequestBodyMapHandler> requestBodyMapHandlers = new HashMap<String, RequestBodyMapHandler>();
+    private final static Map<String, RequestBodyMapHandler> requestBodyMapHandlers = new HashMap<>();
     static {
         requestBodyMapHandlers.put("application/json", new JSONRequestBodyMapHandler());
     }

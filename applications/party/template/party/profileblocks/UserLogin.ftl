@@ -22,7 +22,7 @@ under the License.
       <ul>
         <li class="h3">${uiLabelMap.PartyUserName}</li>
         <#if security.hasEntityPermission("PARTYMGR", "_CREATE", session)>
-          <li><a href="<@ofbizUrl>ProfileCreateNewLogin?partyId=${party.partyId}</@ofbizUrl>">${uiLabelMap.CommonCreateNew}</a></li>
+          <li><a href="<@ofbizUrl>ProfileCreateNewLogin?partyId=${party.partyId}&amp;CANCEL_PAGE=${DONE_PAGE!}</@ofbizUrl>">${uiLabelMap.CommonCreate}</a></li>
         </#if>
       </ul>
       <br class="clear" />
@@ -36,7 +36,7 @@ under the License.
               <td>${userUserLogin.userLoginId}</td>
               <td>
                 <#assign enabled = uiLabelMap.PartyEnabled>
-                <#if (userUserLogin.enabled)?default("Y") == "N">
+                <#if "N" == (userUserLogin.enabled)?default("Y")>
                   <#if userUserLogin.disabledDateTime??>
                     <#assign disabledTime = userUserLogin.disabledDateTime.toString()>
                   <#else>
@@ -52,6 +52,9 @@ under the License.
                 </#if>
                 <#if security.hasEntityPermission("SECURITY", "_VIEW", session)>
                   <a href="<@ofbizUrl>ProfileEditUserLoginSecurityGroups?partyId=${party.partyId}&amp;userLoginId=${userUserLogin.userLoginId}</@ofbizUrl>">${uiLabelMap.SecurityGroups}</a>
+                </#if>
+                <#if security.hasEntityPermission("IMPERSONATE", "_ADMIN", session)>
+                    <a href="<@ofbizUrl>impersonateLogin?userLoginIdToImpersonate=${userUserLogin.userLoginId}</@ofbizUrl>">${uiLabelMap.CommonImpersonate}</a>
                 </#if>
               </td>
             </tr>

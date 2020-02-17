@@ -17,7 +17,7 @@ specific language governing permissions and limitations
 under the License.
 -->
 
-<script type="text/javascript">
+<script type="application/javascript">
 <#-- some labels are not unescaped in the JSON object so we have to do this manualy -->
 function unescapeHtmlText(text) {
     return jQuery('<div />').html(text).text()
@@ -87,7 +87,7 @@ var rawdata = [
              "types" : {
                  "CATEGORY" : {
                      "icon" : { 
-                         "image" : "/images/jquery/plugins/jsTree/themes/apple/d.png",
+                         "image" : "/common/js/jquery/plugins/jsTree/themes/apple/d.png",
                          "position" : "10px40px"
                      }
                  }

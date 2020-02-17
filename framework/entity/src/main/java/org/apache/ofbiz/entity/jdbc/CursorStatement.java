@@ -24,12 +24,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.entity.transaction.GenericTransactionException;
 import org.apache.ofbiz.entity.transaction.TransactionUtil;
 
 
 public class CursorStatement extends AbstractCursorHandler {
 
+    public static final String module = CursorStatement.class.getName();
     protected ResultSet currentResultSet;
     protected Statement stmt;
     protected boolean beganTransaction;
@@ -41,9 +43,10 @@ public class CursorStatement extends AbstractCursorHandler {
         beganTransaction = TransactionUtil.begin();
         autoCommit = stmt.getConnection().getAutoCommit();
         stmt.getConnection().setAutoCommit(false);
-        System.err.println("beganTransaction=" + beganTransaction + ", autoCommit=" + autoCommit);
+        Debug.logInfo("beganTransaction=" + beganTransaction + ", autoCommit=" + autoCommit, module);
     }
 
+    @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         if ("close".equals(method.getName())) {
             stmt.getConnection().setAutoCommit(autoCommit);
@@ -58,7 +61,7 @@ public class CursorStatement extends AbstractCursorHandler {
             return currentResultSet;
         } else if ("executeQuery".equals(method.getName()) && args != null) {
             args[0] = "DECLARE " + cursorName + " CURSOR FOR " + args[0];
-            System.err.println("query=" + args[0]);
+            Debug.logInfo("query=" + args[0], module);
             if (stmt.execute((String) args[0])) {
                 throw new SQLException("DECLARE returned a ResultSet");
             }
@@ -79,9 +82,9 @@ public class CursorStatement extends AbstractCursorHandler {
         } else if ("setCursorName".equals(method.getName())) {
             setCursorName((String) args[0]);
         } else if ("getFetchSize".equals(method.getName())) {
-            return Integer.valueOf(getFetchSize());
+            return getFetchSize();
         } else if ("setFetchSize".equals(method.getName())) {
-            setFetchSize(((Integer) args[0]).intValue());
+            setFetchSize((Integer) args[0]);
         }
         return super.invoke(stmt, proxy, method, args);
     }

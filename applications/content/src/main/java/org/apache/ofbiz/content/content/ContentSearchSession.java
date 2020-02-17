@@ -32,10 +32,10 @@ import org.apache.ofbiz.base.util.UtilGenerics;
 import org.apache.ofbiz.base.util.UtilHttp;
 import org.apache.ofbiz.base.util.UtilMisc;
 import org.apache.ofbiz.base.util.UtilValidate;
-import org.apache.ofbiz.entity.Delegator;
+import org.apache.ofbiz.content.content.ContentSearch.ContentSearchConstraint;
 import org.apache.ofbiz.content.content.ContentSearch.ResultSortOrder;
 import org.apache.ofbiz.content.content.ContentSearch.SortKeywordRelevancy;
-import org.apache.ofbiz.content.content.ContentSearch.ContentSearchConstraint;
+import org.apache.ofbiz.entity.Delegator;
 
 public class ContentSearchSession {
 
@@ -68,7 +68,7 @@ public class ContentSearchSession {
         public static void addConstraint(ContentSearchConstraint contentSearchConstraint, HttpSession session) {
             ContentSearchOptions contentSearchOptions = getContentSearchOptions(session);
             if (contentSearchOptions.constraintList == null) {
-                contentSearchOptions.constraintList = new LinkedList<ContentSearch.ContentSearchConstraint>();
+                contentSearchOptions.constraintList = new LinkedList<>();
             }
             if (!contentSearchOptions.constraintList.contains(contentSearchConstraint)) {
                 contentSearchOptions.constraintList.add(contentSearchConstraint);
@@ -131,7 +131,7 @@ public class ContentSearchSession {
 
         public List<String> searchGetConstraintStrings(boolean detailed, Delegator delegator, Locale locale) {
             List<ContentSearchConstraint> contentSearchConstraintList = this.getConstraintList();
-            List<String> constraintStrings = new LinkedList<String>();
+            List<String> constraintStrings = new LinkedList<>();
             if (contentSearchConstraintList == null) {
                 return constraintStrings;
             }
@@ -222,7 +222,7 @@ public class ContentSearchSession {
         String sortAscending = (String) parameters.get("sortAscending");
         boolean ascending = !"N".equals(sortAscending);
         if (sortOrder != null) {
-            if (sortOrder.equals("SortKeywordRelevancy")) {
+            if ("SortKeywordRelevancy".equals(sortOrder)) {
                 searchSetSortOrder(new ContentSearch.SortKeywordRelevancy(), session);
             } else if (sortOrder.startsWith("SortContentField:")) {
                 String fieldName = sortOrder.substring("SortContentField:".length());
@@ -243,7 +243,7 @@ public class ContentSearchSession {
             } catch (Exception e) {
                 Debug.logError(e, "Error formatting VIEW_INDEX, setting to 0", module);
                 // we could just do nothing here, but we know something was specified so we don't want to use the previous value from the session
-                contentSearchOptions.setViewIndex(Integer.valueOf(0));
+                contentSearchOptions.setViewIndex(0);
             }
         }
 
@@ -253,7 +253,7 @@ public class ContentSearchSession {
                 contentSearchOptions.setViewSize(Integer.valueOf(viewSizeStr));
             } catch (Exception e) {
                 Debug.logError(e, "Error formatting VIEW_SIZE, setting to 20", module);
-                contentSearchOptions.setViewSize(Integer.valueOf(20));
+                contentSearchOptions.setViewSize(20);
             }
         }
     }
@@ -265,9 +265,9 @@ public class ContentSearchSession {
         ContentSearchOptions.setResultSortOrder(resultSortOrder, session);
     }
     public static List<ContentSearchOptions> getSearchOptionsHistoryList(HttpSession session) {
-        List<ContentSearchOptions> optionsHistoryList = UtilGenerics.checkList(session.getAttribute("_CONTENT_SEARCH_OPTIONS_HISTORY_"));
+        List<ContentSearchOptions> optionsHistoryList = UtilGenerics.cast(session.getAttribute("_CONTENT_SEARCH_OPTIONS_HISTORY_"));
         if (optionsHistoryList == null) {
-            optionsHistoryList = new LinkedList<ContentSearchSession.ContentSearchOptions>();
+            optionsHistoryList = new LinkedList<>();
             session.setAttribute("_CONTENT_SEARCH_OPTIONS_HISTORY_", optionsHistoryList);
         }
         return optionsHistoryList;

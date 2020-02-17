@@ -44,7 +44,7 @@ under the License.
                 <#if orderStatusIds?has_content>
                   <#list orderStatusIds as orderStatusId>
                     <#assign statusItem = delegator.findOne("StatusItem", {"statusId" : orderStatusId}, false)!/>
-                    ${statusItem.description}
+                    ${statusItem.description!}
                   </#list>
                 <#else>
                   ${uiLabelMap.CommonAny}
@@ -87,11 +87,11 @@ under the License.
                                 <fo:block>${productReport.quantityOrdered!}</fo:block>
                             </fo:table-cell>
                             <fo:table-cell padding="2pt" background-color="${rowColor}">
-                                <fo:block>${productReport.unitPrice!}</fo:block>
+                                <fo:block>${productReport.amount!}</fo:block>
                             </fo:table-cell>
                         </fo:table-row>
                         <#-- toggle the row color -->
-                        <#if rowColor == "white">
+                        <#if "white" == rowColor>
                             <#assign rowColor = "#D4D0C8">
                         <#else>
                             <#assign rowColor = "white">

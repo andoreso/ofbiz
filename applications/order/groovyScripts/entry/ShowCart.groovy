@@ -17,12 +17,8 @@
  * under the License.
  */
 
-import org.apache.ofbiz.service.*
-import org.apache.ofbiz.entity.*
-import org.apache.ofbiz.base.util.*
 import org.apache.ofbiz.order.order.OrderReadHelper
-import org.apache.ofbiz.order.shoppingcart.*
-import org.apache.ofbiz.party.party.PartyWorker
+import org.apache.ofbiz.order.shoppingcart.ShoppingCartEvents
 import org.apache.ofbiz.product.catalog.CatalogWorker
 
 productId = parameters.productId
@@ -55,7 +51,7 @@ context.orderType = shoppingCart.getOrderType()
 
 orderItems = shoppingCart.makeOrderItems(dispatcher)
 orderAdjustments = shoppingCart.makeAllAdjustments()
-orderItemShipGroupInfo = shoppingCart.makeAllShipGroupInfos()
+orderItemShipGroupInfo = shoppingCart.makeAllShipGroupInfos(dispatcher)
 if (orderItemShipGroupInfo) {
     orderItemShipGroupInfo.each { osiInfo ->
         if ("OrderAdjustment".equals(osiInfo.getEntityName())) {

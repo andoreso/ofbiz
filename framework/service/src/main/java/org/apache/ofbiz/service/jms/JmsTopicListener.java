@@ -28,11 +28,11 @@ import javax.jms.TopicSubscriber;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 
-import org.apache.ofbiz.service.GenericServiceException;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.GeneralException;
 import org.apache.ofbiz.base.util.JNDIContextFactory;
 import org.apache.ofbiz.entity.Delegator;
+import org.apache.ofbiz.service.GenericServiceException;
 
 /**
  * JmsTopicListener - Topic (Pub/Sub) Message Listener.
@@ -59,6 +59,7 @@ public class JmsTopicListener extends AbstractJmsListener {
         this.password = password;
     }
 
+    @Override
     public void close() throws GenericServiceException {
         try {
             if (session != null)
@@ -70,6 +71,7 @@ public class JmsTopicListener extends AbstractJmsListener {
         }
     }
 
+    @Override
     public synchronized void load() throws GenericServiceException {
         try {
             InitialContext jndi = JNDIContextFactory.getInitialContext(jndiServer);

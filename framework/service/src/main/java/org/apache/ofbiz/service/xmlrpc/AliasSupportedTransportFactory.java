@@ -29,6 +29,8 @@ import java.security.KeyStore;
 
 import javax.net.ssl.HttpsURLConnection;
 
+import org.apache.ofbiz.base.util.GeneralException;
+import org.apache.ofbiz.base.util.SSLUtil;
 import org.apache.xmlrpc.XmlRpcException;
 import org.apache.xmlrpc.XmlRpcRequest;
 import org.apache.xmlrpc.client.XmlRpcClientException;
@@ -38,8 +40,6 @@ import org.apache.xmlrpc.client.XmlRpcTransport;
 import org.apache.xmlrpc.client.XmlRpcTransportFactoryImpl;
 import org.apache.xmlrpc.common.XmlRpcStreamRequestConfig;
 import org.apache.xmlrpc.util.HttpUtil;
-import org.apache.ofbiz.base.util.GeneralException;
-import org.apache.ofbiz.base.util.SSLUtil;
 import org.xml.sax.SAXException;
 
 /**
@@ -54,20 +54,20 @@ public class AliasSupportedTransportFactory extends XmlRpcTransportFactoryImpl {
         transport = new AliasSupportedTransport(client, ks, password, alias);
     }
 
+    @Override
     public XmlRpcTransport getTransport() {
         return transport;
     }
 
     class AliasSupportedTransport extends XmlRpcHttpTransport {
 
-        protected static final String userAgent = USER_AGENT + " (Sun HTTP Transport)";
         private URLConnection con;
         private String password;
         private String alias;
         private KeyStore ks;
 
         protected AliasSupportedTransport(org.apache.xmlrpc.client.XmlRpcClient client, KeyStore ks, String password, String alias) {
-            super(client, userAgent);
+            super(client, USER_AGENT + " (Sun HTTP Transport)");
             this.password = password;
             this.alias = alias;
             this.ks = ks;

@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.codehaus.groovy.control.CompilationFailedException;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.GroovyUtil;
 import org.apache.ofbiz.base.util.StringUtil;
@@ -52,11 +51,12 @@ import org.apache.ofbiz.service.ModelParam;
 import org.apache.ofbiz.service.ModelService;
 import org.apache.ofbiz.widget.WidgetWorker;
 import org.apache.ofbiz.widget.renderer.FormStringRenderer;
+import org.codehaus.groovy.control.CompilationFailedException;
 import org.w3c.dom.Element;
 
 /**
  * Abstract base class for the &lt;form&gt; and &lt;grid&gt; elements.
- * 
+ *
  * @see <code>widget-form.xsd</code>
  */
 @SuppressWarnings("serial")
@@ -66,36 +66,36 @@ public abstract class ModelForm extends ModelWidget {
      * ----------------------------------------------------------------------- *
      *                     DEVELOPERS PLEASE READ
      * ----------------------------------------------------------------------- *
-     * 
+     *
      * This model is intended to be a read-only data structure that represents
      * an XML element. Outside of object construction, the class should not
      * have any behaviors. All behavior should be contained in model visitors.
-     * 
+     *
      * Instances of this class will be shared by multiple threads - therefore
      * it is immutable. DO NOT CHANGE THE OBJECT'S STATE AT RUN TIME!
-     * 
+     *
      * BE VERY CAREFUL when implementing "extends" - parent form collections
      * must be added to child collections, not replace them. In other words,
      * do not assign parent collection fields to child collection fields.
-     * 
+     *
      */
 
     public static final String module = ModelForm.class.getName();
     public static final String DEFAULT_FORM_RESULT_LIST_NAME = "defaultFormResultList";
     /** Pagination settings and defaults. */
-    public static int DEFAULT_PAGE_SIZE = 10;
-    public static int MAX_PAGE_SIZE = 10000;
-    public static String DEFAULT_PAG_INDEX_FIELD = "viewIndex";
-    public static String DEFAULT_PAG_SIZE_FIELD = "viewSize";
-    public static String DEFAULT_PAG_STYLE = "nav-pager";
-    public static String DEFAULT_PAG_FIRST_STYLE = "nav-first";
-    public static String DEFAULT_PAG_PREV_STYLE = "nav-previous";
-    public static String DEFAULT_PAG_NEXT_STYLE = "nav-next";
-    public static String DEFAULT_PAG_LAST_STYLE = "nav-last";
+    public static final int DEFAULT_PAGE_SIZE = 10;
+    public static final int MAX_PAGE_SIZE = 10000;
+    public static final String DEFAULT_PAG_INDEX_FIELD = "viewIndex";
+    public static final String DEFAULT_PAG_SIZE_FIELD = "viewSize";
+    public static final String DEFAULT_PAG_STYLE = "nav-pager";
+    public static final String DEFAULT_PAG_FIRST_STYLE = "nav-first";
+    public static final String DEFAULT_PAG_PREV_STYLE = "nav-previous";
+    public static final String DEFAULT_PAG_NEXT_STYLE = "nav-next";
+    public static final String DEFAULT_PAG_LAST_STYLE = "nav-last";
     /** Sort field default styles. */
-    public static String DEFAULT_SORT_FIELD_STYLE = "sort-order";
-    public static String DEFAULT_SORT_FIELD_ASC_STYLE = "sort-order-asc";
-    public static String DEFAULT_SORT_FIELD_DESC_STYLE = "sort-order-desc";
+    public static final String DEFAULT_SORT_FIELD_STYLE = "sort-order";
+    public static final String DEFAULT_SORT_FIELD_ASC_STYLE = "sort-order-asc";
+    public static final String DEFAULT_SORT_FIELD_DESC_STYLE = "sort-order-desc";
     private final List<ModelAction> actions;
     private final List<AltRowStyle> altRowStyles;
     private final List<AltTarget> altTargets;
@@ -126,11 +126,11 @@ public abstract class ModelForm extends ModelWidget {
     /** This is a list of FieldGroups in the order they were created.
      * Can also include Banner objects.
      */
-    private final List<FieldGroupBase> fieldGroupList;
+    protected final List<FieldGroupBase> fieldGroupList;
     /** This Map is keyed with the field name and has a FieldGroup for the value.
      * Can also include Banner objects.
      */
-    private final Map<String, FieldGroupBase> fieldGroupMap;
+    protected final Map<String, FieldGroupBase> fieldGroupMap;
     /** This List will contain one copy of each field for each field name in the order
      * they were encountered in the service, entity, or form definition; field definitions
      * with constraints will also be in this list but may appear multiple times for the same
@@ -140,7 +140,7 @@ public abstract class ModelForm extends ModelWidget {
      * necessary to use the Map. The Map is used when loading the form definition to keep the
      * list clean and implement the override features for field definitions.
      */
-    private final List<ModelFormField> fieldList;
+    protected final List<ModelFormField> fieldList;
     private final String focusFieldName;
     private final String formLocation;
     private final String formTitleAreaStyle;
@@ -184,6 +184,7 @@ public abstract class ModelForm extends ModelWidget {
     private final String targetType;
     private final FlexibleStringExpander targetWindowExdr;
     private final String title;
+    private final FlexibleStringExpander emptyFormDataMessage;
     private final String tooltip;
     private final String type;
     private final boolean useRowSubmit;
@@ -207,7 +208,7 @@ public abstract class ModelForm extends ModelWidget {
             }
         } else {
             try {
-                defaultViewSizeInt = Integer.valueOf(viewSize);
+                defaultViewSizeInt = Integer.parseInt(viewSize);
             } catch (NumberFormatException e) {
             }
         }
@@ -241,6 +242,11 @@ public abstract class ModelForm extends ModelWidget {
             title = parentModel.title;
         }
         this.title = title;
+        FlexibleStringExpander emptyFormDataMessage = FlexibleStringExpander.getInstance(formElement.getAttribute("empty-form-data-message"));
+        if (emptyFormDataMessage.isEmpty() && parentModel != null) {
+            emptyFormDataMessage = parentModel.emptyFormDataMessage;
+        }
+        this.emptyFormDataMessage = emptyFormDataMessage;
         String tooltip = formElement.getAttribute("tooltip");
         if (tooltip.isEmpty() && parentModel != null) {
             tooltip = parentModel.tooltip;
@@ -375,7 +381,7 @@ public abstract class ModelForm extends ModelWidget {
             paginateTarget = parentModel.paginateTarget;
         }
         this.paginateTarget = paginateTarget;
-        ArrayList<AltTarget> altTargets = new ArrayList<AltTarget>();
+        ArrayList<AltTarget> altTargets = new ArrayList<>();
         for (Element altTargetElement : UtilXml.childElementList(formElement, "alt-target")) {
             altTargets.add(new AltTarget(altTargetElement));
         }
@@ -384,7 +390,7 @@ public abstract class ModelForm extends ModelWidget {
         }
         altTargets.trimToSize();
         this.altTargets = Collections.unmodifiableList(altTargets);
-        ArrayList<ModelAction> actions = new ArrayList<ModelAction>();
+        ArrayList<ModelAction> actions = new ArrayList<>();
         if (parentModel != null) {
             actions.addAll(parentModel.actions);
         }
@@ -394,7 +400,7 @@ public abstract class ModelForm extends ModelWidget {
         }
         actions.trimToSize();
         this.actions = Collections.unmodifiableList(actions);
-        ArrayList<ModelAction> rowActions = new ArrayList<ModelAction>();
+        ArrayList<ModelAction> rowActions = new ArrayList<>();
         if (parentModel != null) {
             rowActions.addAll(parentModel.rowActions);
         }
@@ -404,9 +410,9 @@ public abstract class ModelForm extends ModelWidget {
         }
         rowActions.trimToSize();
         this.rowActions = Collections.unmodifiableList(rowActions);
-        ArrayList<UpdateArea> onPaginateUpdateAreas = new ArrayList<UpdateArea>();
-        ArrayList<UpdateArea> onSubmitUpdateAreas = new ArrayList<UpdateArea>();
-        ArrayList<UpdateArea> onSortColumnUpdateAreas = new ArrayList<UpdateArea>();
+        ArrayList<UpdateArea> onPaginateUpdateAreas = new ArrayList<>();
+        ArrayList<UpdateArea> onSubmitUpdateAreas = new ArrayList<>();
+        ArrayList<UpdateArea> onSortColumnUpdateAreas = new ArrayList<>();
         if (parentModel != null) {
             onPaginateUpdateAreas.addAll(parentModel.onPaginateUpdateAreas);
             onSubmitUpdateAreas.addAll(parentModel.onSubmitUpdateAreas);
@@ -453,7 +459,7 @@ public abstract class ModelForm extends ModelWidget {
         this.onSubmitUpdateAreas = Collections.unmodifiableList(onSubmitUpdateAreas);
         onSortColumnUpdateAreas.trimToSize();
         this.onSortColumnUpdateAreas = Collections.unmodifiableList(onSortColumnUpdateAreas);
-        ArrayList<AltRowStyle> altRowStyles = new ArrayList<AltRowStyle>();
+        ArrayList<AltRowStyle> altRowStyles = new ArrayList<>();
         if (parentModel != null) {
             altRowStyles.addAll(parentModel.altRowStyles);
         }
@@ -463,12 +469,12 @@ public abstract class ModelForm extends ModelWidget {
         }
         altRowStyles.trimToSize();
         this.altRowStyles = Collections.unmodifiableList(altRowStyles);
-        Set<String> useWhenFields = new HashSet<String>();
+        Set<String> useWhenFields = new HashSet<>();
         if (parentModel != null) {
             useWhenFields.addAll(parentModel.useWhenFields);
         }
-        List<ModelFormFieldBuilder> fieldBuilderList = new ArrayList<ModelFormFieldBuilder>();
-        Map<String, ModelFormFieldBuilder> fieldBuilderMap = new HashMap<String, ModelFormFieldBuilder>();
+        List<ModelFormFieldBuilder> fieldBuilderList = new ArrayList<>();
+        Map<String, ModelFormFieldBuilder> fieldBuilderMap = new HashMap<>();
         if (parentModel != null) {
             // Create this fieldList/Map from clones of parentModel's
             for (ModelFormField parentChildField : parentModel.fieldList) {
@@ -478,24 +484,24 @@ public abstract class ModelForm extends ModelWidget {
                 fieldBuilderMap.put(builder.getName(), builder);
             }
         }
-        Map<String, FieldGroupBase> fieldGroupMap = new HashMap<String, FieldGroupBase>();
+        Map<String, FieldGroupBase> fieldGroupMap = new HashMap<>();
         if (parentModel != null) {
             fieldGroupMap.putAll(parentModel.fieldGroupMap);
         }
-        ArrayList<FieldGroupBase> fieldGroupList = new ArrayList<FieldGroupBase>();
+        ArrayList<FieldGroupBase> fieldGroupList = new ArrayList<>();
         if (parentModel != null) {
             fieldGroupList.addAll(parentModel.fieldGroupList);
         }
-        ArrayList<String> lastOrderFields = new ArrayList<String>();
+        ArrayList<String> lastOrderFields = new ArrayList<>();
         if (parentModel != null) {
             lastOrderFields.addAll(parentModel.lastOrderFields);
         }
         String sortFieldParameterName = formElement.getAttribute("sort-field-parameter-name");
-        if (sortFieldParameterName.isEmpty() && parentModel != null) {
-            this.sortFieldParameterName = parentModel.targetType;
-        } else {
-            this.sortFieldParameterName = "sortField";
-        }
+        if (!sortFieldParameterName.isEmpty()) {
+            this.sortFieldParameterName = sortFieldParameterName;
+       } else {
+            this.sortFieldParameterName = (parentModel != null) ? parentModel.getSortFieldParameterName() : "sortField";
+       }
         String defaultRequiredFieldStyle = formElement.getAttribute("default-required-field-style");
         if (defaultRequiredFieldStyle.isEmpty() && parentModel != null) {
             defaultRequiredFieldStyle = parentModel.defaultRequiredFieldStyle;
@@ -605,15 +611,11 @@ public abstract class ModelForm extends ModelWidget {
         } else {
             this.useRowSubmit = "true".equals(useRowSubmit);
         }
-        FlexibleStringExpander rowCountExdr = FlexibleStringExpander.getInstance(formElement.getAttribute("row-count"));
-        if (rowCountExdr.isEmpty() && parentModel != null) {
-            rowCountExdr = parentModel.rowCountExdr;
-        }
         this.rowCountExdr = paginate;
-        List<ModelFormFieldBuilder> multiSubmitBuilders = new ArrayList<ModelFormFieldBuilder>();
-        ArrayList<AutoFieldsService> autoFieldsServices = new ArrayList<AutoFieldsService>();
-        ArrayList<AutoFieldsEntity> autoFieldsEntities = new ArrayList<AutoFieldsEntity>();
-        ArrayList<SortField> sortOrderFields = new ArrayList<SortField>();
+        List<ModelFormFieldBuilder> multiSubmitBuilders = new ArrayList<>();
+        ArrayList<AutoFieldsService> autoFieldsServices = new ArrayList<>();
+        ArrayList<AutoFieldsEntity> autoFieldsEntities = new ArrayList<>();
+        ArrayList<SortField> sortOrderFields = new ArrayList<>();
         this.defaultFieldGroup = new FieldGroup(null, this, sortOrderFields, fieldGroupMap);
         for (Element autoFieldsServiceElement : UtilXml.childElementList(formElement, "auto-fields-service")) {
             AutoFieldsService autoFieldsService = new AutoFieldsService(autoFieldsServiceElement);
@@ -629,7 +631,7 @@ public abstract class ModelForm extends ModelWidget {
         for (Element fieldElement : UtilXml.childElementList(formElement, "field")) {
             ModelFormFieldBuilder builder = new ModelFormFieldBuilder(fieldElement, this, entityModelReader, dispatchContext);
             FieldInfo fieldInfo = builder.getFieldInfo();
-            if (thisType.equals("multi") && fieldInfo instanceof ModelFormField.SubmitField) {
+            if ("multi".equals(thisType) && fieldInfo instanceof ModelFormField.SubmitField) {
                 multiSubmitBuilders.add(builder);
             } else {
                 addUpdateField(builder, useWhenFields, fieldBuilderList, fieldBuilderMap);
@@ -643,21 +645,21 @@ public abstract class ModelForm extends ModelWidget {
             // read in sort-field
             for (Element sortFieldElement : UtilXml.childElementList(sortOrderElement)) {
                 String tagName = sortFieldElement.getTagName();
-                if (tagName.equals("sort-field")) {
+                if ("sort-field".equals(tagName)) {
                     String fieldName = sortFieldElement.getAttribute("name");
                     String position = sortFieldElement.getAttribute("position");
                     sortOrderFields.add(new SortField(fieldName, position));
                     fieldGroupMap.put(fieldName, lastFieldGroup);
-                } else if (tagName.equals("last-field")) {
+                } else if ("last-field".equals(tagName)) {
                     String fieldName = sortFieldElement.getAttribute("name");
                     fieldGroupMap.put(fieldName, lastFieldGroup);
                     lastOrderFields.add(fieldName);
-                } else if (tagName.equals("banner")) {
+                } else if ("banner".equals(tagName)) {
                     Banner thisBanner = new Banner(sortFieldElement);
                     fieldGroupList.add(thisBanner);
                     lastFieldGroup = new FieldGroup(null, this, sortOrderFields, fieldGroupMap);
                     fieldGroupList.add(lastFieldGroup);
-                } else if (tagName.equals("field-group")) {
+                } else if ("field-group".equals(tagName)) {
                     FieldGroup thisFieldGroup = new FieldGroup(sortFieldElement, this, sortOrderFields, fieldGroupMap);
                     fieldGroupList.add(thisFieldGroup);
                     lastFieldGroup = new FieldGroup(null, this, sortOrderFields, fieldGroupMap);
@@ -666,7 +668,7 @@ public abstract class ModelForm extends ModelWidget {
             }
         }
         if (sortOrderFields.size() > 0) {
-            List<ModelFormFieldBuilder> sortedFields = new ArrayList<ModelFormFieldBuilder>();
+            List<ModelFormFieldBuilder> sortedFields = new ArrayList<>();
             for (SortField sortField : sortOrderFields) {
                 String fieldName = sortField.getFieldName();
                 if (UtilValidate.isEmpty(fieldName)) {
@@ -692,7 +694,7 @@ public abstract class ModelForm extends ModelWidget {
             fieldBuilderList = sortedFields;
         }
         if (UtilValidate.isNotEmpty(lastOrderFields)) {
-            List<ModelFormFieldBuilder> lastedFields = new LinkedList<ModelFormFieldBuilder>();
+            List<ModelFormFieldBuilder> lastedFields = new LinkedList<>();
             for (String fieldName : lastOrderFields) {
                 if (UtilValidate.isEmpty(fieldName)) {
                     continue;
@@ -711,12 +713,12 @@ public abstract class ModelForm extends ModelWidget {
             //now put all lastedFields at the field list end
             fieldBuilderList.addAll(lastedFields);
         }
-        List<ModelFormField> fieldList = new ArrayList<ModelFormField>(fieldBuilderList.size());
+        List<ModelFormField> fieldList = new ArrayList<>(fieldBuilderList.size());
         for (ModelFormFieldBuilder builder : fieldBuilderList) {
             fieldList.add(builder.build());
         }
         this.fieldList = Collections.unmodifiableList(fieldList);
-        List<ModelFormField> multiSubmitFields = new ArrayList<ModelFormField>(multiSubmitBuilders.size());
+        List<ModelFormField> multiSubmitFields = new ArrayList<>(multiSubmitBuilders.size());
         for (ModelFormFieldBuilder builder : multiSubmitBuilders) {
             multiSubmitFields.add(builder.build());
         }
@@ -756,7 +758,8 @@ public abstract class ModelForm extends ModelWidget {
         Iterator<ModelField> modelFieldIter = modelEntity.getFieldsIterator();
         while (modelFieldIter.hasNext()) {
             ModelField modelField = modelFieldIter.next();
-            if (modelField.getIsAutoCreatedInternal()) {
+            // auto-add only if field was generated automatically by the entity engine or including internally
+            if (modelField.getIsAutoCreatedInternal() && !autoFieldsEntity.includeInternal) {
                 // don't ever auto-add these, should only be added if explicitly referenced
                 continue;
             }
@@ -797,24 +800,22 @@ public abstract class ModelForm extends ModelWidget {
                     ModelEntity modelEntity;
                     try {
                         modelEntity = entityModelReader.getModelEntity(modelParam.entityName);
-                        if (modelEntity != null) {
-                            ModelField modelField = modelEntity.getField(modelParam.fieldName);
-                            if (modelField != null) {
-                                // okay, populate using the entity field info...
-                                ModelFormFieldBuilder builder = new ModelFormFieldBuilder();
-                                builder.setModelForm(this);
-                                builder.setName(modelField.getName());
-                                builder.setEntityName(modelEntity.getEntityName());
-                                builder.setFieldName(modelField.getName());
-                                builder.induceFieldInfoFromEntityField(modelEntity, modelField, autoFieldsService.defaultFieldType);
-                                if (UtilValidate.isNotEmpty(autoFieldsService.mapName)) {
-                                    builder.setMapName(autoFieldsService.mapName);
-                                }
-                                builder.setRequiredField(!modelParam.optional);
-                                addUpdateField(builder, useWhenFields, fieldBuilderList, fieldBuilderMap);
-                                // continue to skip creating based on service param
-                                continue;
+                        ModelField modelField = modelEntity.getField(modelParam.fieldName);
+                        if (modelField != null) {
+                            // okay, populate using the entity field info...
+                            ModelFormFieldBuilder builder = new ModelFormFieldBuilder();
+                            builder.setModelForm(this);
+                            builder.setName(modelField.getName());
+                            builder.setEntityName(modelEntity.getEntityName());
+                            builder.setFieldName(modelField.getName());
+                            builder.induceFieldInfoFromEntityField(modelEntity, modelField, autoFieldsService.defaultFieldType);
+                            if (UtilValidate.isNotEmpty(autoFieldsService.mapName)) {
+                                builder.setMapName(autoFieldsService.mapName);
                             }
+                            builder.setRequiredField(!modelParam.optional);
+                            addUpdateField(builder, useWhenFields, fieldBuilderList, fieldBuilderMap);
+                            // continue to skip creating based on service param
+                            continue;
                         }
                     } catch (GenericEntityException e) {
                         Debug.logError(e, module);
@@ -837,7 +838,7 @@ public abstract class ModelForm extends ModelWidget {
         }
     }
 
-    private void addUpdateField(ModelFormFieldBuilder builder, Set<String> useWhenFields,
+    private static void addUpdateField(ModelFormFieldBuilder builder, Set<String> useWhenFields,
             List<ModelFormFieldBuilder> fieldBuilderList, Map<String, ModelFormFieldBuilder> fieldBuilderMap) {
         if (!builder.getUseWhen().isEmpty() || useWhenFields.contains(builder.getName())) {
             useWhenFields.add(builder.getName());
@@ -856,17 +857,16 @@ public abstract class ModelForm extends ModelWidget {
                 fieldBuilderList.add(builder);
             }
             return;
+        }
+        // not a conditional field, see if a named field exists in Map
+        ModelFormFieldBuilder existingField = fieldBuilderMap.get(builder.getName());
+        if (existingField != null) {
+            // does exist, update the field by doing a merge/override
+            existingField.mergeOverrideModelFormField(builder);
         } else {
-            // not a conditional field, see if a named field exists in Map
-            ModelFormFieldBuilder existingField = fieldBuilderMap.get(builder.getName());
-            if (existingField != null) {
-                // does exist, update the field by doing a merge/override
-                existingField.mergeOverrideModelFormField(builder);
-            } else {
-                // does not exist, add to List and Map
-                fieldBuilderList.add(builder);
-                fieldBuilderMap.put(builder.getName(), builder);
-            }
+            // does not exist, add to List and Map
+            fieldBuilderList.add(builder);
+            fieldBuilderMap.put(builder.getName(), builder);
         }
     }
 
@@ -903,9 +903,8 @@ public abstract class ModelForm extends ModelWidget {
         // use the name if there is no id
         if (UtilValidate.isNotEmpty(this.containerId)) {
             return this.containerId;
-        } else {
-            return this.getName();
         }
+        return this.getName();
     }
 
     public String getContainerStyle() {
@@ -1019,9 +1018,8 @@ public abstract class ModelForm extends ModelWidget {
     public String getItemIndexSeparator() {
         if (UtilValidate.isNotEmpty(this.itemIndexSeparator)) {
             return this.itemIndexSeparator;
-        } else {
-            return "_o_";
         }
+        return "_o_";
     }
 
     public List<String> getLastOrderFields() {
@@ -1088,7 +1086,7 @@ public abstract class ModelForm extends ModelWidget {
             String size = this.overrideListSize.expandString(context);
             try {
                 size = size.replaceAll("[^0-9.]", "");
-                if (!size.isEmpty()) { 
+                if (!size.isEmpty()) {
                     listSize = Integer.parseInt(size);
                 }
             } catch (NumberFormatException e) {
@@ -1105,10 +1103,9 @@ public abstract class ModelForm extends ModelWidget {
     public boolean getPaginate(Map<String, Object> context) {
         String paginate = this.paginate.expandString(context);
         if (!paginate.isEmpty()) {
-            return Boolean.valueOf(paginate).booleanValue();
-        } else {
-            return true;
+            return Boolean.valueOf(paginate);
         }
+        return true;
     }
 
     public String getPaginateFirstLabel() {
@@ -1313,7 +1310,7 @@ public abstract class ModelForm extends ModelWidget {
                 // retVal should be a Boolean, if not something weird is up...
                 if (retVal instanceof Boolean) {
                     Boolean boolVal = (Boolean) retVal;
-                    if (boolVal.booleanValue()) {
+                    if (boolVal) {
                         styles += altRowStyle.style;
                     }
                 } else {
@@ -1350,13 +1347,13 @@ public abstract class ModelForm extends ModelWidget {
                 // retVal should be a Boolean, if not something weird is up...
                 if (retVal instanceof Boolean) {
                     Boolean boolVal = (Boolean) retVal;
-                    condTrue = boolVal.booleanValue();
+                    condTrue = boolVal;
                 } else {
                     throw new IllegalArgumentException("Return value from target condition eval was not a Boolean: "
                             + retVal.getClass().getName() + " [" + retVal + "] of form " + getName());
                 }
 
-                if (condTrue && !targetType.equals("inter-app")) {
+                if (condTrue && !"inter-app".equals(targetType)) {
                     return altTarget.targetExdr.expandString(expanderContext);
                 }
             }
@@ -1382,6 +1379,10 @@ public abstract class ModelForm extends ModelWidget {
 
     public String getTitle() {
         return this.title;
+    }
+
+    public String getEmptyFormDataMessage(Map<String, Object> context) {
+        return this.emptyFormDataMessage.expandString(context);
     }
 
     public String getTooltip() {
@@ -1446,16 +1447,18 @@ public abstract class ModelForm extends ModelWidget {
         public final String mapName;
         public final String defaultFieldType;
         public final int defaultPosition;
+        public final boolean includeInternal;
 
         public AutoFieldsEntity(Element element) {
             this.entityName = element.getAttribute("entity-name");
             this.mapName = element.getAttribute("map-name");
             this.defaultFieldType = element.getAttribute("default-field-type");
+            this.includeInternal = !"false".equals(element.getAttribute("include-internal"));
             String positionStr = element.getAttribute("default-position");
             int position = 1;
             try {
                 if (UtilValidate.isNotEmpty(positionStr)) {
-                    position = Integer.valueOf(positionStr);
+                    position = Integer.parseInt(positionStr);
                 }
             } catch (Exception e) {
                 Debug.logError(e, "Could not convert position attribute of the field element to an integer: [" + positionStr
@@ -1479,7 +1482,7 @@ public abstract class ModelForm extends ModelWidget {
             int position = 1;
             try {
                 if (UtilValidate.isNotEmpty(positionStr)) {
-                    position = Integer.valueOf(positionStr);
+                    position = Integer.parseInt(positionStr);
                 }
             } catch (Exception e) {
                 Debug.logError(e, "Could not convert position attribute of the field element to an integer: [" + positionStr
@@ -1664,7 +1667,8 @@ public abstract class ModelForm extends ModelWidget {
                 Integer posParam = null;
                 try {
                     posParam = Integer.valueOf(position);
-                } catch (Exception e) {/* just ignore the exception*/
+                } catch (Exception e) {
+                    Debug.logInfo("The class SortField caused an exception", module);
                 }
                 this.position = posParam;
             } else {
@@ -1712,7 +1716,7 @@ public abstract class ModelForm extends ModelWidget {
             if (parameterElementList.isEmpty()) {
                 this.parameterList = Collections.emptyList();
             } else {
-                List<CommonWidgetModels.Parameter> parameterList = new ArrayList<CommonWidgetModels.Parameter>(parameterElementList.size());
+                List<CommonWidgetModels.Parameter> parameterList = new ArrayList<>(parameterElementList.size());
                 for (Element parameterElement : parameterElementList) {
                     parameterList.add(new CommonWidgetModels.Parameter(parameterElement));
                 }
@@ -1765,7 +1769,7 @@ public abstract class ModelForm extends ModelWidget {
         }
 
         public Map<String, String> getParameterMap(Map<String, Object> context) {
-            Map<String, String> fullParameterMap = new HashMap<String, String>();
+            Map<String, String> fullParameterMap = new HashMap<>();
             if (autoServiceParameters != null) {
                 fullParameterMap.putAll(autoServiceParameters.getParametersMap(context, defaultServiceName));
             }

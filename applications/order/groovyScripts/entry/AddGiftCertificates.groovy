@@ -17,8 +17,6 @@
  * under the License.
  */
 import org.apache.ofbiz.base.util.UtilValidate
-import org.apache.ofbiz.entity.condition.EntityCondition
-import org.apache.ofbiz.entity.condition.EntityOperator
 import org.apache.ofbiz.product.store.ProductStoreWorker
 
 cart = session.getAttribute("shoppingCart")
@@ -31,13 +29,13 @@ if (productStoreId == null) {
 
 giftCardCategories = from("ProductCategory").where("productCategoryTypeId", "GIFT_CARD_CATEGORY").queryList()
 giftCardProductList = []
-if (UtilValidate.isNotEmpty(giftCardCategories)) {
+if (giftCardCategories) {
     giftCardCategories.each { giftCardCategory -> 
         giftCardCategoryMembers = from("ProductCategoryMember").where("productCategoryId", giftCardCategory.productCategoryId).queryList()
-        if (UtilValidate.isNotEmpty(giftCardCategoryMembers)) {
+        if (giftCardCategoryMembers) {
             giftCardCategoryMembers.each { giftCardCategoryMember -> 
                 giftCardProducts = from("ProductAndPriceView").where("productId", giftCardCategoryMember.productId).queryList()
-                if (UtilValidate.isNotEmpty(giftCardProducts)) {
+                if (giftCardProducts) {
                     giftCardProducts.each { giftCardProduct ->
                         giftCardProductList.add(giftCardProduct)
                     }
@@ -51,5 +49,5 @@ context.giftCardProductList = giftCardProductList
 // Get Survey Id for Gift Certificates
 
 productStoreFinActSetting = from("ProductStoreFinActSetting").where("productStoreId", productStoreId, "finAccountTypeId", "GIFTCERT_ACCOUNT").queryOne()
-context.surveyId = productStoreFinActSetting.purchaseSurveyId
+context.surveyId = productStoreFinActSetting?.purchaseSurveyId
 

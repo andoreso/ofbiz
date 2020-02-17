@@ -19,13 +19,14 @@
 package org.apache.ofbiz.content.cms;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.sql.Timestamp;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.Callable;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -43,6 +44,7 @@ import org.apache.ofbiz.entity.GenericValue;
 import org.apache.ofbiz.entity.condition.EntityCondition;
 import org.apache.ofbiz.entity.transaction.TransactionUtil;
 import org.apache.ofbiz.entity.util.EntityUtil;
+import org.apache.ofbiz.entity.util.EntityQuery;
 
 public class ContentJsonEvents {
 
@@ -59,7 +61,7 @@ public class ContentJsonEvents {
             );
         List<GenericValue> assocs = delegator.findList("ContentAssoc", condition, null, null, null, false);
 
-        List<Map<String, Object>> nodes = new LinkedList<Map<String, Object>>();
+        List<Map<String, Object>> nodes = new LinkedList<>();
         for (GenericValue assoc : assocs) {
             nodes.add(getTreeNode(assoc));
         }
@@ -80,11 +82,11 @@ public class ContentJsonEvents {
                     return 0;
                 }
 
-                return title1.toLowerCase().compareTo(title2.toLowerCase());
+                return title1.toLowerCase(Locale.getDefault()).compareTo(title2.toLowerCase(Locale.getDefault()));
             }
 
         });
-        IOUtils.write(JSON.from(nodes).toString(), response.getOutputStream());
+        IOUtils.write(JSON.from(nodes).toString(), response.getOutputStream(), Charset.defaultCharset());
 
         return "success";
     }
@@ -99,28 +101,28 @@ public class ContentJsonEvents {
         final Timestamp fromDate = Timestamp.valueOf(request.getParameter("fromDate"));
 
         final Timestamp now = UtilDateTime.nowTimestamp();
-        GenericValue assoc = TransactionUtil.inTransaction(new Callable<GenericValue>() {
-            @Override
-            public GenericValue call() throws Exception {
-                GenericValue oldAssoc = delegator.findOne("ContentAssoc", UtilMisc.toMap("contentIdTo", contentIdTo, "contentId", contentIdFrom, "contentAssocTypeId", contentAssocTypeId, "fromDate", fromDate), false);
-                if (oldAssoc == null) {
-                    throw new GenericEntityNotFoundException("Could not find ContentAssoc by primary key [contentIdTo: $contentIdTo, contentId: $contentIdFrom, contentAssocTypeId: $contentAssocTypeId, fromDate: $fromDate]");
-                }
-                GenericValue newAssoc = (GenericValue) oldAssoc.clone();
-
-                oldAssoc.set("thruDate", now);
-                oldAssoc.store();
-
-                newAssoc.set("contentId", contentIdFromNew);
-                newAssoc.set("fromDate", now);
-                newAssoc.set("thruDate", null);
-                delegator.clearCacheLine(delegator.create(newAssoc));
-
-                return newAssoc;
+        GenericValue assoc = TransactionUtil.inTransaction(() -> {
+            GenericValue oldAssoc = EntityQuery.use(delegator).from("ContentAssoc")
+                    .where("contentIdTo", contentIdTo, "contentId", contentIdFrom, "contentAssocTypeId",
+                           contentAssocTypeId, "fromDate", fromDate)
+                    .queryOne();
+            if (oldAssoc == null) {
+                throw new GenericEntityNotFoundException("Could not find ContentAssoc by primary key [contentIdTo: $contentIdTo, contentId: $contentIdFrom, contentAssocTypeId: $contentAssocTypeId, fromDate: $fromDate]");
             }
+            GenericValue newAssoc = (GenericValue) oldAssoc.clone();
+
+            oldAssoc.set("thruDate", now);
+            oldAssoc.store();
+
+            newAssoc.set("contentId", contentIdFromNew);
+            newAssoc.set("fromDate", now);
+            newAssoc.set("thruDate", null);
+            delegator.clearCacheLine(delegator.create(newAssoc));
+
+            return newAssoc;
         }, String.format("move content [%s] from [%s] to [%s]", contentIdTo, contentIdFrom, contentIdFromNew), 0, true).call();
 
-        IOUtils.write(JSON.from(getTreeNode(assoc)).toString(), response.getOutputStream());
+        IOUtils.write(JSON.from(getTreeNode(assoc)).toString(), response.getOutputStream(), Charset.defaultCharset());
 
         return "success";
     }
@@ -188,7 +190,7 @@ public class ContentJsonEvents {
 
         Map<String, Object> node = UtilMisc.toMap("data", (Object) data, "attr", (Object) attr);
 
-        List<GenericValue> assocChildren  = content.getRelated("FromContentAssoc", null, null, true);
+        List<GenericValue> assocChildren  = content != null ? content.getRelated("FromContentAssoc", null, null, true) : null;
         assocChildren = EntityUtil.filterByDate(assocChildren);
         if (!CollectionUtils.isEmpty(assocChildren)) {
             node.put("state", "closed");

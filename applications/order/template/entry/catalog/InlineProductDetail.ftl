@@ -21,20 +21,20 @@ ${virtualJavaScript!}
 <#assign addedJavaScript = requestAttributes.addedJavaScript?default("N")/>
 <#if ("N" == addedJavaScript)>
   ${setRequestAttribute("addedJavaScript", "Y")}
-  <script language="JavaScript" type="text/javascript">
+  <script type="application/javascript">
 
      function popupDetailInline(inlineCounter) {
         var imageField = 'detailImage' + inlineCounter;
         var defaultDetailImage = document.getElementById(imageField);
-        if (defaultDetailImage == null || defaultDetailImage == "null" || defaultDetailImage == "") {
+        if (defaultDetailImage == null || "null" == defaultDetailImage || "" == defaultDetailImage) {
             defaultDetailImage = "_NONE_";
         }
         var fieldName = 'detailImageUrl' + inlineCounter;
-        if (window[fieldName] == null || window[fieldName] == "null") {
+        if (window[fieldName] == null || "null" == window[fieldName]) {
             window[fieldName] = defaultDetailImage;
         }
 
-        if (window[fieldName] == "_NONE_") {
+        if ("_NONE_" == window[fieldName]) {
             hack = document.createElement('span');
             hack.innerHTML="${uiLabelMap.CommonNoDetailImageAvailableToDisplay}";
             showErrorAlert("${uiLabelMap.CommonErrorMessage2}","${uiLabelMap.CommonNoDetailImageAvailableToDisplay}");
@@ -230,8 +230,8 @@ ${virtualJavaScript!}
  </script>
 </#if>
 
-<#if product.virtualVariantMethodEnum! == "VV_FEATURETREE" && featureLists?has_content>
-  <script language="JavaScript" type="text/javascript">
+<#if "VV_FEATURETREE" == product.virtualVariantMethodEnum! && featureLists?has_content>
+  <script type="application/javascript">
         function checkRadioButtoninline${inlineCounter}(inlineCounter, productId) {
         var add_product_id = 'add_product_id' + inlineCounter;
             <#list featureLists as featureList>
@@ -269,8 +269,8 @@ ${virtualJavaScript!}
     </td>
     <td align="right" valign="top" width="100%">
         <#assign inStock = true>
-        <#if product.isVirtual!?upper_case == "Y">
-        <#if product.virtualVariantMethodEnum! == "VV_FEATURETREE" && featureLists?has_content>
+        <#if "Y" == product.isVirtual!?upper_case>
+        <#if "VV_FEATURETREE" == product.virtualVariantMethodEnum! && featureLists?has_content>
             <#list featureLists as featureList>
                 <#list featureList as feature>
                     <#if feature_index == 0>
@@ -286,7 +286,7 @@ ${virtualJavaScript!}
               <input type="hidden" name="product_id${inlineCounter}" value="${product.productId}"/>
               <input type="hidden" name="add_product_id${inlineCounter}" value="NULL"/>
           </#if>
-          <#if !product.virtualVariantMethodEnum?? || product.virtualVariantMethodEnum == "VV_VARIANTTREE">
+          <#if !product.virtualVariantMethodEnum?? || "VV_VARIANTTREE" == product.virtualVariantMethodEnum>
            <#if variantTree?? && (variantTree.size() > 0)>
             <#list featureSet as currentType>
               <div>
@@ -334,7 +334,7 @@ ${virtualJavaScript!}
         <#-- check to see if the product requires inventory check and has inventory -->
         <#elseif product.virtualVariantMethodEnum! != "VV_FEATURETREE">
           <#if inStock>
-            <#if product.requireAmount?default("N") == "Y">
+            <#if "Y" == product.requireAmount?default("N")>
               <#assign hiddenStyle = "visible">
             <#else>
               <#assign hiddenStyle = "hidden">
@@ -349,7 +349,7 @@ ${virtualJavaScript!}
 
       <tr><td COLSPAN="2" align="right">
       <#if variantTree?? && 0 < variantTree.size()>
-        <script language="JavaScript" type="text/javascript">eval("list"+ "${inlineCounter}" + "${featureOrderFirst}" + "()");</script>
+        <script type="application/javascript">eval("list"+ "${inlineCounter}" + "${featureOrderFirst}" + "()");</script>
       </#if>
 
     </td>

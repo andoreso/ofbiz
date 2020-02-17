@@ -20,19 +20,20 @@ package org.apache.ofbiz.entityext.data;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.shiro.crypto.AesCipherService;
 import org.apache.ofbiz.base.crypto.DesCrypt;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.FileUtil;
@@ -55,6 +56,7 @@ import org.apache.ofbiz.service.DispatchContext;
 import org.apache.ofbiz.service.GenericServiceException;
 import org.apache.ofbiz.service.LocalDispatcher;
 import org.apache.ofbiz.service.ServiceUtil;
+import org.apache.shiro.crypto.AesCipherService;
 
 /**
  * Entity Data Import/Export Services
@@ -160,12 +162,12 @@ public class EntityDataServices {
 
         Debug.logInfo("Imported/Updated [" + records + "] from : " + file.getAbsolutePath() + " [" + runTime + "ms]", module);
         Map<String, Object> result = ServiceUtil.returnSuccess();
-        result.put("records", Integer.valueOf(records));
+        result.put("records", records);
         return result;
     }
 
     private static List<File> getFileList(File root) {
-        List<File> fileList = new LinkedList<File>();
+        List<File> fileList = new LinkedList<>();
 
         // check for a file list file
         File listFile = new File(root, "FILELIST.txt");
@@ -173,7 +175,7 @@ public class EntityDataServices {
         if (listFile.exists()) {
             BufferedReader reader = null;
             try {
-                reader = new BufferedReader(new FileReader(listFile));
+                reader = new BufferedReader(new InputStreamReader(new FileInputStream(listFile), StandardCharsets.UTF_8));
             } catch (FileNotFoundException e) {
                 Debug.logError(e, module);
             }
@@ -201,10 +203,13 @@ public class EntityDataServices {
                 Debug.logInfo("Read file list : " + fileList.size() + " entities.", module);
             }
         } else {
-            for (File file: root.listFiles()) {
-                String fileName = file.getName();
-                if (!fileName.startsWith("_") && fileName.endsWith(".txt")) {
-                    fileList.add(file);
+            File[] files = root.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    String fileName = file.getName();
+                    if (!fileName.startsWith("_") && fileName.endsWith(".txt")) {
+                        fileList.add(file);
+                    }
                 }
             }
             Debug.logInfo("No file list found; using directory order : " + fileList.size() + " entities.", module);
@@ -219,35 +224,33 @@ public class EntityDataServices {
         String[] header = null;
         File headerFile = new File(FileUtil.getFile(filePath.substring(0, filePath.lastIndexOf('/'))), "_" + file.getName());
 
-        boolean uniqueHeaderFile = true;
-        BufferedReader reader = null;
         if (headerFile.exists()) {
-            reader = new BufferedReader(new FileReader(headerFile));
+            try (
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(headerFile),
+                            StandardCharsets.UTF_8));) {
+
+                String firstLine = reader.readLine();
+                if (firstLine != null) {
+                    header = firstLine.split(delimiter);
+                }
+            } catch (IOException | SecurityException e) {
+                Debug.logError(e, module);
+            }
         } else {
-            uniqueHeaderFile = false;
-            reader = dataReader;
+            BufferedReader reader = dataReader;
+            String firstLine = reader.readLine();
+            if (firstLine != null) {
+                header = firstLine.split(delimiter);
+            }
         }
-
         // read one line from either the header file or the data file if no header file exists
-        String firstLine = reader.readLine();
-        if (firstLine != null) {
-            header = firstLine.split(delimiter);
-        }
-
-        if (uniqueHeaderFile) {
-            reader.close();
-        }
-
         return header;
     }
 
     private static int readEntityFile(File file, String delimiter, Delegator delegator) throws IOException, GeneralException {
         String entityName = file.getName().substring(0, file.getName().lastIndexOf('.'));
-        if (entityName == null) {
-            throw new GeneralException("Entity name cannot be null : [" + file.getName() + "]");
-        }
 
-        BufferedReader reader = new BufferedReader(new FileReader(file));
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
         String[] header = readEntityHeader(file, delimiter, reader);
 
         //Debug.logInfo("Opened data file [" + file.getName() + "] now running...", module);
@@ -334,7 +337,7 @@ public class EntityDataServices {
         String groupName = (String) context.get("groupName");
         Boolean fixSizes = (Boolean) context.get("fixColSizes");
         if (fixSizes == null) fixSizes = Boolean.FALSE;
-        List<String> messages = new LinkedList<String>();
+        List<String> messages = new LinkedList<>();
 
         GenericHelperInfo helperInfo = delegator.getGroupHelperInfo(groupName);
         DatabaseUtil dbUtil = new DatabaseUtil(helperInfo);
@@ -371,9 +374,9 @@ public class EntityDataServices {
         }
 
         // step 5 - repair field sizes
-        if (fixSizes.booleanValue()) {
+        if (fixSizes) {
             Debug.logImportant("Updating column field size changes", module);
-            List<String> fieldsWrongSize = new LinkedList<String>();
+            List<String> fieldsWrongSize = new LinkedList<>();
             dbUtil.checkDb(modelEntities, fieldsWrongSize, messages, true, true, true, true);
             if (fieldsWrongSize.size() > 0) {
                 dbUtil.repairColumnSizeChanges(modelEntities, fieldsWrongSize, messages);
@@ -422,9 +425,11 @@ public class EntityDataServices {
         String entityName = (String) context.get("entityName");
         String fieldName = (String) context.get("fieldName");
         Locale locale = (Locale) context.get("locale");
-        EntityListIterator eli = null;
-        try {
-            eli = EntityQuery.use(delegator).from(entityName).queryIterator();
+
+        try (EntityListIterator eli = EntityQuery.use(delegator)
+                .from(entityName)
+                .queryIterator()) {
+
             GenericValue currentValue;
             while ((currentValue = eli.next()) != null) {
                 byte[] bytes = currentValue.getBytes(fieldName);
@@ -436,15 +441,6 @@ public class EntityDataServices {
         } catch (GenericEntityException e) {
             Debug.logError(e, "Error unwrapping ByteWrapper records: " + e.toString(), module);
             return ServiceUtil.returnError(UtilProperties.getMessage(resource, "EntityExtErrorUnwrappingRecords", UtilMisc.toMap("errorString", e.toString()), locale));
-        } finally {
-            if (eli != null) {
-                try {
-                    eli.close();
-                } catch (GenericEntityException e) {
-                    String errMsg = "Error closing EntityListIterator: " + e.toString();
-                    Debug.logError(e, errMsg, module);
-                }
-            }
         }
 
         return ServiceUtil.returnSuccess();

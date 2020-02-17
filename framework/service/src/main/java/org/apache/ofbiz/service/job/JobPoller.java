@@ -20,13 +20,14 @@ package org.apache.ofbiz.service.job;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -37,8 +38,8 @@ import org.apache.ofbiz.base.config.GenericConfigException;
 import org.apache.ofbiz.base.start.Start;
 import org.apache.ofbiz.base.util.Assert;
 import org.apache.ofbiz.base.util.Debug;
-import org.apache.ofbiz.service.config.ServiceConfigUtil;
 import org.apache.ofbiz.service.config.ServiceConfigListener;
+import org.apache.ofbiz.service.config.ServiceConfigUtil;
 import org.apache.ofbiz.service.config.model.ServiceConfig;
 import org.apache.ofbiz.service.config.model.ThreadPool;
 
@@ -49,7 +50,7 @@ public final class JobPoller implements ServiceConfigListener {
 
     public static final String module = JobPoller.class.getName();
     private static final AtomicInteger created = new AtomicInteger();
-    private static final ConcurrentHashMap<String, JobManager> jobManagers = new ConcurrentHashMap<String, JobManager>();
+    private static final ConcurrentHashMap<String, JobManager> jobManagers = new ConcurrentHashMap<>();
     private static final ThreadPoolExecutor executor = createThreadPoolExecutor();
     private static final JobPoller instance = new JobPoller();
 
@@ -63,13 +64,46 @@ public final class JobPoller implements ServiceConfigListener {
     private static ThreadPoolExecutor createThreadPoolExecutor() {
         try {
             ThreadPool threadPool = ServiceConfigUtil.getServiceEngine(ServiceConfigUtil.getEngine()).getThreadPool();
-            return new ThreadPoolExecutor(threadPool.getMinThreads(), threadPool.getMaxThreads(), threadPool.getTtl(),
-                    TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(threadPool.getJobs()), new JobInvokerThreadFactory(), new ThreadPoolExecutor.AbortPolicy());
+            return new ThreadPoolExecutor(
+                    threadPool.getMinThreads(), 
+                    threadPool.getMaxThreads(), 
+                    threadPool.getTtl(),
+                    TimeUnit.MILLISECONDS, 
+                    new PriorityBlockingQueue<>(threadPool.getJobs(), createPriorityComparator()), 
+                    new JobInvokerThreadFactory(), 
+                    new ThreadPoolExecutor.AbortPolicy());
         } catch (GenericConfigException e) {
             Debug.logError(e, "Exception thrown while getting <thread-pool> model, using default <thread-pool> values: ", module);
-            return new ThreadPoolExecutor(ThreadPool.MIN_THREADS, ThreadPool.MAX_THREADS, ThreadPool.THREAD_TTL,
-                    TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(ThreadPool.QUEUE_SIZE), new JobInvokerThreadFactory(), new ThreadPoolExecutor.AbortPolicy());
+            return new ThreadPoolExecutor(
+                    ThreadPool.MIN_THREADS, 
+                    ThreadPool.MAX_THREADS, 
+                    ThreadPool.THREAD_TTL,
+                    TimeUnit.MILLISECONDS, 
+                    new PriorityBlockingQueue<>(ThreadPool.QUEUE_SIZE, createPriorityComparator()), 
+                    new JobInvokerThreadFactory(), 
+                    new ThreadPoolExecutor.AbortPolicy());
         }
+    }
+
+    private static Comparator<Runnable> createPriorityComparator() {
+        return new Comparator<Runnable>() {
+
+            /**
+             * Sorts jobs by priority then by start time
+             */
+            @Override
+            public int compare(Runnable o1, Runnable o2) {
+                Job j1 = (Job) o1;
+                Job j2 = (Job) o2;
+                // Descending priority (higher number returns -1)
+                int priorityCompare = Long.compare(j2.getPriority(), j1.getPriority());
+                if (priorityCompare != 0) {
+                    return priorityCompare;
+                }
+                // Ascending start time (earlier time returns -1)
+                return Long.compare(j1.getStartTime().getTime(), j2.getStartTime().getTime());
+            }
+        };
     }
 
     private static int pollWaitTime() {
@@ -82,9 +116,19 @@ public final class JobPoller implements ServiceConfigListener {
         }
     }
 
+    static int queueSize() {
+        try {
+            ThreadPool threadPool = ServiceConfigUtil.getServiceEngine(ServiceConfigUtil.getEngine()).getThreadPool();
+            return threadPool.getJobs();
+        } catch (GenericConfigException e) {
+            Debug.logError(e, "Exception thrown while getting <thread-pool> model, using default <thread-pool> values: ", module);
+            return ThreadPool.QUEUE_SIZE;
+        }
+    }
+
     /**
      * Register a {@link JobManager} with the job poller.
-     * 
+     *
      * @param jm The <code>JobManager</code> to register.
      * @throws IllegalArgumentException if <code>jm</code> is null
      */
@@ -112,7 +156,7 @@ public final class JobPoller implements ServiceConfigListener {
      * Returns a <code>Map</code> containing <code>JobPoller</code> statistics.
      */
     public Map<String, Object> getPoolState() {
-        Map<String, Object> poolState = new HashMap<String, Object>();
+        Map<String, Object> poolState = new HashMap<>();
         poolState.put("keepAliveTimeInSeconds", executor.getKeepAliveTime(TimeUnit.SECONDS));
         poolState.put("numberOfCoreInvokerThreads", executor.getCorePoolSize());
         poolState.put("currentNumberOfInvokerThreads", executor.getPoolSize());
@@ -121,11 +165,11 @@ public final class JobPoller implements ServiceConfigListener {
         poolState.put("greatestNumberOfInvokerThreads", executor.getLargestPoolSize());
         poolState.put("numberOfCompletedTasks", executor.getCompletedTaskCount());
         BlockingQueue<Runnable> queue = executor.getQueue();
-        List<Map<String, Object>> taskList = new ArrayList<Map<String, Object>>();
+        List<Map<String, Object>> taskList = new ArrayList<>();
         Map<String, Object> taskInfo = null;
         for (Runnable task : queue) {
             Job job = (Job) task;
-            taskInfo = new HashMap<String, Object>();
+            taskInfo = new HashMap<>();
             taskInfo.put("id", job.getJobId());
             taskInfo.put("name", job.getJobName());
             String serviceName = "";
@@ -151,7 +195,7 @@ public final class JobPoller implements ServiceConfigListener {
         }
     }
 
-    private boolean pollEnabled() {
+    private static boolean pollEnabled() {
         try {
             return ServiceConfigUtil.getServiceEngine().getThreadPool().getPollEnabled();
         } catch (GenericConfigException e) {
@@ -170,6 +214,7 @@ public final class JobPoller implements ServiceConfigListener {
         try {
             executor.execute(job);
         } catch (Exception e) {
+            Debug.logError(e, module);
             job.deQueue();
         }
     }
@@ -197,6 +242,7 @@ public final class JobPoller implements ServiceConfigListener {
 
     private static class JobInvokerThreadFactory implements ThreadFactory {
 
+        @Override
         public Thread newThread(Runnable runnable) {
             return new Thread(runnable, "OFBiz-JobQueue-" + created.getAndIncrement());
         }
@@ -207,6 +253,7 @@ public final class JobPoller implements ServiceConfigListener {
 
         // Do not check for interrupts in this method. The design requires the
         // thread to complete the job manager poll uninterrupted.
+        @Override
         public void run() {
             Debug.logInfo("JobPoller thread started.", module);
             try {
@@ -214,21 +261,23 @@ public final class JobPoller implements ServiceConfigListener {
                     Thread.sleep(1000);
                 }
                 while (!executor.isShutdown()) {
-                    int remainingCapacity = executor.getQueue().remainingCapacity();
+                    int remainingCapacity = queueSize() - executor.getQueue().size();
                     if (remainingCapacity > 0) {
                         // Build "list of lists"
                         Collection<JobManager> jmCollection = jobManagers.values();
-                        List<Iterator<Job>> pollResults = new ArrayList<Iterator<Job>>();
+                        List<Iterator<Job>> pollResults = new ArrayList<>();
                         for (JobManager jm : jmCollection) {
                             if (!jm.isAvailable()) {
-                                if (Debug.infoOn()) Debug.logInfo("The job manager is locked.", module);
+                                if (Debug.infoOn()) {
+                                    Debug.logInfo("The job manager is locked.", module);
+                                }
                                 continue;
                             }
                             jm.reloadCrashedJobs();
                             pollResults.add(jm.poll(remainingCapacity).iterator());
                         }
                         // Create queue candidate list from "list of lists"
-                        List<Job> queueCandidates = new ArrayList<Job>();
+                        List<Job> queueCandidates = new ArrayList<>();
                         boolean addingJobs = true;
                         while (addingJobs) {
                             addingJobs = false;

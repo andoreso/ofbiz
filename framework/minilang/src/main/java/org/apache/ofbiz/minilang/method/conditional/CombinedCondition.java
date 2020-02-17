@@ -33,7 +33,7 @@ import org.w3c.dom.Element;
 /**
  * Implements the &lt;and&gt;, &lt;or&gt;, &lt;not&gt;, and &lt;xor&gt; elements.
  * 
- * @see <a href="https://cwiki.apache.org/confluence/display/OFBADMIN/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
+ * @see <a href="https://cwiki.apache.org/confluence/display/OFBIZ/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
  */
 public abstract class CombinedCondition extends MiniLangElement implements Conditional {
 
@@ -45,7 +45,7 @@ public abstract class CombinedCondition extends MiniLangElement implements Condi
         if (MiniLangValidate.validationOn() && childElements.isEmpty()) {
             MiniLangValidate.handleError("No conditional elements.", simpleMethod, element);
         }
-        List<Conditional> conditionalList = new ArrayList<Conditional>(childElements.size());
+        List<Conditional> conditionalList = new ArrayList<>(childElements.size());
         for (Element conditionalElement : UtilXml.childElementList(element)) {
             conditionalList.add(ConditionalFactory.makeConditional(conditionalElement, simpleMethod));
         }

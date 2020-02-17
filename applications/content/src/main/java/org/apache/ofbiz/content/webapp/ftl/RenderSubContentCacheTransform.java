@@ -52,10 +52,11 @@ import freemarker.template.TemplateTransformModel;
 public class RenderSubContentCacheTransform implements TemplateTransformModel {
 
     public static final String module = RenderSubContentCacheTransform.class.getName();
-    public static final String [] upSaveKeyNames = {"globalNodeTrail"};
+    static final String[] upSaveKeyNames = { "globalNodeTrail" };
 
+    @Override
     @SuppressWarnings("unchecked")
-    public Writer getWriter(final Writer out, Map args) {
+    public Writer getWriter(Writer out, @SuppressWarnings("rawtypes") Map args) {
         final Environment env = Environment.getCurrentEnvironment();
         final LocalDispatcher dispatcher = FreeMarkerWorker.getWrappedObject("dispatcher", env);
         final Delegator delegator = FreeMarkerWorker.getWrappedObject("delegator", env);
@@ -63,14 +64,14 @@ public class RenderSubContentCacheTransform implements TemplateTransformModel {
         final HttpServletResponse response = FreeMarkerWorker.getWrappedObject("response", env);
         final Map<String, Object> templateRoot = FreeMarkerWorker.createEnvironmentMap(env);
         FreeMarkerWorker.getSiteParameters(request, templateRoot);
-        final Map<String, Object> savedValuesUp = new HashMap<String, Object>();
+        final Map<String, Object> savedValuesUp = new HashMap<>();
         FreeMarkerWorker.saveContextValues(templateRoot, upSaveKeyNames, savedValuesUp);
         FreeMarkerWorker.overrideWithArgs(templateRoot, args);
         final GenericValue userLogin = FreeMarkerWorker.getWrappedObject("userLogin", env);
-        List<Map<String, ? extends Object>> trail = UtilGenerics.checkList(templateRoot.get("globalNodeTrail"));
+        List<Map<String, ? extends Object>> trail = UtilGenerics.cast(templateRoot.get("globalNodeTrail"));
         String contentAssocPredicateId = (String)templateRoot.get("contentAssocPredicateId");
         String strNullThruDatesOnly = (String)templateRoot.get("nullThruDatesOnly");
-        Boolean nullThruDatesOnly = (strNullThruDatesOnly != null && strNullThruDatesOnly.equalsIgnoreCase("true")) ? Boolean.TRUE :Boolean.FALSE;
+        Boolean nullThruDatesOnly = (strNullThruDatesOnly != null && "true".equalsIgnoreCase(strNullThruDatesOnly)) ? Boolean.TRUE :Boolean.FALSE;
         String thisSubContentId =  (String)templateRoot.get("subContentId");
         final boolean directAssocMode = UtilValidate.isNotEmpty(thisSubContentId) ? true : false;
         GenericValue val = null;
@@ -93,7 +94,8 @@ public class RenderSubContentCacheTransform implements TemplateTransformModel {
         }
         // This order is taken so that the dataResourceType can be overridden in the transform arguments.
         String subDataResourceTypeId = (String)templateRoot.get("subDataResourceTypeId");
-        if (UtilValidate.isEmpty(subDataResourceTypeId)) {
+
+        if (UtilValidate.isEmpty(subDataResourceTypeId) && view != null ) {
             try {
                 subDataResourceTypeId = (String) view.get("drDataResourceTypeId");
             } catch (IllegalArgumentException e) {
@@ -132,13 +134,13 @@ public class RenderSubContentCacheTransform implements TemplateTransformModel {
             }
 
             public void renderSubContent() throws IOException {
-                List<Map<String, ? extends Object>> passedGlobalNodeTrail = UtilGenerics.checkList(templateRoot.get("globalNodeTrail"));
+                List<Map<String, ? extends Object>> passedGlobalNodeTrail = UtilGenerics.cast(templateRoot.get("globalNodeTrail"));
                 String editRequestName = (String)templateRoot.get("editRequestName");
                 GenericValue thisView = null;
                 if (view != null) {
                     thisView = view;
                 } else if (passedGlobalNodeTrail.size() > 0) {
-                    Map<String, ? extends Object> map = UtilGenerics.checkMap(passedGlobalNodeTrail.get(passedGlobalNodeTrail.size() - 1));
+                    Map<String, ? extends Object> map = UtilGenerics.cast(passedGlobalNodeTrail.get(passedGlobalNodeTrail.size() - 1));
                     if (Debug.infoOn()) {
                         Debug.logInfo("in Render(3), map ." + map , module);
                     }

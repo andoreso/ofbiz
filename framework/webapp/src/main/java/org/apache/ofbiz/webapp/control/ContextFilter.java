@@ -18,11 +18,8 @@
  *******************************************************************************/
 package org.apache.ofbiz.webapp.control;
 
-import static org.apache.ofbiz.base.util.UtilGenerics.checkMap;
-
 import java.io.IOException;
 import java.util.Enumeration;
-import java.util.Map;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -34,10 +31,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.ofbiz.base.util.Debug;
-import org.apache.ofbiz.base.util.StringUtil;
 import org.apache.ofbiz.base.util.UtilGenerics;
 import org.apache.ofbiz.base.util.UtilHttp;
-import org.apache.ofbiz.base.util.UtilObject;
 import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.entity.Delegator;
 import org.apache.ofbiz.entity.DelegatorFactory;
@@ -63,9 +58,7 @@ public class ContextFilter implements Filter {
     private String defaultCharacterEncoding;
     private boolean isMultitenant;
 
-    /**
-     * @see javax.servlet.Filter#init(javax.servlet.FilterConfig)
-     */
+    @Override
     public void init(FilterConfig config) throws ServletException {
         this.config = config;
 
@@ -92,9 +85,7 @@ public class ContextFilter implements Filter {
         new java.security.SecureRandom().nextLong();
     }
 
-    /**
-     * @see javax.servlet.Filter#doFilter(javax.servlet.ServletRequest, javax.servlet.ServletResponse, javax.servlet.FilterChain)
-     */
+    @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
@@ -114,19 +105,6 @@ public class ContextFilter implements Filter {
 
         // set the server root url
         httpRequest.setAttribute("_SERVER_ROOT_URL_", UtilHttp.getServerRootUrl(httpRequest));
-
-        // request attributes from redirect call
-        String reqAttrMapHex = (String) httpRequest.getSession().getAttribute("_REQ_ATTR_MAP_");
-        if (UtilValidate.isNotEmpty(reqAttrMapHex)) {
-            byte[] reqAttrMapBytes = StringUtil.fromHexString(reqAttrMapHex);
-            Map<String, Object> reqAttrMap = checkMap(UtilObject.getObject(reqAttrMapBytes), String.class, Object.class);
-            if (reqAttrMap != null) {
-                for (Map.Entry<String, Object> entry: reqAttrMap.entrySet()) {
-                    httpRequest.setAttribute(entry.getKey(), entry.getValue());
-                }
-            }
-            httpRequest.getSession().removeAttribute("_REQ_ATTR_MAP_");
-        }
 
         if (request.getCharacterEncoding() == null) {
             request.setCharacterEncoding(defaultCharacterEncoding);
@@ -209,9 +187,7 @@ public class ContextFilter implements Filter {
         chain.doFilter(request, httpResponse);
     }
 
-    /**
-     * @see javax.servlet.Filter#destroy()
-     */
+    @Override
     public void destroy() {
         WebAppUtil.getDispatcher(config.getServletContext()).deregister();
         config = null;

@@ -55,6 +55,7 @@ import org.apache.ofbiz.widget.renderer.MenuStringRenderer;
 import org.apache.ofbiz.widget.renderer.ScreenRenderer;
 import org.apache.ofbiz.widget.renderer.ScreenStringRenderer;
 import org.apache.ofbiz.widget.renderer.TreeStringRenderer;
+import org.apache.ofbiz.widget.renderer.VisualTheme;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
@@ -71,7 +72,9 @@ public abstract class ModelScreenWidget extends ModelWidget {
     public ModelScreenWidget(ModelScreen modelScreen, Element widgetElement) {
         super(widgetElement);
         this.modelScreen = modelScreen;
-        if (Debug.verboseOn()) Debug.logVerbose("Reading Screen sub-widget with name: " + widgetElement.getNodeName(), module);
+        if (Debug.verboseOn()) {
+            Debug.logVerbose("Reading Screen sub-widget with name: " + widgetElement.getNodeName(), module);
+        }
     }
 
     public abstract void renderWidgetString(Appendable writer, Map<String, Object> context, ScreenStringRenderer screenStringRenderer) throws GeneralException, IOException;
@@ -80,7 +83,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
         if (subElementList.isEmpty()) {
             return Collections.emptyList();
         }
-        List<ModelScreenWidget> subWidgets = new ArrayList<ModelScreenWidget>(subElementList.size());
+        List<ModelScreenWidget> subWidgets = new ArrayList<>(subElementList.size());
         for (Element subElement: subElementList) {
             subWidgets.add(WidgetFactory.getModelScreenWidget(modelScreen, subElement));
         }
@@ -92,7 +95,9 @@ public abstract class ModelScreenWidget extends ModelWidget {
             return;
         }
         for (ModelScreenWidget subWidget: subWidgets) {
-            if (Debug.verboseOn()) Debug.logVerbose("Rendering screen " + subWidget.getModelScreen().getName() + "; widget class is " + subWidget.getClass().getName(), module);
+            if (Debug.verboseOn()) {
+                Debug.logVerbose("Rendering screen " + subWidget.getModelScreen().getName() + "; widget class is " + subWidget.getClass().getName(), module);
+            }
 
             // render the sub-widget itself
             subWidget.renderWidgetString(writer, context, screenStringRenderer);
@@ -111,7 +116,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
 
         public SectionsRenderer(Map<String, ModelScreenWidget> sectionMap, Map<String, Object> context, Appendable writer,
                 ScreenStringRenderer screenStringRenderer) {
-            Map<String, ModelScreenWidget> localMap = new HashMap<String, ModelScreenWidget>();
+            Map<String, ModelScreenWidget> localMap = new HashMap<>();
             localMap.putAll(sectionMap);
             this.sectionMap = Collections.unmodifiableMap(localMap);
             this.context = context;
@@ -307,9 +312,8 @@ public abstract class ModelScreenWidget extends ModelWidget {
         public String getBoundaryCommentName() {
             if (isMainSection) {
                 return getModelScreen().getSourceLocation() + "#" + getModelScreen().getName();
-            } else {
-                return getName();
             }
+            return getName();
         }
 
         public List<ModelAction> getActions() {
@@ -344,7 +348,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
             this.idExdr = FlexibleStringExpander.getInstance(containerElement.getAttribute("id"));
             this.styleExdr = FlexibleStringExpander.getInstance(containerElement.getAttribute("style"));
             List<? extends Element> subElementList = UtilXml.childElementList(containerElement, "column");
-            List<Column> columns = new ArrayList<Column>(subElementList.size());
+            List<Column> columns = new ArrayList<>(subElementList.size());
             for (Element element : subElementList) {
                 columns.add(new Column(modelScreen, element));
             }
@@ -430,6 +434,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
     public static final class Container extends ModelScreenWidget {
         public static final String TAG_NAME = "container";
         private final FlexibleStringExpander idExdr;
+        private final FlexibleStringExpander typeExdr;
         private final FlexibleStringExpander styleExdr;
         private final FlexibleStringExpander autoUpdateTargetExdr;
         private final FlexibleStringExpander autoUpdateInterval;
@@ -438,6 +443,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
         public Container(ModelScreen modelScreen, Element containerElement) {
             super(modelScreen, containerElement);
             this.idExdr = FlexibleStringExpander.getInstance(containerElement.getAttribute("id"));
+            this.typeExdr = FlexibleStringExpander.getInstance(containerElement.getAttribute("type"));
             this.styleExdr = FlexibleStringExpander.getInstance(containerElement.getAttribute("style"));
             this.autoUpdateTargetExdr = FlexibleStringExpander.getInstance(containerElement.getAttribute("auto-update-target"));
             String autoUpdateInterval = containerElement.getAttribute("auto-update-interval");
@@ -470,6 +476,10 @@ public abstract class ModelScreenWidget extends ModelWidget {
             return this.idExdr.expandString(context);
         }
 
+        public String getType(Map<String, Object> context) {
+            return this.typeExdr.expandString(context);
+        }
+
         public String getStyle(Map<String, Object> context) {
             return this.styleExdr.expandString(context);
         }
@@ -493,6 +503,10 @@ public abstract class ModelScreenWidget extends ModelWidget {
 
         public FlexibleStringExpander getIdExdr() {
             return idExdr;
+        }
+
+        public FlexibleStringExpander getTypeExdr() {
+            return typeExdr;
         }
 
         public FlexibleStringExpander getStyleExdr() {
@@ -540,7 +554,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
             this.titleExdr = FlexibleStringExpander.getInstance(screenletElement.getAttribute("title"));
             List<? extends Element> subElementList = UtilXml.childElementList(screenletElement);
             // Make a copy of the unmodifiable List so we can modify it.
-            List<ModelScreenWidget> subWidgets = new ArrayList<ModelScreenWidget>(ModelScreenWidget.readSubWidgets(getModelScreen(), subElementList));
+            List<ModelScreenWidget> subWidgets = new ArrayList<>(ModelScreenWidget.readSubWidgets(getModelScreen(), subElementList));
             Menu navigationMenu = null;
             String navMenuName = screenletElement.getAttribute("navigation-menu-name");
             if (!navMenuName.isEmpty()) {
@@ -586,11 +600,12 @@ public abstract class ModelScreenWidget extends ModelWidget {
             boolean collapsed = getInitiallyCollapsed(context);
             if (this.collapsible) {
                 String preferenceKey = getPreferenceKey(context) + "_collapsed";
-                Map<String, Object> requestParameters = UtilGenerics.checkMap(context.get("requestParameters"));
+                Map<String, Object> requestParameters = UtilGenerics.cast(context.get("requestParameters"));
                 if (requestParameters != null) {
                     String collapsedParam = (String) requestParameters.get(preferenceKey);
-                    if (collapsedParam != null)
+                    if (collapsedParam != null) {
                         collapsed = "true".equals(collapsedParam);
+                    }
                 }
             }
             try {
@@ -613,9 +628,9 @@ public abstract class ModelScreenWidget extends ModelWidget {
         //initially-collapsed status, which may be overriden by user preference
         public boolean getInitiallyCollapsed(Map<String, Object> context) {
             String screenletId = this.getId(context) + "_collapsed";
-            Map<String, ? extends Object> userPreferences = UtilGenerics.checkMap(context.get("userPreferences"));
+            Map<String, ? extends Object> userPreferences = UtilGenerics.cast(context.get("userPreferences"));
             if (userPreferences != null && userPreferences.containsKey(screenletId)) {
-                return Boolean.valueOf((String)userPreferences.get(screenletId)).booleanValue() ;
+                return Boolean.valueOf((String) userPreferences.get(screenletId));
             }
 
             return "true".equals(this.initiallyCollapsed.expand(context));
@@ -756,11 +771,12 @@ public abstract class ModelScreenWidget extends ModelWidget {
                 }
 
                 UtilGenerics.<MapStack<String>>cast(context).push();
+                Object obj = context.get("_WIDGETTRAIL_");
 
                 // build the widgetpath
-                List<String> widgetTrail = UtilGenerics.toList(context.get("_WIDGETTRAIL_"));
+                List<String> widgetTrail = (obj instanceof List) ? UtilGenerics.cast(obj) : null;
                 if (widgetTrail == null) {
-                    widgetTrail = new LinkedList<String>();
+                    widgetTrail = new LinkedList<>();
                 }
 
                 String thisName = nameExdr.expandString(context);
@@ -773,7 +789,9 @@ public abstract class ModelScreenWidget extends ModelWidget {
             String location = this.getLocation(context);
 
             if (name.isEmpty()) {
-                if (Debug.verboseOn()) Debug.logVerbose("In the include-screen tag the screen name was empty, ignoring include; in screen [" + getModelScreen().getName() + "]", module);
+                if (Debug.verboseOn()) {
+                    Debug.logVerbose("In the include-screen tag the screen name was empty, ignoring include; in screen [" + getModelScreen().getName() + "]", module);
+                }
                 return;
             }
 
@@ -826,7 +844,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
             super(modelScreen, decoratorScreenElement);
             this.nameExdr = FlexibleStringExpander.getInstance(decoratorScreenElement.getAttribute("name"));
             this.locationExdr = FlexibleStringExpander.getInstance(decoratorScreenElement.getAttribute("location"));
-            Map<String, ModelScreenWidget> sectionMap = new HashMap<String, ModelScreenWidget>();
+            Map<String, ModelScreenWidget> sectionMap = new HashMap<>();
             List<? extends Element> decoratorSectionElementList = UtilXml.childElementList(decoratorScreenElement, "decorator-section");
             for (Element decoratorSectionElement: decoratorSectionElementList) {
                 DecoratorSection decoratorSection = new DecoratorSection(modelScreen, decoratorSectionElement);
@@ -836,17 +854,16 @@ public abstract class ModelScreenWidget extends ModelWidget {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
         public void renderWidgetString(Appendable writer, Map<String, Object> context, ScreenStringRenderer screenStringRenderer) throws GeneralException, IOException {
             // isolate the scope
             if (!(context instanceof MapStack)) {
                 context = MapStack.create(context);
             }
 
-            MapStack contextMs = (MapStack) context;
+            MapStack<String> contextMs = UtilGenerics.cast(context);
 
             // create a standAloneStack, basically a "save point" for this SectionsRenderer, and make a new "screens" object just for it so it is isolated and doesn't follow the stack down
-            MapStack standAloneStack = contextMs.standAloneChildStack();
+            MapStack<String> standAloneStack = contextMs.standAloneChildStack();
             standAloneStack.put("screens", new ScreenRenderer(writer, standAloneStack, screenStringRenderer));
             SectionsRenderer sections = new SectionsRenderer(this.sectionMap, standAloneStack, writer, screenStringRenderer);
 
@@ -925,7 +942,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
 
         @Override
         public void renderWidgetString(Appendable writer, Map<String, Object> context, ScreenStringRenderer screenStringRenderer) throws GeneralException, IOException {
-            Map<String, ? extends Object> preRenderedContent = UtilGenerics.checkMap(context.get("preRenderedContent"));
+            Map<String, ? extends Object> preRenderedContent = UtilGenerics.cast(context.get("preRenderedContent"));
             if (preRenderedContent != null && preRenderedContent.containsKey(getName())) {
                 try {
                     writer.append((String) preRenderedContent.get(getName()));
@@ -1037,7 +1054,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
             // Output format might not support forms, so make form rendering optional.
             FormStringRenderer formStringRenderer = (FormStringRenderer) context.get("formStringRenderer");
             if (formStringRenderer == null) {
-                Debug.logVerbose("FormStringRenderer instance not found in rendering context, form not rendered.", module);
+                if (Debug.verboseOn()) Debug.logVerbose("FormStringRenderer instance not found in rendering context, form not rendered.", module);
                 return;
             }
             boolean protectScope = !shareScope(context);
@@ -1123,7 +1140,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
             // Output format might not support forms, so make form rendering optional.
             FormStringRenderer formStringRenderer = (FormStringRenderer) context.get("formStringRenderer");
             if (formStringRenderer == null) {
-                Debug.logVerbose("FormStringRenderer instance not found in rendering context, form not rendered.", module);
+                if (Debug.verboseOn()) Debug.logVerbose("FormStringRenderer instance not found in rendering context, form not rendered.", module);
                 return;
             }
             boolean protectScope = !shareScope(context);
@@ -1153,6 +1170,8 @@ public abstract class ModelScreenWidget extends ModelWidget {
             String location = this.getLocation(context);
             try {
                 modelForm = GridFactory.getGridFromLocation(location, name, getModelScreen().getDelegator(context).getModelReader(), getModelScreen().getDispatcher(context).getDispatchContext());
+            } catch (RuntimeException e) {
+                throw e;
             } catch (Exception e) {
                 String errMsg = "Error rendering included form named [" + name + "] at location [" + location + "]: ";
                 Debug.logError(e, errMsg, module);
@@ -1215,7 +1234,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
             // Output format might not support trees, so make tree rendering optional.
             TreeStringRenderer treeStringRenderer = (TreeStringRenderer) context.get("treeStringRenderer");
             if (treeStringRenderer == null) {
-                Debug.logVerbose("TreeStringRenderer instance not found in rendering context, tree not rendered.", module);
+                if (Debug.verboseOn()) Debug.logVerbose("TreeStringRenderer instance not found in rendering context, tree not rendered.", module);
                 return;
             }
             boolean protectScope = !shareScope(context);
@@ -1231,15 +1250,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
             ModelTree modelTree = null;
             try {
                 modelTree = TreeFactory.getTreeFromLocation(this.getLocation(context), this.getName(context), getModelScreen().getDelegator(context), getModelScreen().getDispatcher(context));
-            } catch (IOException e) {
-                String errMsg = "Error rendering included tree named [" + name + "] at location [" + location + "]: " + e.toString();
-                Debug.logError(e, errMsg, module);
-                throw new RuntimeException(errMsg);
-            } catch (SAXException e) {
-                String errMsg = "Error rendering included tree named [" + name + "] at location [" + location + "]: " + e.toString();
-                Debug.logError(e, errMsg, module);
-                throw new RuntimeException(errMsg);
-            } catch (ParserConfigurationException e) {
+            } catch (IOException | SAXException | ParserConfigurationException e) {
                 String errMsg = "Error rendering included tree named [" + name + "] at location [" + location + "]: " + e.toString();
                 Debug.logError(e, errMsg, module);
                 throw new RuntimeException(errMsg);
@@ -1284,7 +1295,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
 
         public PlatformSpecific(ModelScreen modelScreen, Element platformSpecificElement) {
             super(modelScreen, platformSpecificElement);
-            Map<String, ModelScreenWidget> subWidgets = new HashMap<String, ModelScreenWidget>();
+            Map<String, ModelScreenWidget> subWidgets = new HashMap<>();
             List<? extends Element> childElements = UtilXml.childElementList(platformSpecificElement);
             if (childElements != null) {
                 for (Element childElement: childElements) {
@@ -1354,11 +1365,13 @@ public abstract class ModelScreenWidget extends ModelWidget {
             this.enableEditName = FlexibleStringExpander.getInstance(subContentElement.getAttribute("enable-edit-name"));
             this.xmlEscape = "true".equals(subContentElement.getAttribute("xml-escape"));
             String width = subContentElement.getAttribute("width");
-            if (width.isEmpty())
+            if (width.isEmpty()) {
                 width = "60%";
+            }
             this.height = subContentElement.getAttribute("height");
-            if (this.height.isEmpty())
+            if (this.height.isEmpty()) {
                 width = "400px";
+            }
             this.width = width;
             this.border = subContentElement.getAttribute("border");
         }
@@ -1393,7 +1406,9 @@ public abstract class ModelScreenWidget extends ModelWidget {
                         return;
                     }
                     if (content != null) {
-                        if (content.get("dataResourceId") != null) expandedDataResourceId = content.getString("dataResourceId");
+                        if (content.get("dataResourceId") != null) {
+                            expandedDataResourceId = content.getString("dataResourceId");
+                        }
                     } else {
                         String errMsg = "Could not find content with contentId [" + expandedContentId + "] ";
                         Debug.logError(errMsg, module);
@@ -1421,16 +1436,11 @@ public abstract class ModelScreenWidget extends ModelWidget {
                     screenStringRenderer.renderContentEnd(writer, context, this);
                 }
                 UtilGenerics.<MapStack<String>>cast(context).pop();
-            } catch (IOException e) {
+            } catch (IOException | GenericEntityException e) {
                 String errMsg = "Error rendering content with contentId [" + getContentId(context) + "]: " + e.toString();
                 Debug.logError(e, errMsg, module);
                 throw new RuntimeException(errMsg);
-            } catch (GenericEntityException e) {
-                String errMsg = "Error obtaining content with contentId [" + getContentId(context) + "]: " + e.toString();
-                Debug.logError(e, errMsg, module);
-                throw new RuntimeException(errMsg);
             }
-
         }
 
         public String getContentId(Map<String, Object> context) {
@@ -1558,7 +1568,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
         @Override
         public void accept(ModelWidgetVisitor visitor) throws Exception {
             // TODO Auto-generated method stub
-            
+
         }
     }
 
@@ -1578,7 +1588,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
             // Output format might not support menus, so make menu rendering optional.
             MenuStringRenderer menuStringRenderer = (MenuStringRenderer) context.get("menuStringRenderer");
             if (menuStringRenderer == null) {
-                Debug.logVerbose("MenuStringRenderer instance not found in rendering context, menu not rendered.", module);
+                if (Debug.verboseOn()) Debug.logVerbose("MenuStringRenderer instance not found in rendering context, menu not rendered.", module);
                 return;
             }
             ModelMenu modelMenu = getModelMenu(context);
@@ -1590,7 +1600,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
             String location = this.getLocation(context);
             ModelMenu modelMenu = null;
             try {
-                modelMenu = MenuFactory.getMenuFromLocation(location, name);
+                modelMenu = MenuFactory.getMenuFromLocation(location, name, (VisualTheme) context.get("visualTheme"));
             } catch (Exception e) {
                 String errMsg = "Error rendering included menu named [" + name + "] at location [" + location + "]: ";
                 Debug.logError(e, errMsg, module);
@@ -1633,6 +1643,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
             }
         }
 
+        @Override
         public String getName() {
             return link.getName();
         }
@@ -1766,6 +1777,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
         public static final String TAG_NAME = "image";
         private final Image image;
 
+        @Override
         public String getName() {
             return image.getName();
         }
@@ -1910,19 +1922,19 @@ public abstract class ModelScreenWidget extends ModelWidget {
                                                .orderBy("columnSeqId")
                                                .cache(true)
                                                .queryList();
-                
+
                 // Renders the portalPage header
                 screenStringRenderer.renderPortalPageBegin(writer, context, this);
-                
+
                 // First column has no previous column
                 String prevColumnSeqId = "";
-                
+
                 // Iterates through the PortalPage columns
                 ListIterator <GenericValue>columnsIterator = portalPageColumns.listIterator();
                 while(columnsIterator.hasNext()) {
                     GenericValue columnValue = columnsIterator.next();
                     String columnSeqId = columnValue.getString("columnSeqId");
-                    
+
                     // Renders the portalPageColumn header
                     screenStringRenderer.renderPortalPageColumnBegin(writer, context, this, columnValue);
 
@@ -1941,7 +1953,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
                     if (columnsIterator.hasNext()) {
                         nextColumnSeqId = portalPageColumns.get(columnsIterator.nextIndex()).getString("columnSeqId");
                     }
-                    
+
                     // Iterates through the Portlets in the Column
                     ListIterator <GenericValue>portletsIterator = portalPagePortlets.listIterator();
                     while(portletsIterator.hasNext()) {
@@ -1962,19 +1974,19 @@ public abstract class ModelScreenWidget extends ModelWidget {
                         context.put("nextPortletSeqId", nextPortletSeqId);
                         context.put("prevColumnSeqId", prevColumnSeqId);
                         context.put("nextColumnSeqId", nextColumnSeqId);
-                       
+
                         // Get portlet's attributes
                         portletAttributes = EntityQuery.use(delegator)
                                                        .from("PortletAttribute")
                                                        .where("portalPageId", portletValue.get("portalPageId"), "portalPortletId", portletValue.get("portalPortletId"), "portletSeqId", portletValue.get("portletSeqId"))
                                                        .queryList();
-                        
+
                         ListIterator <GenericValue>attributesIterator = portletAttributes.listIterator();
                         while (attributesIterator.hasNext()) {
                             GenericValue attribute = attributesIterator.next();
                             context.put(attribute.getString("attrName"), attribute.getString("attrValue"));
                         }
-                        
+
                         // Renders the portalPagePortlet
                         screenStringRenderer.renderPortalPagePortletBegin(writer, context, this, portletValue);
                         screenStringRenderer.renderPortalPagePortletBody(writer, context, this, portletValue);
@@ -1985,7 +1997,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
                             GenericValue attribute = attributesIterator.previous();
                             context.remove(attribute.getString("attrName"));
                         }
-                        
+
                         // Uses the actual portlet as prevPortlet for next iteration
                         prevPortletId = (String) portletValue.get("portalPortletId");
                         prevPortletSeqId = (String) portletValue.get("portletSeqId");
@@ -1998,12 +2010,8 @@ public abstract class ModelScreenWidget extends ModelWidget {
                 }
                 // Renders the portalPage footer
                 screenStringRenderer.renderPortalPageEnd(writer, context, this);
-            } catch (IOException e) {
+            } catch (IOException | GenericEntityException e) {
                 String errMsg = "Error rendering PortalPage with portalPageId [" + getId(context) + "]: " + e.toString();
-                Debug.logError(e, errMsg, module);
-                throw new RuntimeException(errMsg);
-            } catch (GenericEntityException e) {
-                String errMsg = "Error obtaining PortalPage with portalPageId [" + getId(context) + "]: " + e.toString();
                 Debug.logError(e, errMsg, module);
                 throw new RuntimeException(errMsg);
             }
@@ -2017,7 +2025,7 @@ public abstract class ModelScreenWidget extends ModelWidget {
             GenericValue portalPage = getPortalPageValue(context);
             return portalPage.getString("originalPortalPageId");
         }
-        
+
         public String getActualPortalPageId(Map<String, Object> context) {
             GenericValue portalPage = getPortalPageValue(context);
             return portalPage.getString("portalPageId");

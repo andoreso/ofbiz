@@ -32,6 +32,7 @@ under the License.
                             </condition>
                             <widgets>
                                 <include-menu name="BomTabBar" location="component://manufacturing/widget/manufacturing/ManufacturingMenus.xml"/>
+                                <container style="button-bar"><link target="EditProductBom" text="${uiLabelMap.ManufacturingCreateBom}" style="buttontext"/></container>
                                 <decorator-section-include name="body"/>
                             </widgets>
                             <fail-widgets>
@@ -86,7 +87,7 @@ under the License.
                         <screenlet id="EditProductManufacturingRulePanel" title="${uiLabelMap.PageTitleEditProductManufacturingRules}" collapsible="true">
                             <include-form name="UpdateProductManufacturingRule" location="component://manufacturing/widget/manufacturing/BomForms.xml"/>
                         </screenlet>
-                        <include-form name="ListProductManufacturingRules" location="component://manufacturing/widget/manufacturing/BomForms.xml"/>
+                        <include-grid name="ListProductManufacturingRules" location="component://manufacturing/widget/manufacturing/BomForms.xml"/>
                     </decorator-section>
                 </decorator-screen>
             </widgets>
@@ -129,6 +130,7 @@ under the License.
             </widgets>
         </section>
     </screen>
+    
     <screen name="FindBom">
         <section>
             <actions>
@@ -142,14 +144,11 @@ under the License.
                 <decorator-screen name="CommonBomDecorator">
                     <decorator-section name="body">
                         <decorator-screen name="FindScreenDecorator" location="component://common/widget/CommonScreens.xml">
-                            <decorator-section name="menu-bar">
-                                <container style="button-bar"><link target="EditProductBom" text="${uiLabelMap.ManufacturingCreateBom}" style="buttontext"/></container>
-                            </decorator-section>
                             <decorator-section name="search-options">
                                 <include-form name="FindBom" location="component://manufacturing/widget/manufacturing/BomForms.xml"/>
                             </decorator-section>
                             <decorator-section name="search-results">
-                                <include-form name="ListBom" location="component://manufacturing/widget/manufacturing/BomForms.xml"/>
+                                <include-grid name="ListBom" location="component://manufacturing/widget/manufacturing/BomForms.xml"/>
                             </decorator-section>
                         </decorator-screen>
                     </decorator-section>

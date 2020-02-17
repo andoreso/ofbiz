@@ -27,7 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -45,7 +44,9 @@ import org.apache.ofbiz.widget.model.ModelMenu;
 import org.apache.ofbiz.widget.model.ModelMenuItem;
 import org.apache.ofbiz.widget.model.ModelMenuItem.MenuLink;
 import org.apache.ofbiz.widget.model.ModelWidget;
+import org.apache.ofbiz.widget.model.ThemeFactory;
 import org.apache.ofbiz.widget.renderer.MenuStringRenderer;
+import org.apache.ofbiz.widget.renderer.VisualTheme;
 
 import freemarker.core.Environment;
 import freemarker.template.Template;
@@ -55,20 +56,22 @@ public class MacroMenuRenderer implements MenuStringRenderer {
 
     public static final String module = MacroMenuRenderer.class.getName();
     private int macroCount = 999;
-    private final Map<Appendable, Environment> environments = new HashMap<Appendable, Environment>();
+    private final Map<Appendable, Environment> environments = new HashMap<>();
     private final Template macroLibrary;
     private final HttpServletRequest request;
     private final HttpServletResponse response;
+    private final VisualTheme visualTheme;
 
     public MacroMenuRenderer(String macroLibraryPath, HttpServletRequest request, HttpServletResponse response) throws TemplateException, IOException {
         this.macroLibrary = FreeMarkerWorker.getTemplate(macroLibraryPath);
         this.request = request;
         this.response = response;
+        this.visualTheme = ThemeFactory.resolveVisualTheme(request);
     }
 
     // Made this a separate method so it can be externalized and reused.
     private Map<String, Object> createImageParameters(Map<String, Object> context, Image image) {
-        Map<String, Object> parameters = new HashMap<String, Object>();
+        Map<String, Object> parameters = new HashMap<>();
         parameters.put("id", image.getId(context));
         parameters.put("style", image.getStyle(context));
         parameters.put("width", image.getWidth(context));
@@ -81,8 +84,7 @@ public class MacroMenuRenderer implements MenuStringRenderer {
                 boolean fullPath = false;
                 boolean secure = false;
                 boolean encode = false;
-                ServletContext ctx = (ServletContext) request.getAttribute("servletContext");
-                RequestHandler rh = (RequestHandler) ctx.getAttribute("_REQUEST_HANDLER_");
+                RequestHandler rh = RequestHandler.from(request);
                 src = rh.makeLink(request, response, src, fullPath, secure, encode);
             } else if ("content".equalsIgnoreCase(urlMode)) {
                 StringBuilder newURL = new StringBuilder();
@@ -97,6 +99,7 @@ public class MacroMenuRenderer implements MenuStringRenderer {
 
     private void executeMacro(Appendable writer, String macro) throws IOException, TemplateException {
         Environment environment = getEnvironment(writer);
+        environment.setVariable("visualTheme", FreeMarkerWorker.autoWrap(visualTheme, environment));
         Reader templateReader = new StringReader(macro);
         macroCount++;
         String templateName = toString().concat("_") + macroCount;
@@ -140,14 +143,14 @@ public class MacroMenuRenderer implements MenuStringRenderer {
         return environment;
     }
 
-    private boolean isDisableIfEmpty(ModelMenuItem menuItem, Map<String, Object> context) {
+    private static boolean isDisableIfEmpty(ModelMenuItem menuItem, Map<String, Object> context) {
         boolean disabled = false;
         String disableIfEmpty = menuItem.getDisableIfEmpty();
         if (UtilValidate.isNotEmpty(disableIfEmpty)) {
             List<String> keys = StringUtil.split(disableIfEmpty, "|");
             for (String key : keys) {
                 Object obj = context.get(key);
-                if (obj == null) {
+                if (UtilValidate.isEmpty(obj)) {
                     disabled = true;
                     break;
                 }
@@ -156,12 +159,12 @@ public class MacroMenuRenderer implements MenuStringRenderer {
         return disabled;
     }
 
-    private boolean isHideIfSelected(ModelMenuItem menuItem, Map<String, Object> context) {
+    private static boolean isHideIfSelected(ModelMenuItem menuItem, Map<String, Object> context) {
         ModelMenu menu = menuItem.getModelMenu();
         String currentMenuItemName = menu.getSelectedMenuItemContextFieldName(context);
         String currentItemName = menuItem.getName();
         Boolean hideIfSelected = menuItem.getHideIfSelected();
-        return (hideIfSelected != null && hideIfSelected.booleanValue() && currentMenuItemName != null && currentMenuItemName.equals(currentItemName));
+        return (hideIfSelected != null && hideIfSelected && currentMenuItemName != null && currentMenuItemName.equals(currentItemName));
     }
 
     @Override
@@ -194,7 +197,7 @@ public class MacroMenuRenderer implements MenuStringRenderer {
 
     @Override
     public void renderLink(Appendable writer, Map<String, Object> context, MenuLink link) throws IOException {
-        Map<String, Object> parameters = new HashMap<String, Object>();
+        Map<String, Object> parameters = new HashMap<>();
         String target = link.getTarget(context);
         ModelMenuItem menuItem = link.getLinkMenuItem();
         if (isDisableIfEmpty(menuItem, context)) {
@@ -216,7 +219,7 @@ public class MacroMenuRenderer implements MenuStringRenderer {
             if (context.containsKey("parentItemIndex")) {
                 uniqueItemName.append(context.get("parentItemIndex")).append("_").append(context.get("itemIndex"));
             } else {
-                uniqueItemName.append("_").append(context.get("itemIndex")); 
+                uniqueItemName.append("_").append(context.get("itemIndex"));
             }
         }
         parameters.put("uniqueItemName", uniqueItemName.toString());
@@ -279,7 +282,7 @@ public class MacroMenuRenderer implements MenuStringRenderer {
     public void renderMenuClose(Appendable writer, Map<String, Object> context, ModelMenu menu) throws IOException {
         Map<String, Object> parameters = null;
         if (ModelWidget.widgetBoundaryCommentsEnabled(context)) {
-            parameters = new HashMap<String, Object>();
+            parameters = new HashMap<>();
             StringBuilder sb = new StringBuilder("End Menu Widget ");
             sb.append(menu.getBoundaryCommentName());
             parameters.put("boundaryComment", sb.toString());
@@ -293,9 +296,10 @@ public class MacroMenuRenderer implements MenuStringRenderer {
 
     @Override
     public void renderMenuItem(Appendable writer, Map<String, Object> context, ModelMenuItem menuItem) throws IOException {
-        if (isHideIfSelected(menuItem, context))
+        if (isHideIfSelected(menuItem, context)) {
             return;
-        Map<String, Object> parameters = new HashMap<String, Object>();
+        }
+        Map<String, Object> parameters = new HashMap<>();
         String style = menuItem.getWidgetStyle();
         if (menuItem.isSelected(context)) {
             String selectedStyle = menuItem.getSelectedStyle();
@@ -307,7 +311,7 @@ public class MacroMenuRenderer implements MenuStringRenderer {
             }
             style += selectedStyle ;
         }
-        if (this.isDisableIfEmpty(menuItem, context)) {
+        if (isDisableIfEmpty(menuItem, context)) {
             style = menuItem.getDisabledTitleStyle();
         }
         if (style == null) {
@@ -356,7 +360,7 @@ public class MacroMenuRenderer implements MenuStringRenderer {
 
     @Override
     public void renderMenuOpen(Appendable writer, Map<String, Object> context, ModelMenu menu) throws IOException {
-        Map<String, Object> parameters = new HashMap<String, Object>();
+        Map<String, Object> parameters = new HashMap<>();
         if (ModelWidget.widgetBoundaryCommentsEnabled(context)) {
             StringBuilder sb = new StringBuilder("Begin Menu Widget ");
             sb.append(menu.getBoundaryCommentName());

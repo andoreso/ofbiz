@@ -56,7 +56,7 @@ under the License.
         </fo:table-cell>
     </fo:table-row>
     <#-- toggle the row color -->
-    <#if rowColor == "white">
+    <#if "white" == rowColor>
         <#assign rowColor = "#D4D0C8">
     <#else>
         <#assign rowColor = "white">
@@ -94,7 +94,7 @@ under the License.
         </fo:table-cell>
     </fo:table-row>
     <#-- toggle the row color -->
-    <#if rowColor == "white">
+    <#if "white" == rowColor>
         <#assign rowColor = "#D4D0C8">
     <#else>
         <#assign rowColor = "white">
@@ -207,9 +207,9 @@ under the License.
                 <fo:instream-foreign-object>
                     <barcode:barcode xmlns:barcode="http://barcode4j.krysalis.org/ns"
                             message="${picklistBinInfo.primaryOrderHeader.orderId}/${picklistBinInfo.primaryOrderItemShipGroup.shipGroupSeqId}">
-                        <barcode:code39>
+                        <barcode:code128>
                             <barcode:height>8mm</barcode:height>
-                        </barcode:code39>
+                        </barcode:code128>
                     </barcode:barcode>
                 </fo:instream-foreign-object>
             </fo:block>
@@ -278,7 +278,7 @@ under the License.
                             </#if>
                         </fo:table-row>
                         <#-- toggle the row color -->
-                        <#if rowColor == "white">
+                        <#if "white" == rowColor>
                             <#assign rowColor = "#D4D0C8">
                         <#else>
                             <#assign rowColor = "white">

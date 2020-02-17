@@ -22,11 +22,11 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.UtilMisc;
-import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.base.util.UtilXml;
 import org.apache.ofbiz.service.DispatchContext;
 import org.apache.ofbiz.service.GenericServiceException;
@@ -40,14 +40,14 @@ public final class ServiceEcaRule implements java.io.Serializable {
 
     public static final String module = ServiceEcaRule.class.getName();
 
-    protected final String serviceName;
-    protected final String eventName;
-    protected final boolean runOnFailure;
-    protected final boolean runOnError;
-    protected final List<ServiceEcaCondition> conditions = new ArrayList<ServiceEcaCondition>();
-    protected final List<Object> actionsAndSets = new ArrayList<Object>();
-    protected boolean enabled = true;
-    protected final String definitionLocation;
+    public final String serviceName;
+    public final String eventName;
+    public final boolean runOnFailure;
+    public final boolean runOnError;
+    public final List<ServiceEcaCondition> conditions = new ArrayList<>();
+    public final List<Object> actionsAndSets = new ArrayList<>();
+    public boolean enabled = true;
+    public final String definitionLocation;
 
     public ServiceEcaRule(Element eca, String definitionLocation) {
         this.definitionLocation = definitionLocation;
@@ -55,6 +55,7 @@ public final class ServiceEcaRule implements java.io.Serializable {
         this.eventName = eca.getAttribute("event");
         this.runOnFailure = "true".equals(eca.getAttribute("run-on-failure"));
         this.runOnError = "true".equals(eca.getAttribute("run-on-error"));
+        this.enabled = !"false".equals(eca.getAttribute("enabled"));
 
         for (Element element: UtilXml.childElementList(eca, "condition")) {
             conditions.add(new ServiceEcaCondition(element, true, false));
@@ -103,7 +104,7 @@ public final class ServiceEcaRule implements java.io.Serializable {
     }
 
     public List<ServiceEcaAction> getEcaActionList() {
-        List<ServiceEcaAction> actionList = new LinkedList<ServiceEcaAction>();
+        List<ServiceEcaAction> actionList = new LinkedList<>();
         for (Object actionOrSet: this.actionsAndSets) {
             if (actionOrSet instanceof ServiceEcaAction) {
                 actionList.add((ServiceEcaAction) actionOrSet);
@@ -113,7 +114,7 @@ public final class ServiceEcaRule implements java.io.Serializable {
     }
 
     public List<ServiceEcaCondition> getEcaConditionList() {
-        List<ServiceEcaCondition> condList = new LinkedList<ServiceEcaCondition>();
+        List<ServiceEcaCondition> condList = new LinkedList<>();
         condList.addAll(this.conditions);
         return condList;
     }
@@ -177,13 +178,28 @@ public final class ServiceEcaRule implements java.io.Serializable {
     }
 
     @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((actionsAndSets == null) ? 0 : actionsAndSets.hashCode());
+        result = prime * result + ((conditions == null) ? 0 : conditions.hashCode());
+        result = prime * result + ((definitionLocation == null) ? 0 : definitionLocation.hashCode());
+        result = prime * result + (enabled ? 1231 : 1237);
+        result = prime * result + ((eventName == null) ? 0 : eventName.hashCode());
+        result = prime * result + (runOnError ? 1231 : 1237);
+        result = prime * result + (runOnFailure ? 1231 : 1237);
+        result = prime * result + ((serviceName == null) ? 0 : serviceName.hashCode());
+        return result;
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (obj instanceof ServiceEcaRule) {
             ServiceEcaRule other = (ServiceEcaRule) obj;
-            if (!UtilValidate.areEqual(this.serviceName, other.serviceName)) {
+            if (!Objects.equals(this.serviceName, other.serviceName)) {
                 return false;
             }
-            if (!UtilValidate.areEqual(this.eventName, other.eventName)) {
+            if (!Objects.equals(this.eventName, other.eventName)) {
                 return false;
             }
             if (!this.conditions.equals(other.conditions)) {
@@ -197,9 +213,6 @@ public final class ServiceEcaRule implements java.io.Serializable {
                 return false;
             }
             if (this.runOnError != other.runOnError) {
-                return false;
-            }
-            if (this.enabled != other.enabled) {
                 return false;
             }
 

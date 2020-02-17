@@ -49,6 +49,7 @@ import org.apache.ofbiz.service.config.ServiceConfigUtil;
 import org.xml.sax.SAXException;
 
 import com.ibm.icu.util.Calendar;
+import com.ibm.icu.util.TimeZone;
 
 /**
  * A {@link Job} that is backed by the entity engine. Job data is stored
@@ -80,10 +81,10 @@ public class PersistedServiceJob extends GenericServiceJob {
         this.jobValue = jobValue;
         Timestamp storedDate = jobValue.getTimestamp("runTime");
         this.startTime = storedDate.getTime();
-        this.maxRetry = jobValue.get("maxRetry") != null ? jobValue.getLong("maxRetry").longValue() : -1;
+        this.maxRetry = jobValue.get("maxRetry") != null ? jobValue.getLong("maxRetry") : 0;
         Long retryCount = jobValue.getLong("currentRetryCount");
         if (retryCount != null) {
-            this.currentRetryCount = retryCount.longValue();
+            this.currentRetryCount = retryCount;
         } else {
             // backward compatibility
             this.currentRetryCount = getRetries(this.delegator);
@@ -106,16 +107,15 @@ public class PersistedServiceJob extends GenericServiceJob {
         if (cancelTime != null || startTime != null) {
             // job not available
             throw new InvalidJobException("Job [" + getJobId() + "] is not available");
-        } else {
-            jobValue.set("statusId", "SERVICE_QUEUED");
-            try {
-                jobValue.store();
-            } catch (GenericEntityException e) {
-                throw new InvalidJobException("Unable to set the startDateTime and statusId on the current job [" + getJobId() + "]; not running!", e);
-            }
-            if (Debug.verboseOn()) {
-                Debug.logVerbose("Placing job [" + getJobId() + "] in queue", module);
-            }
+        }
+        jobValue.set("statusId", "SERVICE_QUEUED");
+        try {
+            jobValue.store();
+        } catch (GenericEntityException e) {
+            throw new InvalidJobException("Unable to set the startDateTime and statusId on the current job [" + getJobId() + "]; not running!", e);
+        }
+        if (Debug.verboseOn()) {
+            Debug.logVerbose("Placing job [" + getJobId() + "] in queue", module);
         }
     }
 
@@ -162,10 +162,10 @@ public class PersistedServiceJob extends GenericServiceJob {
             }
         }
         if (jobValue.get("maxRecurrenceCount") != null) {
-            maxRecurrenceCount = jobValue.getLong("maxRecurrenceCount").longValue();
+            maxRecurrenceCount = jobValue.getLong("maxRecurrenceCount");
         }
         if (jobValue.get("currentRecurrenceCount") != null) {
-            currentRecurrenceCount = jobValue.getLong("currentRecurrenceCount").longValue();
+            currentRecurrenceCount = jobValue.getLong("currentRecurrenceCount");
         }
         if (maxRecurrenceCount != -1) {
             currentRecurrenceCount++;
@@ -176,7 +176,9 @@ public class PersistedServiceJob extends GenericServiceJob {
                 if (recurrence != null) {
                     recurrence.incrementCurrentCount();
                 }
-                Calendar next = expr.next(Calendar.getInstance());
+                TimeZone timeZone = jobValue.get("recurrenceTimeZone") != null ? TimeZone.getTimeZone(jobValue.getString("recurrenceTimeZone")) : TimeZone.getDefault();
+                Calendar next = expr.next(Calendar.getInstance(timeZone));
+
                 if (next != null) {
                     createRecurrence(next.getTimeInMillis(), false);
                 }
@@ -184,11 +186,15 @@ public class PersistedServiceJob extends GenericServiceJob {
         } catch (GenericEntityException e) {
             throw new InvalidJobException(e);
         }
-        if (Debug.infoOn()) Debug.logInfo("Job  [" + getJobName() + "] Id ["  + getJobId() + "] -- Next runtime: " + new Date(nextRecurrence), module);
+        if (Debug.infoOn()) {
+            Debug.logInfo("Job  [" + getJobName() + "] Id ["  + getJobId() + "] -- Next runtime: " + new Date(nextRecurrence), module);
+        }
     }
 
     private void createRecurrence(long next, boolean isRetryOnFailure) throws GenericEntityException {
-        if (Debug.verboseOn()) Debug.logVerbose("Next runtime returned: " + next, module);
+        if (Debug.verboseOn()) {
+            Debug.logVerbose("Next runtime returned: " + next, module);
+        }
         if (next > startTime) {
             String pJobId = jobValue.getString("parentJobId");
             if (pJobId == null) {
@@ -203,13 +209,19 @@ public class PersistedServiceJob extends GenericServiceJob {
             newJob.set("runByInstanceId", null);
             newJob.set("runTime", new java.sql.Timestamp(next));
             if (isRetryOnFailure) {
-                newJob.set("currentRetryCount", new Long(currentRetryCount + 1));
+                newJob.set("currentRetryCount", currentRetryCount + 1);
             } else {
-                newJob.set("currentRetryCount", new Long(0));
+                newJob.set("currentRetryCount", 0L);
             }
             nextRecurrence = next;
+            // Set priority if missing
+            if (newJob.getLong("priority") == null) {
+                newJob.set("priority", JobPriority.NORMAL);
+            }
             delegator.createSetNextSeqId(newJob);
-            if (Debug.verboseOn()) Debug.logVerbose("Created next job entry: " + newJob, module);
+            if (Debug.verboseOn()) {
+                Debug.logVerbose("Created next job entry: " + newJob, module);
+            }
         }
     }
 
@@ -289,7 +301,7 @@ public class PersistedServiceJob extends GenericServiceJob {
                 }
             }
             if (context == null) {
-                context = new HashMap<String, Object>();
+                context = new HashMap<>();
             }
             // check the runAsUser
             if (UtilValidate.isNotEmpty(jobValue.getString("runAsUser"))) {
@@ -373,5 +385,18 @@ public class PersistedServiceJob extends GenericServiceJob {
     @Override
     public Date getStartTime() {
         return new Date(startTime);
+    }
+
+    /* 
+     * Returns the priority stored in the JobSandbox.priority field, if no value is present
+     * then it defaults to AbstractJob.getPriority()
+     */
+    @Override
+    public long getPriority() {
+        Long priority = jobValue.getLong("priority");
+        if (priority == null) {
+            return super.getPriority();
+        }
+        return priority;
     }
 }

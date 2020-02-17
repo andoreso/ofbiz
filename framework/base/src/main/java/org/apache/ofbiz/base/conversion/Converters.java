@@ -27,7 +27,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.ofbiz.base.lang.SourceMonitored;
 import org.apache.ofbiz.base.util.Debug;
-import org.apache.ofbiz.base.util.ObjectType;
 import org.apache.ofbiz.base.util.UtilGenerics;
 
 /** A <code>Converter</code> factory and repository. */
@@ -35,9 +34,9 @@ import org.apache.ofbiz.base.util.UtilGenerics;
 public class Converters {
     protected static final String module = Converters.class.getName();
     protected static final String DELIMITER = "->";
-    protected static final ConcurrentHashMap<String, Converter<?, ?>> converterMap = new ConcurrentHashMap<String, Converter<?, ?>>();
-    protected static final Set<ConverterCreator> creators = new HashSet<ConverterCreator>();
-    protected static final Set<String> noConversions = new HashSet<String>();
+    protected static final ConcurrentHashMap<String, Converter<?, ?>> converterMap = new ConcurrentHashMap<>();
+    private static final Set<ConverterCreator> creators = new HashSet<>();
+    private static final Set<String> noConversions = new HashSet<>();
 
     static {
         registerCreator(new PassThruConverterCreator());
@@ -194,7 +193,7 @@ OUTER:
         sb.append(targetClass.getName());
         String key = sb.toString();
         if (converterMap.putIfAbsent(key, converter) == null) {
-            Debug.logVerbose("Registered converter " + converter.getClass().getName(), module);
+            if (Debug.verboseOn()) Debug.logVerbose("Registered converter " + converter.getClass().getName(), module);
         }
     }
 
@@ -202,12 +201,12 @@ OUTER:
         protected PassThruConverterCreator() {
         }
 
+        @Override
         public <S, T> Converter<S, T> createConverter(Class<S> sourceClass, Class<T> targetClass) {
-            if (ObjectType.instanceOf(sourceClass, targetClass)) {
-                return new PassThruConverter<S, T>(sourceClass, targetClass);
-            } else {
-                return null;
+            if (targetClass.isAssignableFrom(sourceClass)) {
+                return new PassThruConverter<>(sourceClass, targetClass);
             }
+            return null;
         }
     }
 
@@ -225,24 +224,29 @@ OUTER:
             this.targetClass = targetClass;
         }
 
+        @Override
         public boolean canConvert(Class<?> sourceClass, Class<?> targetClass) {
             return this.sourceClass == sourceClass && this.targetClass == targetClass;
         }
 
+        @Override
         @SuppressWarnings("unchecked")
         public T convert(S obj) throws ConversionException {
             return (T) obj;
         }
 
+        @Override
         @SuppressWarnings("unchecked")
         public T convert(Class<? extends T> targetClass, S obj) throws ConversionException {
             return (T) obj;
         }
 
+        @Override
         public Class<?> getSourceClass() {
             return sourceClass;
         }
 
+        @Override
         public Class<?> getTargetClass() {
             return targetClass;
         }

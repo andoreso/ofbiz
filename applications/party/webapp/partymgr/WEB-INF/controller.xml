@@ -57,7 +57,9 @@ under the License.
     <request-map uri="editPartyInvitation"><security https="true" auth="true"/><response name="success" type="view" value="editPartyInvitation"/></request-map>
     <request-map uri="PartyInvitationGroupAssocs"><security https="true" auth="true"/><response name="success" type="view" value="PartyInvitationGroupAssocs"/></request-map>
     <request-map uri="PartyInvitationRoleAssocs"><security https="true" auth="true"/><response name="success" type="view" value="PartyInvitationRoleAssocs"/></request-map>
- <!--Party Invitation Services-->
+    <request-map uri="AddPartyRelatedAccount"><security https="true" auth="true"/><response name="success" type="view" value="AddPartyRelatedAccount"/></request-map>
+    <request-map uri="AddAccountRelatedContact"><security https="true" auth="true"/><response name="success" type="view" value="AddAccountRelatedContact"/></request-map>
+    <!--Party Invitation Services-->
     <request-map uri="createPartyInvitation">
         <security https="true" auth="true"/>
         <event type="service" invoke="createPartyInvitation"/>
@@ -189,15 +191,28 @@ under the License.
         <response name="error" type="view" value="editcontactmech"/>
     </request-map>
 
+    <request-map uri="createFtpAddress">
+        <security https="true" auth="true"/>
+        <event type="service" invoke="createPartyFtpAddress"/>
+        <response name="success" type="view" value="editcontactmech"/>
+        <response name="error" type="view" value="editcontactmech"/>
+    </request-map>
+    <request-map uri="updateFtpAddress">
+        <security https="true" auth="true"/>
+        <event type="service" invoke="updatePartyFtpAddress"/>
+        <response name="success" type="view" value="editcontactmech"/>
+        <response name="error" type="view" value="editcontactmech"/>
+    </request-map>
+
     <request-map uri="createPartyContactMechPurpose">
         <security https="true" auth="true"/>
         <event type="service" invoke="createPartyContactMechPurpose"/>
         <response name="success" type="view" value="editcontactmech"/>
         <response name="error" type="view" value="editcontactmech"/>
     </request-map>
-    <request-map uri="deletePartyContactMechPurpose">
+    <request-map uri="expirePartyContactMechPurpose">
         <security https="true" auth="true"/>
-        <event type="service" invoke="deletePartyContactMechPurpose"/>
+        <event type="service" invoke="expirePartyContactMechPurpose"/>
         <response name="success" type="view" value="editcontactmech"/>
         <response name="error" type="view" value="editcontactmech"/>
     </request-map>
@@ -360,7 +375,9 @@ under the License.
     <request-map uri="createEmployee">
         <security https="true" auth="true"/>
         <event type="simple" path="component://party/minilang/user/UserEvents.xml" invoke="createEmployee"/>
-        <response name="success" type="request-redirect" value="viewprofile"/>
+        <response name="success" type="request-redirect" value="viewprofile">
+            <redirect-parameter name="partyId"/>
+        </response>
         <response name="error" type="view" value="NewEmployee"/>
     </request-map>
 
@@ -368,7 +385,9 @@ under the License.
     <request-map uri="createPerson">
         <security https="true" auth="true"/>
         <event type="service" path="" invoke="createPerson"/>
-        <response name="success" type="request-redirect" value="viewprofile"/>
+        <response name="success" type="request-redirect" value="viewprofile">
+            <redirect-parameter name="partyId"/>
+        </response>
         <response name="error" type="view" value="EditPerson"/>
     </request-map>
     <request-map uri="updatePerson">
@@ -382,7 +401,9 @@ under the License.
     <request-map uri="createPartyGroup">
         <security https="true" auth="true"/>
         <event type="service" path="" invoke="createPartyGroup"/>
-        <response name="success" type="request-redirect" value="viewprofile"/>
+        <response name="success" type="request-redirect" value="viewprofile">
+            <redirect-parameter name="partyId"/>
+        </response>
         <response name="error" type="view" value="EditPartyGroup"/>
     </request-map>
     <request-map uri="updatePartyGroup">
@@ -413,7 +434,7 @@ under the License.
     <request-map uri="createPartyAttribute">
         <security https="true" auth="true"/>
         <event type="service" path="" invoke="createPartyAttribute"/>
-        <response name="success" type="view" value="viewprofile"/>
+        <response name="success" type="request" value="backHome"/>
         <response name="error" type="view" value="EditPartyAttribute"/>
     </request-map>
     <request-map uri="updatePartyAttribute">
@@ -455,7 +476,7 @@ under the License.
     <request-map uri="createPartyNote">
         <security https="true" auth="true"/>
         <event type="service" invoke="createPartyNote"/>
-        <response name="success" type="view" value="viewprofile"/>
+        <response name="success" type="request" value="backHome"/>
         <response name="error" type="view" value="AddPartyNote"/>
     </request-map>
 
@@ -505,9 +526,9 @@ under the License.
         <response name="success" type="view" value="EditPartyRates"/>
         <response name="error" type="view" value="EditPartyRates"/>
     </request-map>
-    <request-map uri="deletePartyRate">
+    <request-map uri="expirePartyRate">
         <security https="true" auth="true"/>
-        <event type="service" invoke="deletePartyRate"/>
+        <event type="service" invoke="expirePartyRate"/>
         <response name="success" type="view" value="EditPartyRates"/>
         <response name="error" type="view" value="EditPartyRates"/>
     </request-map>
@@ -564,6 +585,11 @@ under the License.
         <response name="success" type="view" value="viewidentifications"/>
         <response name="error" type="view" value="viewidentifications"/>
     </request-map>
+    <request-map uri="EditPartyIdentification">
+        <security https="true" auth="true"/>
+        <response name="success" type="view" value="viewidentifications"/>
+        <response name="error" type="view" value="viewidentifications"/>
+    </request-map>
 
     <request-map uri="createPartyRelationshipType">
         <security https="true" auth="true"/>
@@ -607,17 +633,6 @@ under the License.
     <request-map uri="visitdetail"><security https="true" auth="true"/><response name="success" type="view" value="visitdetail"/></request-map>
     <request-map uri="listLoggedInUsers"><security https="true" auth="true"/><response name="success" type="view" value="listLoggedInUsers"/></request-map>
     
-    <request-map uri="pushPage">
-        <security https="true" auth="true"/>
-        <event type="java" path="org.apache.ofbiz.common.CommonEvents" invoke="setFollowerPage"/>
-        <response name="success" type="view" value="visitdetail"/>
-    </request-map>
-    <request-map uri="setAppletFollower">
-        <security https="true" auth="true"/>
-        <event type="java" path="org.apache.ofbiz.common.CommonEvents" invoke="setAppletFollower"/>
-        <response name="success" type="view" value="visitdetail"/>
-    </request-map>
-
     <!-- communication event requests -->
     <request-map uri="setCommunicationEventRoleStatus">
         <security https="true" auth="true"/>
@@ -663,7 +678,7 @@ under the License.
     </request-map>
     <request-map uri="removeAttachFile">
         <security https="true" auth="true"/>
-        <event type="service" invoke="removeCommEventContentAssoc"/>
+        <event type="service" invoke="expireCommEventContentAssoc"/>
         <response name="success" type="request" value="EditCommunicationEvent"/>
         <response name="error" type="view" value="EditCommunicationEvent"/>
     </request-map>
@@ -723,6 +738,10 @@ under the License.
     <request-map uri="FindCommunicationByOrder">
         <security https="true" auth="true"/>
         <response name="success" type="view" value="FindCommunicationByOrder"/>
+    </request-map>
+    <request-map uri="FindCommunicationByReturn">
+        <security https="true" auth="true"/>
+        <response name="success" type="view" value="FindCommunicationByReturn"/>
     </request-map>
     <request-map uri="editRequestFromCommEvent">
         <security https="true" auth="true"/>
@@ -922,7 +941,7 @@ under the License.
     </request-map>
     <request-map uri="uploadParty">
         <security auth="true" https="true"/>
-        <event invoke="importParty" path="" type="service"/>
+        <event type="service" invoke="importParty" path=""/>
         <response name="success" type="request" value="ImportExport"/>
         <response name="error" type="view" value="ImportExport"/>
     </request-map>
@@ -935,6 +954,10 @@ under the License.
     </request-map>
 
     <!-- Create and Upload Party Content -->
+    <request-map uri="EditPartyContent">
+        <security auth="true" https="true"/>
+        <response name="success" type="view" value="EditPartyContent"/>
+    </request-map>
     <request-map uri="EditPartyContents">
         <security auth="true" https="true"/>
         <response name="success" type="view" value="EditPartyContents"/>
@@ -943,26 +966,32 @@ under the License.
     <request-map uri="createPartyContent">
         <security auth="true" https="true"/>
         <event type="simple" path="component://party/minilang/party/PartySimpleEvents.xml" invoke="createPartyContent"/>
-        <response name="success" type="view" value="EditPartyContents"/>
+        <response name="success" type="request-redirect" value="EditPartyContents">
+            <redirect-parameter name="partyId"></redirect-parameter>
+        </response>
     </request-map>
 
     <request-map uri="updatePartyContent">
         <security auth="true" https="true"/>
         <event type="simple" path="component://party/minilang/party/PartySimpleEvents.xml" invoke="updatePartyContent"/>
-        <response name="success" type="view" value="EditPartyContents"/>
+        <response name="success" type="request-redirect" value="EditPartyContents">
+            <redirect-parameter name="partyId"></redirect-parameter>
+        </response>
     </request-map>
 
     <request-map uri="removePartyContent">
         <security auth="true" https="true"/>
         <event type="service" invoke="removePartyContent"/>
-        <response name="success" type="view" value="EditPartyContents"/>
+        <response name="success" type="request-redirect" value="EditPartyContents">
+            <redirect-parameter name="partyId"></redirect-parameter>
+        </response>
     </request-map>
 
     <request-map uri="uploadPartyContent">
         <security auth="true" https="true"/>
         <event type="service" invoke="uploadPartyContentFile"/>
-        <response name="success" type="view" value="partyContentList"/>
-        <response name="error" type="view" value="EventMessages"/>
+        <response name="success" type="view" value="viewprofile"/>
+        <response name="error" type="view" value="viewprofile"/>
     </request-map>
 
     <request-map uri="partyContentList">
@@ -1041,7 +1070,9 @@ under the License.
     <request-map uri="createEmploymentAppExt">
         <security https="true" auth="true"/>
         <event type="service" invoke="createEmploymentApp"/>
-        <response name="success" type="request" value="EditEmploymentApps"/>
+        <response name="success" type="request-redirect" value="EditEmploymentApps">
+            <redirect-parameter name="partyId"/>
+        </response>
     </request-map>
     <request-map uri="updateEmploymentAppExt">
         <security https="true" auth="true"/>
@@ -1051,7 +1082,9 @@ under the License.
     <request-map uri="deleteEmploymentApp">
         <security https="true" auth="true"/>
         <event type="service" invoke="deleteEmploymentApp"/>
-        <response name="success" type="request" value="EditEmploymentApps"/>
+        <response name="success" type="request-redirect" value="EditEmploymentApps">
+            <redirect-parameter name="partyId"/>
+        </response>
     </request-map>
 
     <!-- Ajax Requests -->
@@ -1103,6 +1136,22 @@ under the License.
         <response name="success" type="view" value="UpdateCommOrders"/>
         <response name="error" type="view" value="UpdateCommOrders"/>
     </request-map>
+    <request-map uri="UpdateCommReturns">
+        <security https="true" auth="true"/>
+        <response name="success" type="view" value="UpdateCommReturns"/>
+    </request-map>
+    <request-map uri="createCommunicationEventReturn">
+        <security https="true" auth="true"/>
+        <event type="service" invoke="createCommunicationEventReturn"/>
+        <response name="success" type="view" value="UpdateCommReturns"/>
+        <response name="error" type="view" value="UpdateCommReturns"/>
+    </request-map>
+    <request-map uri="deleteCommunicationEventReturn">
+        <security https="true" auth="true"/>
+        <event type="service" invoke="removeCommunicationEventReturn"/>
+        <response name="success" type="view" value="UpdateCommReturns"/>
+        <response name="error" type="view" value="UpdateCommReturns"/>
+    </request-map>
 
     <!-- Product communication event requests -->
     <request-map uri="UpdateCommProducts">
@@ -1120,6 +1169,12 @@ under the License.
         <event type="service" invoke="removeCommunicationEventProduct"/>
         <response name="success" type="view" value="UpdateCommProducts"/>
         <response name="error" type="view" value="UpdateCommProducts"/>
+    </request-map>
+    <request-map uri="createBillingAccountAndRole">
+        <security https="true" auth="true"/>
+        <event type="service" invoke="createBillingAccountAndRole"/>
+        <response name="success" type="view" value="EditBillingAccount"/>
+        <response name="error" type="view" value="EditBillingAccount"/>
     </request-map>
 
     <!-- Lookup request mappings -->
@@ -1144,6 +1199,7 @@ under the License.
     <request-map uri="LookupEmploymentApp"><security auth="true" https="true"/><response name="success" type="view" value="LookupEmploymentApp"/></request-map>
     <request-map uri="LookupEmplPosition"><security auth="true" https="true"/><response name="success" type="view" value="LookupEmplPosition"/></request-map>
     <request-map uri="LookupOrderHeader"><security auth="true" https="true"/><response name="success" type="view" value="LookupOrderHeader"/></request-map>
+    <request-map uri="LookupReturnHeader"><security auth="true" https="true"/><response name="success" type="view" value="LookupReturnHeader"/></request-map>
     <request-map uri="LookupProduct"><security auth="true" https="true"/><response name="success" type="view" value="LookupProduct"/></request-map>
 
     <!-- Financial History Report-->
@@ -1256,9 +1312,9 @@ under the License.
         <response name="success" type="view" value="ProfileEditUserLoginSecurityGroups"/>
         <response name="error" type="view" value="ProfileEditUserLoginSecurityGroups"/>
     </request-map>
-    <request-map uri="ProfileRemoveUserLoginFromSecurityGroup">
+    <request-map uri="ProfileExpireUserLoginFromSecurityGroup">
         <security https="true" auth="true"/>
-        <event type="service" path="" invoke="removeUserLoginToSecurityGroup"/>
+        <event type="service" path="" invoke="expireUserLoginSecurityGroup"/>
         <response name="success" type="view" value="ProfileEditUserLoginSecurityGroups"/>
         <response name="error" type="view" value="ProfileEditUserLoginSecurityGroups"/>
     </request-map>
@@ -1317,6 +1373,7 @@ under the License.
     <view-map name="ListPartyCommEvents" type="screen" page="component://party/widget/partymgr/CommunicationEventScreens.xml#ListPartyCommEvents"/>
     <view-map name="ListUnknownPartyComms" type="screen" page="component://party/widget/partymgr/CommunicationEventScreens.xml#ListUnknownPartyComms"/>
     <view-map name="FindCommunicationByOrder" type="screen" page="component://party/widget/partymgr/CommunicationEventScreens.xml#FindCommunicationByOrder"/>
+    <view-map name="FindCommunicationByReturn" type="screen" page="component://party/widget/partymgr/CommunicationEventScreens.xml#FindCommunicationByReturn"/>
     <view-map name="MyCommunicationEvents" type="screen" page="component://party/widget/partymgr/CommunicationEventScreens.xml#PartyCommunicationEvents"/>
     <view-map name="FindCommunicationEvents" type="screen" page="component://party/widget/partymgr/CommunicationEventScreens.xml#FindCommunicationEvents"/>
     <view-map name="EditCommunicationEvent" type="screen" page="component://party/widget/partymgr/CommunicationEventScreens.xml#EditCommunicationEvent"/>
@@ -1365,13 +1422,14 @@ under the License.
     <view-map name="LookupCustRequest" type="screen" page="component://order/widget/ordermgr/LookupScreens.xml#LookupCustRequest"/>
     <view-map name="LookupPreferredContactMech" type="screen" page="component://marketing/widget/ContactListScreens.xml#LookupPreferredContactMech"/>
     <view-map name="LookupContactList" type="screen" page="component://party/widget/partymgr/PartyContactListScreens.xml#ListLookupContactList"/>
-    <view-map name="LookupContent" page="component://content/widget/content/ContentScreens.xml#LookupContent" type="screen"/>
-    <view-map name="LookupDataResource" page="component://content/widget/content/DataResourceScreens.xml#LookupDataResource" type="screen"/>
+    <view-map name="LookupContent" type="screen" page="component://content/widget/content/ContentScreens.xml#LookupContent"/>
+    <view-map name="LookupDataResource" type="screen" page="component://content/widget/content/DataResourceScreens.xml#LookupDataResource"/>
     <view-map name="LookupEmploymentApp" type="screen" page="component://humanres/widget/LookupScreens.xml#LookupEmploymentApp"/>
     <view-map name="LookupEmplPosition"  type="screen" page="component://humanres/widget/LookupScreens.xml#LookupEmplPosition"/>
 
     <view-map name="LookupSegmentGroup" type="screen" page="component://marketing/widget/LookupScreens.xml#LookupSegmentGroup"/>
     <view-map name="LookupOrderHeader" type="screen" page="component://order/widget/ordermgr/LookupScreens.xml#LookupOrderHeader"/>
+    <view-map name="LookupReturnHeader" type="screen" page="component://order/widget/ordermgr/LookupScreens.xml#LookupReturnHeader"/>
     <view-map name="LookupProduct" type="screen" page="component://product/widget/catalog/LookupScreens.xml#LookupProduct"/>
 
     <view-map name="ViewSimpleContent" page="" type="simplecontent"/>
@@ -1383,6 +1441,7 @@ under the License.
     <view-map name="PartyExportCsv" type="screencsv" page="component://party/widget/partymgr/PartyScreens.xml#PartyExportCsv" content-type="text/csv" encoding="none"/>
 
     <view-map name="EditPartyContents" type="screen" page="component://party/widget/partymgr/PartyScreens.xml#EditPartyContents"/>
+    <view-map name="EditPartyContent" type="screen" page="component://party/widget/partymgr/PartyScreens.xml#EditPartyContent"/>
     <view-map name="editCarrierAccount" type="screen" page="component://party/widget/partymgr/PartyScreens.xml#editCarrierAccount"/>
     <view-map name="partyInvitation" type="screen" page="component://party/widget/partymgr/PartyInvitationScreens.xml#FindPartyInvitations"/>
     <view-map name="editPartyInvitation" type="screen" page="component://party/widget/partymgr/PartyInvitationScreens.xml#EditPartyInvitation"/>
@@ -1395,8 +1454,11 @@ under the License.
     <view-map name="Preferences" type="screen" page="component://party/widget/partymgr/PartyScreens.xml#Preferences"/>
     <view-map name="PartyGeoLocation" type="screen" page="component://party/widget/partymgr/PartyScreens.xml#PartyGeoLocation"/>
     <view-map name="GetPartyGeoLocation" type="screen" page="component://party/widget/partymgr/PartyScreens.xml#GetPartyGeoLocation"/>
+    <view-map name="AddPartyRelatedAccount" type="screen" page="component://party/widget/partymgr/PartyScreens.xml#CreatePartyRelatedAccount"/>
+    <view-map name="AddAccountRelatedContact" type="screen" page="component://party/widget/partymgr/PartyScreens.xml#CreateAccountRelatedContact"/>
 
     <view-map name="UpdateCommOrders" type="screen" page="component://party/widget/partymgr/CommunicationEventScreens.xml#UpdateCommOrders"/>
+    <view-map name="UpdateCommReturns" type="screen" page="component://party/widget/partymgr/CommunicationEventScreens.xml#UpdateCommReturns"/>
     <view-map name="UpdateCommProducts" type="screen" page="component://party/widget/partymgr/CommunicationEventScreens.xml#UpdateCommProducts"/>
  
     <view-map name="ViewProductStoreRoles" type="screen" page="component://party/widget/partymgr/PartyScreens.xml#ViewProductStoreRoles"/>

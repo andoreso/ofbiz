@@ -33,7 +33,14 @@ under the License.
     <#-- add form here to specify artifact info name. -->
     <div>
       <form name="ArtifactInfoByName" method="post" action="<@ofbizUrl>ArtifactInfo</@ofbizUrl>" class="basic-form">
-        Search Names/Locations: <input type="text" name="name" value="${parameters.name!}" size="40"/>
+        <table class="basic-table" cellspacing="0">
+            <tbody>
+              <tr>
+                <td class="label">
+                <label>${uiLabelMap.WebtoolsSearchLocName}</label>
+                </td>
+                <td>
+                  <input type="text" name="name" value="${parameters.name!}" size="40"/>
         <select name="type">
           <option></option>
           <option>entity</option>
@@ -43,25 +50,62 @@ under the License.
           <option>request</option>
           <option>view</option>
         </select>
-        <input type="hidden" name="findType" value="search"/>
-        <input type="submit" name="submitButton" value="Find"/>
+                </td>
+                </tr>
+            <tr>
+                <td class="label"></td>
+                <td colspan="4">
+                    <input type="hidden" name="findType" value="search"/>
+                    <input type="submit" name="submitButton" value="Find"/>
+                </td>
+            </tr>
+            </tbody>
+        </table>
       </form>
     </div>
     <div>
       <form name="ArtifactInfoByNameAndType" method="post" action="<@ofbizUrl>ArtifactInfo</@ofbizUrl>" class="basic-form">
-        <div>Name: <input type="text" name="name" value="${parameters.name!}" size="40"/></div>
-        <div>Location: <input type="text" name="location" value="${parameters.location!}" size="60"/></div>
-        <div>Type:
-          <select name="type">
-            <option>entity</option>
-            <option>service</option>
-            <option>form</option>
-            <option>screen</option>
-            <option>request</option>
-            <option>view</option>
-          </select>
-          <input type="submit" name="submitButton" value="Lookup"/>
-        </div>
+        <table class="basic-table" cellspacing="0">
+            <tbody>
+              <tr>
+                <td class="label">
+                    <label>Name</label>
+                </td>
+                <td>
+                    <input type="text" name="name" value="${parameters.name!}" size="40"/></div>
+                </td>
+                </tr>
+                <tr>
+                <td class="label">
+                    <label>${uiLabelMap.WebtoolsLocation}</label>
+                </td>
+                <td>
+                    <input type="text" name="location" value="${parameters.location!}" size="60"/></div>
+                </td>
+                </tr>
+                <tr>
+                <td class="label">
+                    <label>${uiLabelMap.WebtoolsType}</label>
+                </td>
+                <td>
+                  <select name="type">
+                    <option>entity</option>
+                    <option>service</option>
+                    <option>form</option>
+                    <option>screen</option>
+                    <option>request</option>
+                    <option>view</option>
+                  </select>
+                </td>
+              </tr>
+            <tr>
+                <td class="label"></td>
+                <td colspan="4">
+                  <input type="submit" name="submitButton" value="Lookup"/>
+                </td>
+            </tr>
+            </tbody>
+        </table>
       </form>
     </div>
 
@@ -82,7 +126,7 @@ under the License.
         <div>Defined in: <a href="${artifactInfo.getLocationURL()}">${artifactInfo.getLocationURL()}</a></div>
     </#if>
 
-    <#if artifactInfo.getType() == "entity">
+    <#if "entity" == artifactInfo.getType()>
         <div><a href="<@ofbizUrl>FindGeneric?entityName=${artifactInfo.modelEntity.getEntityName()}&amp;find=true&amp;VIEW_SIZE=50&amp;VIEW_INDEX=0</@ofbizUrl>">All Entity Data</a></div>
         <h2>Entity Fields</h2>
         <table>
@@ -126,7 +170,7 @@ under the License.
         </#list>
         </div>
 
-    <#elseif artifactInfo.getType() == "service"/>
+    <#elseif "service" == artifactInfo.getType() >
         <h2>Service Info</h2>
         <div>&nbsp;Description: ${artifactInfo.modelService.description}</div>
         <div>&nbsp;Run (${artifactInfo.modelService.engineName}): ${artifactInfo.modelService.location} :: ${artifactInfo.modelService.invoke}</div>
@@ -203,7 +247,7 @@ under the License.
         </#list>
         </div>
 
-    <#elseif artifactInfo.getType() == "form"/>
+    <#elseif "form" == artifactInfo.getType() >
         <div>
         <h2>Form Extended by This Form</h2>
         <#if artifactInfo.getFormThisFormExtends()??>
@@ -252,7 +296,7 @@ under the License.
         </#list>
         </div>
 
-    <#elseif artifactInfo.getType() == "screen"/>
+    <#elseif "screen" == artifactInfo.getType() >
         <div>
         <h2>Entities Used in This Screen</h2>
         <#list artifactInfo.getEntitiesUsedInScreen()! as entityArtifactInfo>
@@ -302,7 +346,7 @@ under the License.
         </#list>
         </div>
 
-    <#elseif artifactInfo.getType() == "request"/>
+    <#elseif "request" == artifactInfo.getType() >
         <#if artifactInfo.getServiceCalledByRequestEvent()??>
             <div>
             <h2>Service Called by Request Event</h2>
@@ -351,7 +395,7 @@ under the License.
         </#list>
         </div>
 
-    <#elseif artifactInfo.getType() == "view"/>
+    <#elseif "view" == artifactInfo.getType() >
         <div>
         <h2>Requests That This View is a Responses To</h2>
         <#list artifactInfo.getRequestsThatThisViewIsResponseTo()! as controllerRequestArtifactInfo>

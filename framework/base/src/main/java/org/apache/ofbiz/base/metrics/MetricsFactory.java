@@ -5,9 +5,9 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -33,6 +33,7 @@ import java.util.TreeSet;
 
 import org.apache.ofbiz.base.lang.ThreadSafe;
 import org.apache.ofbiz.base.util.Assert;
+import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.cache.UtilCache;
 import org.w3c.dom.Element;
@@ -83,7 +84,7 @@ public final class MetricsFactory {
      *     <td>The metric threshold. The meaning of the threshold is determined by client code.</td>
      *     <td>Defaults to "0.0".</td></tr>
      * </table>
-     * 
+     *
      * @param element The element whose attributes will be used to create the <code>Metrics</code> instance
      * @return A <code>Metrics</code> instance based on <code>element</code> attributes
      * @throws IllegalArgumentException if <code>element</code> is null or if the name attribute is empty
@@ -95,7 +96,7 @@ public final class MetricsFactory {
         Assert.notEmpty("name attribute", name);
         Metrics result = METRICS_CACHE.get(name);
         if (result == null) {
-            int estimationSize = UtilProperties.getPropertyAsInteger("serverstats", "metrics.estimation.size", 100); 
+            int estimationSize = UtilProperties.getPropertyAsInteger("serverstats", "metrics.estimation.size", 100);
             String attributeValue = element.getAttribute("estimation-size");
             if (!attributeValue.isEmpty()) {
                 estimationSize = Integer.parseInt(attributeValue);
@@ -156,7 +157,7 @@ public final class MetricsFactory {
      * Returns all <code>Metric</code> instances, sorted by name.
      */
     public static Collection<Metrics> getMetrics() {
-        return new TreeSet<Metrics>(METRICS_CACHE.values());
+        return new TreeSet<>(METRICS_CACHE.values());
     }
 
     private static final class MetricsImpl implements Metrics, Comparable<Metrics> {
@@ -193,7 +194,10 @@ public final class MetricsFactory {
             try {
                 MetricsImpl that = (MetricsImpl) obj;
                 return this.name.equals(that.name);
-            } catch (Exception e) {}
+            } catch (Exception e) {
+                Debug.logError(e, "MetricsFactory");
+            }
+
             return false;
         }
 
@@ -233,7 +237,7 @@ public final class MetricsFactory {
                 if (totalEvents == 0) {
                     totalEvents = 1;
                 }
-                double rate = totalServiceTime / totalEvents;
+                double rate = totalServiceTime / (double) totalEvents;
                 serviceRate = (rate * smoothing) + (serviceRate * (1.0 - smoothing));
                 count = 0;
                 lastTime = curTime;

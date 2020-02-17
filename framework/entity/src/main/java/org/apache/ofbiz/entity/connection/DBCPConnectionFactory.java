@@ -56,11 +56,13 @@ public class DBCPConnectionFactory implements ConnectionFactory {
     public static final String module = DBCPConnectionFactory.class.getName();
     // ManagedDataSource is useful to debug the usage of connections in the pool (must be verbose)
     // In case you don't want to be disturbed in the log (focusing on something else), it's still easy to comment out the line from DebugManagedDataSource
-    protected static final ConcurrentHashMap<String, DebugManagedDataSource> dsCache = new ConcurrentHashMap<String, DebugManagedDataSource>();
+    protected static final ConcurrentHashMap<String, DebugManagedDataSource<? extends Connection>> dsCache =
+            new ConcurrentHashMap<>();
 
+    @Override
     public Connection getConnection(GenericHelperInfo helperInfo, JdbcElement abstractJdbc) throws SQLException, GenericEntityException {
         String cacheKey = helperInfo.getHelperFullName();
-        DebugManagedDataSource mds = dsCache.get(cacheKey);
+        DebugManagedDataSource<? extends Connection> mds = dsCache.get(cacheKey);
         if (mds != null) {
             return TransactionUtil.getCursorConnection(helperInfo, mds.getConnection());
         }
@@ -87,7 +89,7 @@ public class DBCPConnectionFactory implements ConnectionFactory {
         synchronized (DBCPConnectionFactory.class) {
             // Sync needed for MS SQL JDBC driver. See OFBIZ-5216.
             try {
-                jdbcDriver = (Driver) Class.forName(driverName, true, Thread.currentThread().getContextClassLoader()).newInstance();
+                jdbcDriver = (Driver) Class.forName(driverName, true, Thread.currentThread().getContextClassLoader()).getDeclaredConstructor().newInstance();
             } catch (Exception e) {
                 Debug.logError(e, module);
                 throw new GenericEntityException(e.getMessage(), e);
@@ -110,7 +112,7 @@ public class DBCPConnectionFactory implements ConnectionFactory {
         factory.setValidationQuery(jdbcElement.getPoolJdbcTestStmt());
         factory.setDefaultReadOnly(false);
         factory.setRollbackOnReturn(false);
-        factory.setEnableAutoCommitOnReturn(false);
+        factory.setAutoCommitOnReturn(false);
         String transIso = jdbcElement.getIsolationLevel();
         if (!transIso.isEmpty()) {
             if ("Serializable".equals(transIso)) {
@@ -127,7 +129,7 @@ public class DBCPConnectionFactory implements ConnectionFactory {
         }
 
         // configure the pool settings
-        GenericObjectPoolConfig poolConfig = new GenericObjectPoolConfig();
+        GenericObjectPoolConfig<PoolableConnection> poolConfig = new GenericObjectPoolConfig<>();
         poolConfig.setMaxTotal(maxSize);
         // settings for idle connections
         poolConfig.setMaxIdle(maxIdle);
@@ -145,10 +147,10 @@ public class DBCPConnectionFactory implements ConnectionFactory {
         poolConfig.setTestOnReturn(jdbcElement.getTestOnReturn());
         poolConfig.setTestWhileIdle(jdbcElement.getTestWhileIdle());
 
-        GenericObjectPool<PoolableConnection> pool = new GenericObjectPool<PoolableConnection>(factory, poolConfig);
+        GenericObjectPool<PoolableConnection> pool = new GenericObjectPool<>(factory, poolConfig);
         factory.setPool(pool);
 
-        mds = new DebugManagedDataSource(pool, xacf.getTransactionRegistry());
+        mds = new DebugManagedDataSource<>(pool, xacf.getTransactionRegistry());
         mds.setAccessToUnderlyingConnectionAllowed(true);
 
         // cache the pool
@@ -158,15 +160,16 @@ public class DBCPConnectionFactory implements ConnectionFactory {
         return TransactionUtil.getCursorConnection(helperInfo, mds.getConnection());
     }
 
+    @Override
     public void closeAll() {
         // no methods on the pool to shutdown; so just clearing for GC
         dsCache.clear();
     }
 
     public static Map<String, Object> getDataSourceInfo(String helperName) {
-        Map<String, Object> dataSourceInfo = new HashMap<String, Object>();
-        DebugManagedDataSource mds = dsCache.get(helperName);
-        if (mds instanceof DebugManagedDataSource) {
+        Map<String, Object> dataSourceInfo = new HashMap<>();
+        DebugManagedDataSource<? extends Connection> mds = dsCache.get(helperName);
+        if (mds != null) {
             dataSourceInfo = mds.getInfo();
         }
         return dataSourceInfo;

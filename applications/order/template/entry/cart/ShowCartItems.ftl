@@ -19,8 +19,8 @@ under the License.
 
 <#-- Continuation of showcart.ftl:  List of order items and forms to modify them. -->
 <#macro showAssoc productAssoc>
-  <#assign productAssocType = (delegator.findOne("ProductAssocType", {"productAssocTypeId" : productAssoc.productAssocTypeId}, false))/>
-  <#assign assocProduct = (delegator.findOne("Product", {"productId" : productAssoc.productIdTo}, false))/>
+  <#local productAssocType = (delegator.findOne("ProductAssocType", {"productAssocTypeId" : productAssoc.productAssocTypeId}, false))/>
+  <#local assocProduct = (delegator.findOne("Product", {"productId" : productAssoc.productIdTo}, false))/>
   <#if assocProduct?has_content>
     <td><a href="<@ofbizUrl>/product?product_id=${productAssoc.productIdTo}</@ofbizUrl>"class="buttontext">${productAssoc.productIdTo}</a></td>
     <td>- ${(assocProduct.productName)!}<i>(${(productAssocType.description)?default("Unknown")})</i></td>
@@ -34,7 +34,7 @@ under the License.
   <#if (shoppingCartSize > 0)>
     <form method="post" action="<@ofbizUrl>modifycart</@ofbizUrl>" name="cartform" style="margin: 0;">
       <input type="hidden" name="removeSelected" value="false"/>
-      <#if shoppingCart.getOrderType() == "PURCHASE_ORDER">
+      <#if "PURCHASE_ORDER" == shoppingCart.getOrderType()>
         <input type="hidden" name="finalizeReqShipInfo" value="false"/>
         <input type="hidden" name="finalizeReqOptions" value="false"/>
         <input type="hidden" name="finalizeReqPayInfo" value="false"/>
@@ -169,7 +169,7 @@ under the License.
                 </td>
               </tr>
             </#if>
-            <#if shoppingCart.getOrderType() == "PURCHASE_ORDER">
+            <#if "PURCHASE_ORDER" == shoppingCart.getOrderType()>
               <#assign currentOrderItemType = cartLine.getItemTypeGenericValue()!/>
                 <tr>
                   <td>
@@ -280,7 +280,7 @@ under the License.
             </td>
             <td nowrap="nowrap" align="right">
               <div>
-                <#if cartLine.getIsPromo() || (shoppingCart.getOrderType() == "SALES_ORDER" && !security.hasEntityPermission("ORDERMGR", "_SALES_PRICEMOD", session))>
+                <#if cartLine.getIsPromo() || ("SALES_ORDER" == shoppingCart.getOrderType() && !security.hasEntityPermission("ORDERMGR", "_SALES_PRICEMOD", session))>
                   <@ofbizCurrency amount=cartLine.getDisplayPrice() isoCode=currencyUomId/>
                 <#else>
                     <#if (cartLine.getSelectedAmount() > 0) >

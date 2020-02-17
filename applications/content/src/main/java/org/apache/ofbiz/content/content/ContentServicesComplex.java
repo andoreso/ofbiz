@@ -65,8 +65,8 @@ public class ContentServicesComplex {
     */
     public static Map<String, Object> getAssocAndContentAndDataResource(DispatchContext dctx, Map<String, ? extends Object> context) {
         Delegator delegator = dctx.getDelegator();
-        List<String> assocTypes = UtilGenerics.checkList(context.get("assocTypes"));
-        List<String> contentTypes = UtilGenerics.checkList(context.get("contentTypes"));
+        List<String> assocTypes = UtilGenerics.cast(context.get("assocTypes"));
+        List<String> contentTypes = UtilGenerics.cast(context.get("contentTypes"));
         Timestamp fromDate = (Timestamp)context.get("fromDate");
         Timestamp thruDate = (Timestamp)context.get("thruDate");
         String fromDateStr = (String)context.get("fromDateStr");
@@ -79,14 +79,14 @@ public class ContentServicesComplex {
     }
 
     public static Map<String, Object> getAssocAndContentAndDataResourceMethod(Delegator delegator, String contentId, String mapKey, String direction, Timestamp fromDate, Timestamp thruDate, String fromDateStr, String thruDateStr, List<String> assocTypes, List<String> contentTypes) {
-        List<EntityCondition> exprList = new LinkedList<EntityCondition>();
+        List<EntityCondition> exprList = new LinkedList<>();
         EntityExpr joinExpr = null;
         String viewName = null;
         if (mapKey != null) {
             EntityExpr mapKeyExpr = EntityCondition.makeCondition("caMapKey", EntityOperator.EQUALS, mapKey);
             exprList.add(mapKeyExpr);
         }
-        if (direction != null && direction.equalsIgnoreCase("From")) {
+        if (direction != null && "From".equalsIgnoreCase(direction)) {
             joinExpr = EntityCondition.makeCondition("caContentIdTo", EntityOperator.EQUALS, contentId);
             viewName = "ContentAssocDataResourceViewFrom";
         } else {
@@ -113,7 +113,7 @@ public class ContentServicesComplex {
             exprList.add(fromExpr);
         }
         if (thruDate != null) {
-            List<EntityExpr> thruList = new LinkedList<EntityExpr>();
+            List<EntityExpr> thruList = new LinkedList<>();
 
             EntityExpr thruExpr = EntityCondition.makeCondition("caThruDate", EntityOperator.LESS_THAN, thruDate);
             thruList.add(thruExpr);
@@ -122,7 +122,7 @@ public class ContentServicesComplex {
             EntityConditionList<EntityExpr> thruExprList = EntityCondition.makeCondition(thruList, EntityOperator.OR);
             exprList.add(thruExprList);
         } else if (fromDate != null) {
-            List<EntityExpr> thruList = new LinkedList<EntityExpr>();
+            List<EntityExpr> thruList = new LinkedList<>();
 
             EntityExpr thruExpr = EntityCondition.makeCondition("caThruDate", EntityOperator.GREATER_THAN, fromDate);
             thruList.add(thruExpr);
@@ -140,9 +140,9 @@ public class ContentServicesComplex {
         }
         for (int i=0; i < relatedAssocs.size(); i++) {
             GenericValue a = relatedAssocs.get(i);
-            Debug.logVerbose(" contentId:" + a.get("contentId") + " To:" + a.get("caContentIdTo") + " fromDate:" + a.get("caFromDate") + " thruDate:" + a.get("caThruDate") + " AssocTypeId:" + a.get("caContentAssocTypeId"), null);
+            if (Debug.verboseOn()) Debug.logVerbose(" contentId:" + a.get("contentId") + " To:" + a.get("caContentIdTo") + " fromDate:" + a.get("caFromDate") + " thruDate:" + a.get("caThruDate") + " AssocTypeId:" + a.get("caContentAssocTypeId"), null);
         }
-        Map<String, Object> results = new HashMap<String, Object>();
+        Map<String, Object> results = new HashMap<>();
         results.put("entityList", relatedAssocs);
         return results;
     }
@@ -157,21 +157,21 @@ public class ContentServicesComplex {
     */
     public static Map<String, Object> getAssocAndContentAndDataResourceCache(DispatchContext dctx, Map<String, ? extends Object> context) {
         Delegator delegator = dctx.getDelegator();
-        List<String> assocTypes = UtilGenerics.checkList(context.get("assocTypes"));
+        List<String> assocTypes = UtilGenerics.cast(context.get("assocTypes"));
         String assocTypesString = (String)context.get("assocTypesString");
         if (UtilValidate.isNotEmpty(assocTypesString)) {
             List<String> lst = StringUtil.split(assocTypesString, "|");
             if (assocTypes == null) {
-                assocTypes = new LinkedList<String>();
+                assocTypes = new LinkedList<>();
             }
             assocTypes.addAll(lst);
         }
-        List<String> contentTypes = UtilGenerics.checkList(context.get("contentTypes"));
+        List<String> contentTypes = UtilGenerics.cast(context.get("contentTypes"));
         String contentTypesString = (String)context.get("contentTypesString");
         if (UtilValidate.isNotEmpty(contentTypesString)) {
             List<String> lst = StringUtil.split(contentTypesString, "|");
             if (contentTypes == null) {
-                contentTypes = new LinkedList<String>();
+                contentTypes = new LinkedList<>();
             }
             contentTypes.addAll(lst);
         }
@@ -198,19 +198,19 @@ public class ContentServicesComplex {
         EntityExpr joinExpr = null;
         String viewName = null;
         String contentFieldName = null;
-        if (direction != null && direction.equalsIgnoreCase("From")) {
+        if (direction != null && "From".equalsIgnoreCase(direction)) {
             contentFieldName = "caContentIdTo";
             joinExpr = EntityCondition.makeCondition("caContentIdTo", EntityOperator.EQUALS, contentId);
         } else {
             contentFieldName = "caContentId";
             joinExpr = EntityCondition.makeCondition("contentId", EntityOperator.EQUALS, contentId);
         }
-        if (direction != null && direction.equalsIgnoreCase("From")) {
+        if (direction != null && "From".equalsIgnoreCase(direction)) {
             viewName = "ContentAssocDataResourceViewFrom";
         } else {
             viewName = "ContentAssocDataResourceViewTo";
         }
-        List<EntityCondition> conditionList = new ArrayList<EntityCondition>();
+        List<EntityCondition> conditionList = new ArrayList<>();
         conditionList.add(joinExpr);
         if (UtilValidate.isNotEmpty(mapKey)) {
             String mapKeyValue = "is null".equalsIgnoreCase(mapKey) ? null : mapKey;
@@ -228,15 +228,11 @@ public class ContentServicesComplex {
             conditionList.add(EntityCondition.makeCondition("caContentAssocTypeId", EntityOperator.IN, assocTypes));
         }
 
-        if (fromDate == null && fromDateStr != null) {
-            fromDate = UtilDateTime.toTimestamp(fromDateStr);
-        }
-
         List<GenericValue> contentAssocsTypeFiltered = EntityQuery.use(delegator).from(viewName)
                 .where(conditionList).orderBy("caSequenceNum", "-caFromDate").cache().queryList();
 
         String assocRelationName = null;
-        if (direction != null && direction.equalsIgnoreCase("To")) {
+        if (direction != null && "To".equalsIgnoreCase(direction)) {
             assocRelationName = "ToContent";
         } else {
             assocRelationName = "FromContent";
@@ -245,7 +241,7 @@ public class ContentServicesComplex {
         GenericValue contentAssocDataResourceView = null;
         GenericValue content = null;
         GenericValue dataResource = null;
-        List<GenericValue> contentAssocDataResourceList = new LinkedList<GenericValue>();
+        List<GenericValue> contentAssocDataResourceList = new LinkedList<>();
         Locale locale = Locale.getDefault(); // TODO: this needs to be passed in
         try{
         for (GenericValue contentAssocView : contentAssocsTypeFiltered) {
@@ -263,12 +259,12 @@ public class ContentServicesComplex {
                 contentAssocDataResourceView = delegator.makeValue(viewName);
                 contentAssocDataResourceView.setAllFields(content, true, null, null);
             }
-            SimpleMapProcessor.runSimpleMapProcessor("component://content/minilang/ContentManagementMapProcessors.xml", "contentAssocOut", contentAssoc, contentAssocDataResourceView, new LinkedList<Object>(), locale);
+            SimpleMapProcessor.runSimpleMapProcessor("component://content/minilang/ContentManagementMapProcessors.xml", "contentAssocOut", contentAssoc, contentAssocDataResourceView, new LinkedList<>(), locale);
             String dataResourceId = content.getString("dataResourceId");
             if (UtilValidate.isNotEmpty(dataResourceId))
                 dataResource = content.getRelatedOne("DataResource", true);
             if (dataResource != null) {
-                SimpleMapProcessor.runSimpleMapProcessor("component://content/minilang/ContentManagementMapProcessors.xml", "dataResourceOut", dataResource, contentAssocDataResourceView, new LinkedList<Object>(), locale);
+                SimpleMapProcessor.runSimpleMapProcessor("component://content/minilang/ContentManagementMapProcessors.xml", "dataResourceOut", dataResource, contentAssocDataResourceView, new LinkedList<>(), locale);
             }
             contentAssocDataResourceList.add(contentAssocDataResourceView);
         }
@@ -281,7 +277,7 @@ public class ContentServicesComplex {
             List<String> orderByList = StringUtil.split(orderBy, "|");
            contentAssocDataResourceList = EntityUtil.orderBy(contentAssocDataResourceList, orderByList);
         }
-        Map<String, Object> results = new HashMap<String, Object>();
+        Map<String, Object> results = new HashMap<>();
         results.put("entityList", contentAssocDataResourceList);
         if (UtilValidate.isNotEmpty(contentAssocDataResourceList)) {
             results.put("view", contentAssocDataResourceList.get(0));

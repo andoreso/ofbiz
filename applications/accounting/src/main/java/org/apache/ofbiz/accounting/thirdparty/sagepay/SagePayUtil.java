@@ -25,12 +25,12 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
+import java.util.Map.Entry;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
@@ -51,7 +51,7 @@ public final class SagePayUtil {
     public static Map<String, Object> buildCardAuthorisationPaymentResponse
     (Boolean authResult, String authCode, String authFlag, BigDecimal processAmount, String authRefNum, String authAltRefNum, String authMessage) {
 
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         if(authResult != null) { result.put("authResult", authResult); }
         if(authCode != null) { result.put("authCode", authCode); }
         if(authFlag != null) { result.put("authFlag", authFlag); }
@@ -65,7 +65,7 @@ public final class SagePayUtil {
     public static Map<String, Object> buildCardCapturePaymentResponse
     (Boolean captureResult, String captureCode, String captureFlag, BigDecimal captureAmount, String captureRefNum, String captureAltRefNum, String captureMessage) {
 
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         if(captureResult != null) { result.put("captureResult", captureResult); }
         if(captureCode != null) { result.put("captureCode", captureCode); }
         if(captureFlag != null) { result.put("captureFlag", captureFlag); }
@@ -79,7 +79,7 @@ public final class SagePayUtil {
     public static Map<String, Object> buildCardReleasePaymentResponse
     (Boolean releaseResult, String releaseCode, BigDecimal releaseAmount, String releaseRefNum, String releaseAltRefNum, String releaseMessage) {
 
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         if(releaseResult != null) { result.put("releaseResult", releaseResult); }
         if(releaseCode != null) { result.put("releaseCode", releaseCode); }
         if(releaseAmount != null) { result.put("releaseAmount", releaseAmount); }
@@ -92,7 +92,7 @@ public final class SagePayUtil {
     public static Map<String, Object> buildCardVoidPaymentResponse
     (Boolean refundResult, BigDecimal refundAmount, String refundRefNum, String refundAltRefNum, String refundMessage) {
 
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         if(refundResult != null) { result.put("refundResult", refundResult); }
         if(refundAmount != null) { result.put("refundAmount", refundAmount); }
         if(refundRefNum != null) { result.put("refundRefNum", refundRefNum); }
@@ -104,7 +104,7 @@ public final class SagePayUtil {
     public static Map<String, Object> buildCardRefundPaymentResponse
     (Boolean refundResult, String refundCode, BigDecimal refundAmount, String refundRefNum, String refundAltRefNum, String refundMessage) {
 
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         if(refundResult != null) { result.put("refundResult", refundResult); }
         if(refundCode != null) { result.put("refundCode", refundCode); }
         if(refundAmount != null) { result.put("refundAmount", refundAmount); }
@@ -114,12 +114,21 @@ public final class SagePayUtil {
         return result;
     }
 
+    /**
+     * Builds HttpHost with the given SagePayProperties.
+     * @param props SagePay properties
+     * @throws IllegalArgumentException if neither productionHost nor testingHost found in properties.
+     * @return
+     */
     public static HttpHost getHost(Map<String, String> props) {
         String hostUrl = null;
         if("PRODUCTION".equals(props.get("sagePayMode"))) {
             hostUrl = props.get("productionHost");
         } else if("TEST".equals(props.get("sagePayMode"))) {
             hostUrl = props.get("testingHost");
+        }
+        if(hostUrl == null){
+            throw new IllegalArgumentException("Could not find host-url via SagePay Properties");
         }
         String scheme = hostUrl.substring(0, 5);
         String host = hostUrl.substring(8, hostUrl.lastIndexOf(":"));
@@ -134,19 +143,23 @@ public final class SagePayUtil {
 
     public static Map<String, String> getResponseData(HttpResponse response) throws IOException {
 
-        Map<String, String> responseData = new HashMap<String, String>();
+        Map<String, String> responseData = new HashMap<>();
         HttpEntity httpEntity = response.getEntity();
         if (httpEntity != null) {
             InputStream inputStream = httpEntity.getContent();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-
-            String data = null;
-            while( (data = reader.readLine()) != null ) {
-                if(data.indexOf("=") != -1) {
-                    String name = data.substring(0, data.indexOf("="));
-                    String value = data.substring(data.indexOf("=")+1);
-                    responseData.put(name, value);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+            try{
+                String data = null;
+                while ((data = reader.readLine()) != null) {
+                    if (data.indexOf("=") != -1) {
+                        String name = data.substring(0, data.indexOf("="));
+                        String value = data.substring(data.indexOf("=") + 1);
+                        responseData.put(name, value);
+                    }
                 }
+            }
+            finally {
+                reader.close();
             }
         }
         Debug.logInfo("SagePay Response Data : " + responseData, module);
@@ -158,11 +171,9 @@ public final class SagePayUtil {
         HttpPost httpPost = new HttpPost(uri);
         httpPost.addHeader("User-Agent", "HTTP Client");
         httpPost.addHeader("Content-type", "application/x-www-form-urlencoded");
-        List<NameValuePair> postParameters = new ArrayList<NameValuePair>();
-        Set<String> keys = parameters.keySet();
-        for (String key : keys) {
-            String value = parameters.get(key);
-            postParameters.add(new BasicNameValuePair(key, value));
+        List<NameValuePair> postParameters = new ArrayList<>();
+        for (Entry<String,String> entry : parameters.entrySet()) {
+            postParameters.add(new BasicNameValuePair(entry.getKey(), entry.getValue()));
         }
 
         Debug.logInfo("SagePay PostParameters - " + postParameters, module);

@@ -87,7 +87,7 @@ public final class SecurityFactory {
 
         private Delegator delegator = null;
 
-        protected static final Map<String, Map<String, String>> simpleRoleEntity = UtilMisc.toMap(
+        private static final Map<String, Map<String, String>> simpleRoleEntity = UtilMisc.toMap(
             "ORDERMGR", UtilMisc.<String, String>toMap("name", "OrderRole", "pkey", "orderId"),
             "FACILITY", UtilMisc.<String, String>toMap("name", "FacilityParty", "pkey", "facilityId"),
             "MARKETING", UtilMisc.<String, String>toMap("name", "MarketingCampaignRole", "pkey", "marketingCampaignId"));
@@ -101,6 +101,7 @@ public final class SecurityFactory {
             }
         }
 
+        @Override
         @Deprecated
         public Iterator<GenericValue> findUserLoginSecurityGroupByUserLoginId(String userLoginId) {
             try {
@@ -112,6 +113,7 @@ public final class SecurityFactory {
             }
         }
 
+        @Override
         @Deprecated
         public Delegator getDelegator() {
             return this.delegator;
@@ -225,7 +227,7 @@ public final class SecurityFactory {
                 entityName = simpleRoleMap.get("name");
                 String pkey = simpleRoleMap.get("pkey");
                 if (pkey != null) {
-                    List<EntityExpr> expressions = new ArrayList<EntityExpr>();
+                    List<EntityExpr> expressions = new ArrayList<>();
                     for (String role: roles) {
                         expressions.add(EntityCondition.makeCondition("roleTypeId", EntityOperator.EQUALS, role));
                     }
@@ -260,16 +262,18 @@ public final class SecurityFactory {
             return hasRolePermission(application, action, primaryKey, role, userLogin);
         }
 
+        @Override
         @Deprecated
         public boolean securityGroupPermissionExists(String groupId, String permission) {
             try {
-                return EntityQuery.use(delegator).from("SecurityGroupPermission").where("groupId", groupId, "permissionId", permission).cache(true).queryOne() != null;
+                return EntityQuery.use(delegator).from("SecurityGroupPermission").where("groupId", groupId, "permissionId", permission).cache(true).filterByDate().queryFirst() != null;
             } catch (GenericEntityException e) {
                 Debug.logWarning(e, module);
                 return false;
             }
         }
 
+        @Override
         @Deprecated
         public void setDelegator(Delegator delegator) {
             if (this.delegator != null) {

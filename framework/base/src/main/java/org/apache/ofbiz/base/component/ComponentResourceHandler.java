@@ -18,16 +18,19 @@
  *******************************************************************************/
 package org.apache.ofbiz.base.component;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.apache.ofbiz.base.config.GenericConfigException;
 import org.apache.ofbiz.base.config.ResourceHandler;
-import org.apache.ofbiz.base.util.UtilXml;
 import org.apache.ofbiz.base.util.Debug;
-
+import org.apache.ofbiz.base.util.UtilXml;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.xml.sax.SAXException;
 
 /**
  * Contains resource information and provides for loading data
@@ -51,41 +54,46 @@ public class ComponentResourceHandler implements ResourceHandler {
         this.componentName = componentName;
         this.loaderName = loaderName;
         this.location = location;
-        if (Debug.verboseOn()) Debug.logVerbose("Created " + this.toString(), module);
+        if (Debug.verboseOn()) {
+            Debug.logVerbose("Created " + this.toString(), module);
+        }
     }
 
+    @Override
     public String getLoaderName() {
         return this.loaderName;
     }
 
+    @Override
     public String getLocation() {
         return this.location;
     }
 
+    @Override
     public Document getDocument() throws GenericConfigException {
         try {
             return UtilXml.readXmlDocument(this.getStream(), this.getFullLocation(), true);
-        } catch (org.xml.sax.SAXException e) {
-            throw new GenericConfigException("Error reading " + this.toString(), e);
-        } catch (javax.xml.parsers.ParserConfigurationException e) {
-            throw new GenericConfigException("Error reading " + this.toString(), e);
-        } catch (java.io.IOException e) {
+        } catch (SAXException | ParserConfigurationException | IOException  e) {
             throw new GenericConfigException("Error reading " + this.toString(), e);
         }
     }
 
+    @Override
     public InputStream getStream() throws GenericConfigException {
         return ComponentConfig.getStream(componentName, loaderName, location);
     }
 
+    @Override
     public URL getURL() throws GenericConfigException {
         return ComponentConfig.getURL(componentName, loaderName, location);
     }
 
+    @Override
     public boolean isFileResource() throws GenericConfigException {
-        return ComponentConfig.isFileResourceLoader(componentName, loaderName);
+        return ComponentConfig.getComponentConfig(componentName).isFileResourceLoader(loaderName);
     }
 
+    @Override
     public String getFullLocation() throws GenericConfigException {
         return ComponentConfig.getFullLocation(componentName, loaderName, location);
     }

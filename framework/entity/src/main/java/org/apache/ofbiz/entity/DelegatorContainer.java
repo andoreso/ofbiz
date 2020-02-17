@@ -28,8 +28,8 @@ import org.apache.ofbiz.base.container.Container;
 import org.apache.ofbiz.base.container.ContainerConfig;
 import org.apache.ofbiz.base.container.ContainerException;
 import org.apache.ofbiz.base.start.StartupCommand;
-import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.base.util.StringUtil;
+import org.apache.ofbiz.base.util.UtilValidate;
 
 public class DelegatorContainer implements Container {
     private String name;
@@ -39,17 +39,17 @@ public class DelegatorContainer implements Container {
     public void init(List<StartupCommand> ofbizCommands, String name, String configFile) throws ContainerException {
         this.name = name;
 
-        ContainerConfig.Configuration cc = ContainerConfig.getConfiguration(name, configFile);
+        ContainerConfig.Configuration cc = ContainerConfig.getConfiguration(name);
 
         preloadedDelegatorNames = StringUtil.split(ContainerConfig.getPropertyValue(cc, "preloaded-delegators", "default"), ", ");
     }
 
     @Override
-    public boolean start() throws ContainerException {
+    public boolean start() {
         if (UtilValidate.isEmpty(preloadedDelegatorNames)) {
             return true;
         }
-        List<Future<Delegator>> futures = new ArrayList<Future<Delegator>>();
+        List<Future<Delegator>> futures = new ArrayList<>();
         for (String preloadedDelegatorName: preloadedDelegatorNames) {
             futures.add(DelegatorFactory.getDelegatorFuture(preloadedDelegatorName));
         }
@@ -58,7 +58,7 @@ public class DelegatorContainer implements Container {
     }
 
     @Override
-    public void stop() throws ContainerException {
+    public void stop() {
     }
 
     @Override

@@ -22,9 +22,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
 import org.apache.ofbiz.base.util.Debug;
+import org.apache.ofbiz.base.util.UtilGenerics;
 import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.entity.Delegator;
 import org.apache.ofbiz.entity.GenericEntityException;
@@ -46,7 +49,7 @@ public class HumanResEvents {
         String hrefString = request.getParameter("hrefString");
         String hrefString2 = request.getParameter("hrefString2");
 
-        Map<String, Object> paramMap = new HashMap<String, Object>();
+        Map<String, Object> paramMap = new HashMap<>();
         paramMap.put("delegator", delegator);
         paramMap.put("partyId", partyId);
         paramMap.put("onclickFunction", onclickFunction);
@@ -54,13 +57,13 @@ public class HumanResEvents {
         paramMap.put("hrefString", hrefString);
         paramMap.put("hrefString2", hrefString2);
 
-        List<Map<String,Object>> categoryList = new ArrayList<Map<String,Object>>();
+        List<Map<String,Object>> categoryList = new ArrayList<>();
 
         //check employee position
         try {
             categoryList.addAll(getCurrentEmployeeDetails(paramMap));
         } catch (GenericEntityException e) {
-            e.printStackTrace();
+            Debug.logError(e, module);
             return "error";
         }
 
@@ -75,7 +78,7 @@ public class HumanResEvents {
                 categoryList.addAll(getEmployeeInComp(paramMap));
             }
         } catch (GenericEntityException e) {
-            e.printStackTrace();
+            Debug.logError(e, module);
             return "error";
         }
         request.setAttribute("hrTree", categoryList);
@@ -123,10 +126,10 @@ public class HumanResEvents {
                             title = memGroupCtx.getString("groupName");
                         }
 
-                        Map<String,Object> josonMap = new HashMap<String, Object>();
-                        Map<String,Object> dataMap = new HashMap<String, Object>();
-                        Map<String,Object> dataAttrMap = new HashMap<String, Object>();
-                        Map<String,Object> attrMap = new HashMap<String, Object>();
+                        Map<String,Object> josonMap = new HashMap<>();
+                        Map<String,Object> dataMap = new HashMap<>();
+                        Map<String,Object> dataAttrMap = new HashMap<>();
+                        Map<String,Object> attrMap = new HashMap<>();
 
                         dataAttrMap.put("onClick", onclickFunction + "('" + memberId + additionParam + "')");
 
@@ -150,7 +153,7 @@ public class HumanResEvents {
                 }
             }
         } catch (GenericEntityException e) {
-            e.printStackTrace();
+            Debug.logError(e, module);
             throw new GenericEntityException(e);
         }
 
@@ -165,8 +168,8 @@ public class HumanResEvents {
         String hrefString = (String) params.get("hrefString");
         String hrefString2 = (String) params.get("hrefString2");
 
-        Map<String , Object> partyGroup = (Map<String, Object>) params.get("partyGroup");
-        List<Map<String, Object>> resultList = new ArrayList<Map<String,Object>>();
+        Map<String , Object> partyGroup = UtilGenerics.cast(params.get("partyGroup"));
+        List<Map<String, Object>> resultList = new ArrayList<>();
         List<GenericValue> childOfComs = null;
 
         try {
@@ -181,10 +184,10 @@ public class HumanResEvents {
                     String catNameField = null;
                     String title = null;
 
-                    Map<String, Object> josonMap = new HashMap<String, Object>();
-                    Map<String, Object> dataMap = new HashMap<String, Object>();
-                    Map<String, Object> dataAttrMap = new HashMap<String, Object>();
-                    Map<String, Object> attrMap = new HashMap<String, Object>();
+                    Map<String, Object> josonMap = new HashMap<>();
+                    Map<String, Object> dataMap = new HashMap<>();
+                    Map<String, Object> dataAttrMap = new HashMap<>();
+                    Map<String, Object> attrMap = new HashMap<>();
 
                     catId = childOfCom.get("partyIdTo");
 
@@ -243,7 +246,7 @@ public class HumanResEvents {
                 }  
             }
         } catch (GenericEntityException e) {
-            e.printStackTrace();
+            Debug.logError(e, module);
             throw new GenericEntityException(e);
         }
 
@@ -256,7 +259,7 @@ public class HumanResEvents {
         Delegator delegator = (Delegator) params.get("delegator");
         String partyId = (String) params.get("partyId");
 
-        List<Map<String, Object>> resultList = new ArrayList<Map<String,Object>>();
+        List<Map<String, Object>> resultList = new ArrayList<>();
 
         try {
             isEmpls = EntityQuery.use(delegator).from("EmplPosition")
@@ -267,10 +270,10 @@ public class HumanResEvents {
 
             if (UtilValidate.isNotEmpty(isEmpls)) {
                 for (GenericValue childOfEmpl : isEmpls ) {
-                    Map<String, Object> emplMap = new HashMap<String, Object>();
-                    Map<String, Object> emplAttrMap = new HashMap<String, Object>();
-                    Map<String, Object> empldataMap = new HashMap<String, Object>();
-                    Map<String, Object> emplDataAttrMap = new HashMap<String, Object>();
+                    Map<String, Object> emplMap = new HashMap<>();
+                    Map<String, Object> emplAttrMap = new HashMap<>();
+                    Map<String, Object> empldataMap = new HashMap<>();
+                    Map<String, Object> emplDataAttrMap = new HashMap<>();
 
                     String emplId = (String) childOfEmpl.get("emplPositionId");
                     String typeId = (String) childOfEmpl.get("emplPositionTypeId");

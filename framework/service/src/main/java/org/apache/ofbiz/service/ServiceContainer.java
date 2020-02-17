@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.ofbiz.base.container.Container;
 import org.apache.ofbiz.base.container.ContainerConfig;
+import org.apache.ofbiz.base.container.ContainerConfig.Configuration;
 import org.apache.ofbiz.base.container.ContainerException;
 import org.apache.ofbiz.base.start.StartupCommand;
 import org.apache.ofbiz.base.util.Debug;
@@ -33,11 +34,11 @@ import org.apache.ofbiz.entity.Delegator;
 import org.apache.ofbiz.service.job.JobManager;
 
 /**
- * A container for the service engine. 
+ * A container for the service engine.
  */
 public class ServiceContainer implements Container {
     private static final String module = ServiceContainer.class.getName();
-    private static final ConcurrentHashMap<String, LocalDispatcher> dispatcherCache = new ConcurrentHashMap<String, LocalDispatcher>();
+    private static final ConcurrentHashMap<String, LocalDispatcher> dispatcherCache = new ConcurrentHashMap<>();
     private static LocalDispatcherFactory dispatcherFactory;
 
     private String name;
@@ -46,27 +47,27 @@ public class ServiceContainer implements Container {
     public void init(List<StartupCommand> ofbizCommands, String name, String configFile) throws ContainerException {
         this.name = name;
         // initialize the LocalDispatcherFactory
-        ContainerConfig.Configuration cfg = ContainerConfig.getConfiguration(name, configFile);
-        ContainerConfig.Configuration.Property dispatcherFactoryProperty = cfg.getProperty("dispatcher-factory");
-        if (dispatcherFactoryProperty == null || UtilValidate.isEmpty(dispatcherFactoryProperty.value)) {
+        Configuration cfg = ContainerConfig.getConfiguration(name);
+        Configuration.Property dispatcherFactoryProperty = cfg.getProperty("dispatcher-factory");
+        if (dispatcherFactoryProperty == null || UtilValidate.isEmpty(dispatcherFactoryProperty.value())) {
             throw new ContainerException("Unable to initialize container " + name + ": dispatcher-factory property is not set");
         }
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
         try {
-            Class<?> c = loader.loadClass(dispatcherFactoryProperty.value);
-            dispatcherFactory = (LocalDispatcherFactory) c.newInstance();
+            Class<?> c = loader.loadClass(dispatcherFactoryProperty.value());
+            dispatcherFactory = (LocalDispatcherFactory) c.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
             throw new ContainerException(e);
         }
     }
 
     @Override
-    public boolean start() throws ContainerException {
+    public boolean start() {
         return true;
     }
 
     @Override
-    public void stop() throws ContainerException {
+    public void stop() {
         JobManager.shutDown();
         Set<String> dispatcherNames = getAllDispatcherNames();
         for (String dispatcherName: dispatcherNames) {
@@ -92,7 +93,7 @@ public class ServiceContainer implements Container {
             dispatcher = dispatcherFactory.createLocalDispatcher(dispatcherName, delegator);
             dispatcherCache.putIfAbsent(dispatcherName, dispatcher);
             dispatcher = dispatcherCache.get(dispatcherName);
-            if (Debug.infoOn()) Debug.logInfo("Created new dispatcher: " + dispatcherName, module);
+            Debug.logInfo("Created new dispatcher: " + dispatcherName, module);
         }
         return dispatcher;
     }
@@ -105,7 +106,7 @@ public class ServiceContainer implements Container {
     }
 
     public static LocalDispatcher removeFromCache(String dispatcherName) {
-        if (Debug.infoOn()) Debug.logInfo("Removing from cache dispatcher: " + dispatcherName, module);
+        Debug.logInfo("Removing from cache dispatcher: " + dispatcherName, module);
         return dispatcherCache.remove(dispatcherName);
     }
 

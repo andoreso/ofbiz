@@ -26,9 +26,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-
 import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.base.util.UtilXml;
 import org.apache.ofbiz.entity.Delegator;
@@ -37,6 +34,8 @@ import org.apache.ofbiz.entity.model.ModelViewEntity.ModelAlias;
 import org.apache.ofbiz.entity.model.ModelViewEntity.ModelAliasAll;
 import org.apache.ofbiz.entity.model.ModelViewEntity.ModelMemberEntity;
 import org.apache.ofbiz.entity.model.ModelViewEntity.ModelViewLink;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 /**
  * This class is used for declaring Dynamic View Entities, to be used and thrown away.
  * A special method exists on the Delegator to accept a DynamicViewEntity instead
@@ -59,22 +58,22 @@ public class DynamicViewEntity {
     protected String title = "";
 
     /** Contains member-entity alias name definitions: key is alias, value is ModelMemberEntity */
-    protected Map<String, ModelMemberEntity> memberModelMemberEntities = new HashMap<String, ModelMemberEntity>();
+    protected Map<String, ModelMemberEntity> memberModelMemberEntities = new HashMap<>();
 
     /** List of alias-alls which act as a shortcut for easily pulling over member entity fields */
-    protected List<ModelAliasAll> aliasAlls = new ArrayList<ModelAliasAll>();
+    protected List<ModelAliasAll> aliasAlls = new ArrayList<>();
 
     /** List of aliases with information in addition to what is in the standard field list */
-    protected List<ModelAlias> aliases = new ArrayList<ModelAlias>();
+    protected List<ModelAlias> aliases = new ArrayList<>();
 
     /** List of fields to group by */
     protected List<String> groupBy;
 
     /** List of view links to define how entities are connected (or "joined") */
-    protected List<ModelViewLink> viewLinks = new ArrayList<ModelViewLink>();
+    protected List<ModelViewLink> viewLinks = new ArrayList<>();
 
     /** relations defining relationships between this entity and other entities */
-    protected List<ModelRelation> relations = new ArrayList<ModelRelation>();
+    protected List<ModelRelation> relations = new ArrayList<>();
 
     public DynamicViewEntity() {
     }

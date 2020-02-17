@@ -84,12 +84,7 @@ under the License.
     </servlet-mapping>
 
     <session-config>
-        <session-timeout>60</session-timeout> <!-- in minutes -->
-        <cookie-config>
-            <http-only>true</http-only>
-            <secure>true</secure>
-        </cookie-config>
-        <tracking-mode>COOKIE</tracking-mode>
+        <session-timeout>60</session-timeout><!-- in minutes -->
     </session-config>
 
     <welcome-file-list>

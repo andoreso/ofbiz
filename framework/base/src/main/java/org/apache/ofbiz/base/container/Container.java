@@ -24,7 +24,7 @@ import org.apache.ofbiz.base.start.StartupCommand;
 
 /**
  * An OFBiz container. A container can be thought of as a background process.
- * 
+ *
  * <p>
  * When OFBiz starts, the main thread will create the <code>Container</code> instance and
  * then call the container's <code>init</code> method. If the method returns without
@@ -35,7 +35,7 @@ import org.apache.ofbiz.base.start.StartupCommand;
  * Implementations should anticipate asynchronous calls to the methods by different
  * threads.
  * </p>
- * 
+ *
  * <p>Containers might be loaded more than once (have more than one instance).<p>
  */
 public interface Container {
@@ -45,12 +45,14 @@ public interface Container {
      *
      * @param ofbizCommands Command-line arguments.
      * @param name Unique name of the container's instance.
-     * @param configFile Location of the configuration file used to load this container.
+     * @param configFile  always {@code null} but used to be the location of the global
+     *                    container configuration file which does not exist anymore
      * @throws ContainerException If an error was encountered. Throwing this exception
      * will halt container loading, so it should be thrown only when other containers
      * might depend on this one.
      */
-    public void init(List<StartupCommand> ofbizCommands, String name, String configFile) throws ContainerException;
+    void init(List<StartupCommand> ofbizCommands, String name, String configFile)
+            throws ContainerException;
 
     /**
      * Start the container process. This method must not block - implementations

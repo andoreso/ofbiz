@@ -38,7 +38,7 @@ import org.w3c.dom.Element;
 /**
  * Implements the &lt;call-service-asynch&gt; element.
  * 
- * @see <a href="https://cwiki.apache.org/confluence/display/OFBADMIN/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
+ * @see <a href="https://cwiki.apache.org/confluence/display/OFBIZ/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
  */
 public final class CallServiceAsynch extends MethodOperation {
 
@@ -70,7 +70,7 @@ public final class CallServiceAsynch extends MethodOperation {
         String serviceName = serviceNameFse.expandString(methodContext.getEnvMap());
         Map<String, Object> inMap = inMapFma.get(methodContext.getEnvMap());
         if (inMap == null) {
-            inMap = new HashMap<String, Object>();
+            inMap = new HashMap<>();
         }
         if (includeUserLogin) {
             GenericValue userLogin = methodContext.getUserLogin();

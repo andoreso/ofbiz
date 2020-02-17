@@ -19,16 +19,21 @@
 
 package org.apache.ofbiz.shipment.thirdparty.fedex;
 
+import java.io.IOException;
 import java.io.StringWriter;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import org.apache.ofbiz.base.util.Base64;
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.GeneralException;
 import org.apache.ofbiz.base.util.HttpClient;
@@ -55,6 +60,7 @@ import org.apache.ofbiz.service.ServiceUtil;
 import org.apache.ofbiz.shipment.shipment.ShipmentServices;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.xml.sax.SAXException;
 
 /**
  * Fedex Shipment Services
@@ -146,11 +152,11 @@ public class FedexServices {
         String shipmentGatewayConfigId = (String) context.get("shipmentGatewayConfigId");
         String resource = (String) context.get("configProps");
         Locale locale = (Locale) context.get("locale");
-        List<Object> errorList = new LinkedList<Object> ();
+        List<Object> errorList = new LinkedList<> ();
 
         Boolean replaceMeterNumber = (Boolean) context.get("replaceMeterNumber");
 
-        if (! replaceMeterNumber.booleanValue()) {
+        if (!replaceMeterNumber) {
             String meterNumber = getShipmentGatewayConfigValue(delegator, shipmentGatewayConfigId, "accessMeterNumber", resource, "shipment.fedex.access.meterNumber");
             if (UtilValidate.isNotEmpty(meterNumber)) {
                 return ServiceUtil.returnError(UtilProperties.getMessage(resourceError, 
@@ -162,7 +168,7 @@ public class FedexServices {
         String companyPartyId = (String) context.get("companyPartyId");
         String contactPartyName = (String) context.get("contactPartyName");
 
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
 
         String accountNumber = getShipmentGatewayConfigValue(delegator, shipmentGatewayConfigId, "accessAccountNbr", resource, "shipment.fedex.access.accountNbr");
         if (UtilValidate.isEmpty(accountNumber)) {
@@ -208,7 +214,7 @@ public class FedexServices {
                     .queryList();
 
             // Get the first valid postal address (address1, city, postalCode and countryGeoId are required by Fedex)
-            List<EntityCondition> postalAddressConditions = new LinkedList<EntityCondition>();
+            List<EntityCondition> postalAddressConditions = new LinkedList<>();
             postalAddressConditions.add(EntityCondition.makeCondition("contactMechTypeId", EntityOperator.EQUALS, "POSTAL_ADDRESS"));
             postalAddressConditions.add(EntityCondition.makeCondition("address1", EntityOperator.NOT_EQUAL, null));
             postalAddressConditions.add(EntityCondition.makeCondition("address1", EntityOperator.NOT_EQUAL, ""));
@@ -242,13 +248,13 @@ public class FedexServices {
             String countryCode = countryGeo.getString("geoCode");
             String stateOrProvinceCode = null;
             // Only add the StateOrProvinceCode element if the address is in USA or Canada
-            if (countryCode.equals("CA") || countryCode.equals("US")) {
+            if ("CA".equals(countryCode) || "US".equals(countryCode)) {
                 GenericValue stateProvinceGeo = EntityQuery.use(delegator).from("Geo").where("geoId", postalAddress.getString("stateProvinceGeoId")).cache().queryOne();
                 stateOrProvinceCode = stateProvinceGeo.getString("geoCode");
             }
 
             // Get the first valid primary phone number (required by Fedex)
-            List<EntityCondition> phoneNumberConditions = new LinkedList<EntityCondition>();
+            List<EntityCondition> phoneNumberConditions = new LinkedList<>();
             phoneNumberConditions.add(EntityCondition.makeCondition("contactMechTypeId", EntityOperator.EQUALS, "TELECOM_NUMBER"));
             phoneNumberConditions.add(EntityCondition.makeCondition("contactMechPurposeTypeId", EntityOperator.EQUALS, "PRIMARY_PHONE"));
             phoneNumberConditions.add(EntityCondition.makeCondition("areaCode", EntityOperator.NOT_EQUAL, null));
@@ -266,13 +272,13 @@ public class FedexServices {
             }
             phoneNumber = phoneNumberValue.getString("areaCode") + phoneNumberValue.getString("contactNumber");
             // Fedex doesn't want the North American country code
-            if (UtilValidate.isNotEmpty(phoneNumberValue.getString("countryCode")) && !(countryCode.equals("CA") || countryCode.equals("US"))) {
+            if (UtilValidate.isNotEmpty(phoneNumberValue.getString("countryCode")) && !("CA".equals(countryCode) || "US".equals(countryCode))) {
                 phoneNumber = phoneNumberValue.getString("countryCode") + phoneNumber;
             }
             phoneNumber = phoneNumber.replaceAll("[^+\\d]", "");
 
             // Get the first valid fax number
-            List<EntityCondition> faxNumberConditions = new LinkedList<EntityCondition>();
+            List<EntityCondition> faxNumberConditions = new LinkedList<>();
             faxNumberConditions.add(EntityCondition.makeCondition("contactMechTypeId", EntityOperator.EQUALS, "TELECOM_NUMBER"));
             faxNumberConditions.add(EntityCondition.makeCondition("contactMechPurposeTypeId", EntityOperator.EQUALS, "FAX_NUMBER"));
             faxNumberConditions.add(EntityCondition.makeCondition("areaCode", EntityOperator.NOT_EQUAL, null));
@@ -284,14 +290,14 @@ public class FedexServices {
             if (! UtilValidate.isEmpty(faxNumberValue)) {
                 faxNumber = faxNumberValue.getString("areaCode") + faxNumberValue.getString("contactNumber");
                 // Fedex doesn't want the North American country code
-                if (UtilValidate.isNotEmpty(faxNumberValue.getString("countryCode")) && !(countryCode.equals("CA") || countryCode.equals("US"))) {
+                if (UtilValidate.isNotEmpty(faxNumberValue.getString("countryCode")) && !("CA".equals(countryCode) || "US".equals(countryCode))) {
                     faxNumber = faxNumberValue.getString("countryCode") + faxNumber;
                 }
                 faxNumber = faxNumber.replaceAll("[^+\\d]", "");
             }
 
             // Get the first valid email address
-            List<EntityCondition> emailConditions = new LinkedList<EntityCondition>();
+            List<EntityCondition> emailConditions = new LinkedList<>();
             emailConditions.add(EntityCondition.makeCondition("contactMechTypeId", EntityOperator.EQUALS, "EMAIL_ADDRESS"));
             emailConditions.add(EntityCondition.makeCondition("infoString", EntityOperator.NOT_EQUAL, null));
             emailConditions.add(EntityCondition.makeCondition("infoString", EntityOperator.NOT_EQUAL, ""));
@@ -310,7 +316,7 @@ public class FedexServices {
             }
 
             // Populate the Freemarker context
-            Map<String, Object> subscriptionRequestContext = new HashMap<String, Object>();
+            Map<String, Object> subscriptionRequestContext = new HashMap<>();
             subscriptionRequestContext.put("AccountNumber", accountNumber);
             subscriptionRequestContext.put("PersonName", contactPartyName);
             subscriptionRequestContext.put("CompanyName", companyName);
@@ -361,7 +367,7 @@ public class FedexServices {
             try {
                 fDXSubscriptionReplyDocument = UtilXml.readXmlDocument(fDXSubscriptionReplyString, false);
                 Debug.logInfo("Fedex response for FDXSubscriptionRequest:" + fDXSubscriptionReplyString, module);
-            } catch (Exception e) {
+            } catch (SAXException | ParserConfigurationException | IOException e) {
                 String errorMessage = "Error parsing the FDXSubscriptionRequest response: " + e.toString();
                 Debug.logError(e, errorMessage, module);
                 return ServiceUtil.returnError(UtilProperties.getMessage(resourceError, 
@@ -468,7 +474,7 @@ public class FedexServices {
         }
 
         try {
-            Map<String, Object> shipRequestContext = new HashMap<String, Object>();
+            Map<String, Object> shipRequestContext = new HashMap<>();
 
             // Get the shipment and the shipmentRouteSegment
             GenericValue shipment = EntityQuery.use(delegator).from("Shipment").where("shipmentId", shipmentId).queryOne();
@@ -514,7 +520,7 @@ public class FedexServices {
             String service = carrierShipmentMethod.getString("carrierServiceCode");
 
             // CarrierCode is FDXG only for FEDEXGROUND and GROUNDHOMEDELIVERY services.
-            boolean isGroundService = service.equals("FEDEXGROUND") || service.equals("GROUNDHOMEDELIVERY");
+            boolean isGroundService = "FEDEXGROUND".equals(service) || "GROUNDHOMEDELIVERY".equals(service);
             String carrierCode = isGroundService ? "FDXG" : "FDXE";
 
             // Determine the currency by trying the shipmentRouteSegment, then the Shipment, then the framework's default currency, and finally default to USD
@@ -552,7 +558,7 @@ public class FedexServices {
             String originAddressStateOrProvinceCode = null;
 
             // Only add the StateOrProvinceCode element if the address is in USA or Canada
-            if (originAddressCountryCode.equals("CA") || originAddressCountryCode.equals("US")) {
+            if ("CA".equals(originAddressCountryCode) || "US".equals(originAddressCountryCode)) {
                 if (UtilValidate.isEmpty(originPostalAddress.getString("stateProvinceGeoId"))) {
                     return ServiceUtil.returnError(UtilProperties.getMessage(resourceError, 
                             "FacilityShipmentRouteSegmentOriginStateProvinceGeoIdRequired",
@@ -573,7 +579,7 @@ public class FedexServices {
             String originContactPhoneNumber = originTelecomNumber.getString("areaCode") + originTelecomNumber.getString("contactNumber");
 
             // Fedex doesn't want the North American country code
-            if (UtilValidate.isNotEmpty(originTelecomNumber.getString("countryCode")) && !(originAddressCountryCode.equals("CA") || originAddressCountryCode.equals("US"))) {
+            if (UtilValidate.isNotEmpty(originTelecomNumber.getString("countryCode")) && !("CA".equals(originAddressCountryCode) || "US".equals(originAddressCountryCode))) {
                 originContactPhoneNumber = originTelecomNumber.getString("countryCode") + originContactPhoneNumber;
             }
             originContactPhoneNumber = originContactPhoneNumber.replaceAll("[^+\\d]", "");
@@ -627,7 +633,7 @@ public class FedexServices {
             String destinationAddressStateOrProvinceCode = null;
 
             // Only add the StateOrProvinceCode element if the address is in USA or Canada
-            if (destinationAddressCountryCode.equals("CA") || destinationAddressCountryCode.equals("US")) {
+            if ("CA".equals(destinationAddressCountryCode) || "US".equals(destinationAddressCountryCode)) {
                 if (UtilValidate.isEmpty(destinationPostalAddress.getString("stateProvinceGeoId"))) {
                     return ServiceUtil.returnError(UtilProperties.getMessage(resourceError, 
                             "FacilityShipmentRouteSegmentDestStateProvinceGeoIdNotFound", 
@@ -648,7 +654,7 @@ public class FedexServices {
             String destinationContactPhoneNumber = destinationTelecomNumber.getString("areaCode") + destinationTelecomNumber.getString("contactNumber");
 
             // Fedex doesn't want the North American country code
-            if (UtilValidate.isNotEmpty(destinationTelecomNumber.getString("countryCode")) && !(destinationAddressCountryCode.equals("CA") || destinationAddressCountryCode.equals("US"))) {
+            if (UtilValidate.isNotEmpty(destinationTelecomNumber.getString("countryCode")) && !("CA".equals(destinationAddressCountryCode) || "US".equals(destinationAddressCountryCode))) {
                 destinationContactPhoneNumber = destinationTelecomNumber.getString("countryCode") + destinationContactPhoneNumber;
             }
             destinationContactPhoneNumber = destinationContactPhoneNumber.replaceAll("[^+\\d]", "");
@@ -676,7 +682,7 @@ public class FedexServices {
                 // Determine the home-delivery instructions
                 homeDeliveryType = shipmentRouteSegment.getString("homeDeliveryType");
                 if (UtilValidate.isNotEmpty(homeDeliveryType)) {
-                    if (! (homeDeliveryType.equals("DATECERTAIN") || homeDeliveryType.equals("EVENING") || homeDeliveryType.equals("APPOINTMENT"))) {
+                    if (! ("DATECERTAIN".equals(homeDeliveryType) || "EVENING".equals(homeDeliveryType) || "APPOINTMENT".equals(homeDeliveryType))) {
                         return ServiceUtil.returnError(UtilProperties.getMessage(resourceError, 
                                 "FacilityShipmentFedexHomeDeliveryTypeInvalid", 
                                 UtilMisc.toMap("shipmentId", shipmentId, "shipmentRouteSegmentId", shipmentRouteSegmentId), locale));
@@ -714,7 +720,7 @@ public class FedexServices {
             shipRequestContext.put("ShipTime", UtilDateTime.nowTimestamp());
             shipRequestContext.put("DropoffType", dropoffType);
             shipRequestContext.put("Service", service);
-            shipRequestContext.put("WeightUnits", weightUomId.equals("WT_kg") ? "KGS" : "LBS");
+            shipRequestContext.put("WeightUnits", "WT_kg".equals(weightUomId) ? "KGS" : "LBS");
             shipRequestContext.put("CurrencyCode", currencyCode);
             shipRequestContext.put("PayorType", "SENDER");
             shipRequestContext.put(originContactKey, originContactName);
@@ -912,15 +918,15 @@ public class FedexServices {
                 shipRequestContext.put("DropoffType", dropoffType);
                 shipRequestContext.put("Packaging", packaging);
                 if (UtilValidate.isNotEmpty(dimensionsUomId) &&
-                    dimensionsLength != null && dimensionsLength.setScale(0, BigDecimal.ROUND_HALF_UP).compareTo(BigDecimal.ZERO) > 0 &&
-                    dimensionsWidth != null && dimensionsWidth.setScale(0, BigDecimal.ROUND_HALF_UP).compareTo(BigDecimal.ZERO) > 0   &&
-                    dimensionsHeight != null && dimensionsHeight.setScale(0, BigDecimal.ROUND_HALF_UP).compareTo(BigDecimal.ZERO) > 0) {
-                        shipRequestContext.put("DimensionsUnits", dimensionsUomId.equals("LEN_in") ? "IN" : "CM");
-                        shipRequestContext.put("DimensionsLength", dimensionsLength.setScale(0, BigDecimal.ROUND_HALF_UP).toString());
-                        shipRequestContext.put("DimensionsWidth", dimensionsWidth.setScale(0, BigDecimal.ROUND_HALF_UP).toString());
-                        shipRequestContext.put("DimensionsHeight", dimensionsHeight.setScale(0, BigDecimal.ROUND_HALF_UP).toString());
+                    dimensionsLength != null && dimensionsLength.setScale(0, RoundingMode.HALF_UP).compareTo(BigDecimal.ZERO) > 0 &&
+                    dimensionsWidth != null && dimensionsWidth.setScale(0, RoundingMode.HALF_UP).compareTo(BigDecimal.ZERO) > 0   &&
+                    dimensionsHeight != null && dimensionsHeight.setScale(0, RoundingMode.HALF_UP).compareTo(BigDecimal.ZERO) > 0) {
+                        shipRequestContext.put("DimensionsUnits", "LEN_in".equals(dimensionsUomId) ? "IN" : "CM");
+                        shipRequestContext.put("DimensionsLength", dimensionsLength.setScale(0, RoundingMode.HALF_UP).toString());
+                        shipRequestContext.put("DimensionsWidth", dimensionsWidth.setScale(0, RoundingMode.HALF_UP).toString());
+                        shipRequestContext.put("DimensionsHeight", dimensionsHeight.setScale(0, RoundingMode.HALF_UP).toString());
                 }
-                shipRequestContext.put("Weight", weight.setScale(1, BigDecimal.ROUND_UP).toString());
+                shipRequestContext.put("Weight", weight.setScale(1, RoundingMode.UP).toString());
             }
 
             StringWriter outWriter = new StringWriter();
@@ -975,7 +981,7 @@ public class FedexServices {
      */
     public static Map<String, Object> handleFedexShipReply(String fDXShipReplyString, GenericValue shipmentRouteSegment, 
             List<GenericValue> shipmentPackageRouteSegs, Locale locale) throws GenericEntityException {
-        List<Object> errorList = new LinkedList<Object>();
+        List<Object> errorList = new LinkedList<>();
         GenericValue shipmentPackageRouteSeg = shipmentPackageRouteSegs.get(0);
 
         Document fdxShipReplyDocument = null;
@@ -1015,7 +1021,7 @@ public class FedexServices {
                             "fDXShipReplyString", fDXShipReplyString), locale));
         }
 
-        byte[] labelBytes = Base64.base64Decode(encodedImageString.getBytes());
+        byte[] labelBytes = Base64.getMimeDecoder().decode(encodedImageString.getBytes(StandardCharsets.UTF_8));
 
         if (labelBytes != null) {
 

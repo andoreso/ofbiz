@@ -73,10 +73,17 @@ public class ComparableRange<T extends Comparable<T>> implements Range<T>, Compa
         try {
             ComparableRange<?> that = (ComparableRange<?>) obj;
             return this.start.equals(that.start()) && this.end.equals(that.end());
-        } catch (Exception e) {}
-        return false;
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
+
+    @Override
     public int compareTo(ComparableRange<T> range) {
         if (this == range) {
             return 0;

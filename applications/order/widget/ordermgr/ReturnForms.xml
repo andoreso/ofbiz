@@ -47,7 +47,7 @@ under the License.
             </drop-down>
         </field>
         <field name="statusId" use-when="returnHeader!=null">
-            <drop-down current-description="${currentStatus.description}">
+            <drop-down current-description="${currentStatus.description}" current="first-in-list" >
                 <entity-options entity-name="StatusValidChangeToDetail" key-field-name="statusIdTo" description="${transitionName} (${description})">
                     <entity-constraint name="statusId" env-name="returnHeader.statusId"/>
                     <entity-order-by field-name="sequenceId"/>
@@ -72,8 +72,8 @@ under the License.
                 </entity-options>
             </drop-down>
         </field>
-        <field name="fromPartyId"><lookup target-form-name="LookupPartyName"/></field>
-        <field name="toPartyId"><lookup target-form-name="LookupPartyName"/></field>
+        <field name="fromPartyId" required-field="true"><lookup target-form-name="LookupPartyName"/></field>
+        <field name="toPartyId" required-field="true"><lookup target-form-name="LookupPartyName"/></field>
         <field name="originContactMechId" use-when="returnHeader!=null">
             <display-entity entity-name="PostalAddress" key-field-name="contactMechId" description="${toName} ${attnName} ${address1} ${address2} ${city} ${stateProvinceGeoId} ${postalCode} ${countryGeoId}"/>
         </field>

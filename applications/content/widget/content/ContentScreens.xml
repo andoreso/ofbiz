@@ -43,7 +43,7 @@ under the License.
                                 <decorator-screen name="FindScreenDecorator" location="component://common/widget/CommonScreens.xml">
                                     <decorator-section name="menu-bar">
                                         <container style="button-bar">
-                                            <!--<link target="EditContent" text="${uiLabelMap.CommonCreateNew}" style="buttontext create"/>
+                                            <!--<link target="EditContent" text="${uiLabelMap.CommonCreate}" style="buttontext create"/>
                                             <link target="ContentSearchOptions" text="${uiLabelMap.CommonAdvancedSearch}" style="buttontext"/>-->
                                             <include-menu name="contentMenu" location="component://content/widget/content/ContentMenus.xml"/>
                                         </container>
@@ -174,12 +174,7 @@ under the License.
                 <property-map resource="CommonUiLabels" map-name="uiLabelMap" global="true"/>
                 <property-map resource="CommonExtUiLabels" map-name="uiLabelMap" global="true"/>
                 <set field="contentId" from-field="parameters.contentId" default-value="${contentId}"/>
-                <set field="visualThemeId" from-field="userPreferences.VISUAL_THEME" global="true"/>
-                <service service-name="getVisualThemeResources">
-                    <field-map field-name="visualThemeId"/>
-                    <field-map field-name="themeResources" from-field="layoutSettings"/>
-                </service>
-                <set field="layoutSettings" from-field="themeResources" default-value="${layoutSettings}" global="true"/>
+                <script location="component://common/groovyScripts/InitTheme.groovy"/>
             </actions>
             <widgets>
                 <content content-id="${contentId}"/>
@@ -259,7 +254,7 @@ under the License.
                                 </and>
                             </condition>
                             <widgets>
-                                <screenlet title="${uiLabelMap.PageTitleEditAssociation}'">
+                                <screenlet title="${uiLabelMap.PageTitleEditAssociation}">
                                     <include-form name="EditContentAssoc" location="component://content/widget/content/ContentForms.xml"/>
                                 </screenlet>
                             </widgets>
@@ -304,7 +299,9 @@ under the License.
                         <screenlet id="AddContentRolePanel" title="${uiLabelMap.PageTitleAddRole}" collapsible="true">
                             <include-form name="AddContentRole" location="component://content/widget/content/ContentForms.xml"/>
                         </screenlet>
-                        <include-form name="ListContentRole" location="component://content/widget/content/ContentForms.xml"/>
+                        <screenlet>
+                            <include-form name="ListContentRole" location="component://content/widget/content/ContentForms.xml"/>
+                        </screenlet>
                     </decorator-section>
                 </decorator-screen>
             </widgets>
@@ -328,7 +325,9 @@ under the License.
                         <screenlet id="AddContentPurposePanel" title="${uiLabelMap.PageTitleAddPurpose}" collapsible="true">
                             <include-form name="AddContentPurpose" location="component://content/widget/content/ContentForms.xml"/>
                         </screenlet>
-                        <include-form name="ListContentPurpose" location="component://content/widget/content/ContentForms.xml"/>
+                        <screenlet>
+                            <include-form name="ListContentPurpose" location="component://content/widget/content/ContentForms.xml"/>
+                        </screenlet>
                     </decorator-section>
                 </decorator-screen>
             </widgets>
@@ -352,7 +351,9 @@ under the License.
                         <screenlet id="AddContentAttributePanel" title="${uiLabelMap.PageTitleAddAttribute}" collapsible="true">
                             <include-form name="AddContentAttribute" location="component://content/widget/content/ContentForms.xml"/>
                         </screenlet>
-                        <include-form name="ListContentAttribute" location="component://content/widget/content/ContentForms.xml"/>
+                        <screenlet>
+                            <include-form name="ListContentAttribute" location="component://content/widget/content/ContentForms.xml"/>
+                        </screenlet>
                     </decorator-section>
                 </decorator-screen>
             </widgets>
@@ -412,7 +413,9 @@ under the License.
                         <screenlet id="AddContentMetaDataPanel" title="${uiLabelMap.PageTitleAddMetaData}" collapsible="true">
                             <include-form name="AddContentMetaData" location="component://content/widget/content/ContentForms.xml"/>
                         </screenlet>
-                        <include-form name="ListContentMetaData" location="component://content/widget/content/ContentForms.xml"/>
+                        <screenlet>
+                            <include-form name="ListContentMetaData" location="component://content/widget/content/ContentForms.xml"/>
+                        </screenlet>
                     </decorator-section>
                 </decorator-screen>
             </widgets>
@@ -436,7 +439,9 @@ under the License.
                         <screenlet id="AddWorkEffortContentPanel" title="${uiLabelMap.PageTitleAddWorkEffort}" collapsible="true">
                             <include-form name="AddWorkEffortContent" location="component://content/widget/content/ContentForms.xml"/>
                         </screenlet>
-                        <include-form name="ListWorkEffortContents" location="component://content/widget/content/ContentForms.xml"/>
+                        <screenlet>
+                            <include-form name="ListWorkEffortContents" location="component://content/widget/content/ContentForms.xml"/>
+                        </screenlet>
                     </decorator-section>
                 </decorator-screen>
             </widgets>
@@ -447,7 +452,7 @@ under the License.
         <section>
             <actions>
                 <property-map resource="ContentUiLabels" map-name="uiLabelMap" global="true"/>
-                <set field="title" value="${uiLabelMap.PageTitleLookupContent}"/>
+                <set field="title" from-field="uiLabelMap.PageTitleLookupContent"/>
                 <set field="entityName" value="Content"/>
                 <set field="searchFields" value="[contentId, contentName]"/>
                 <set field="viewIndex" from-field="requestParameters.VIEW_INDEX" type="Integer"/>
@@ -495,7 +500,7 @@ under the License.
             <actions>
                 <property-map resource="ContentUiLabels" map-name="uiLabelMap" global="true"/>
                 <property-map resource="CommonUiLabels" map-name="uiLabelMap" global="true"/>
-                <set field="title" value="${uiLabelMap.PageTitleLookupContent}"/>
+                <set field="title" from-field="uiLabelMap.PageTitleLookupContent"/>
                 <set field="tabButtonItem" value="LookupContentTree"/>
                 <set field="labelTitleProperty" value="PageTitleNavigateContent"/>
                 <entity-and entity-name="ContentAssoc" list="contentAssoc">
@@ -533,7 +538,7 @@ under the License.
             <actions>
                 <property-map resource="ContentUiLabels" map-name="uiLabelMap" global="true"/>
                 <property-map resource="CommonUiLabels" map-name="uiLabelMap" global="true"/>
-                <set field="title" value="${uiLabelMap.PageTitleLookupContent}"/>
+                <set field="title" from-field="uiLabelMap.PageTitleLookupContent"/>
                 <set field="tabButtonItem" value="LookupDetailContentTree"/>
                 <set field="labelTitleProperty" value="PageTitleNavigateContent"/>
                 <entity-and entity-name="ContentAssoc" list="contentAssoc">

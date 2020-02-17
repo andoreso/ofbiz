@@ -135,7 +135,8 @@ under the License.
     <form name="AddLeadPartyDataSource" type="single" target="createLeadPartyDataSource">
         <auto-fields-service service-name="createPartyDataSource"/>
         <field name="partyId"><hidden/></field>
-        <field name="dataSourceId" title="${uiLabelMap.SfaLeadSource}">
+        <field name="roleTypeId"><hidden/></field>
+        <field name="dataSourceId" title="${uiLabelMap.SfaLeadSource}" required-field="true">
             <drop-down allow-empty="true">
                 <entity-options entity-name="DataSource" key-field-name="dataSourceId" description="${dataSourceId} - ${description}">
                     <entity-constraint name="dataSourceTypeId" operator="equals" value="LEAD_SOURCE"/>
@@ -225,6 +226,7 @@ under the License.
             <set field="parameters.partyStatusId_op" value="notEqual"/>
             <set field="parameters.partyRelationshipTypeId" value="LEAD_OWNER"/>
             <set field="fieldList" value="${groovy:['partyIdFrom','partyId']}" type="List"/>
+            <set field="parameters.filterByDate" value="Y"/>
             <service service-name="performFind">
                 <field-map field-name="inputFields" from-field="parameters"/>
                 <field-map field-name="entityName" value="PartyRelationshipAndContactMechDetail"/>
@@ -232,6 +234,12 @@ under the License.
                 <field-map field-name="distinct" value="Y"/>
             </service>
         </actions>
+        <field name="partyId" title="${uiLabelMap.PartyPartyId}">
+            <hyperlink description="${partyName} [${partyId}]" target="viewprofile" >
+                <parameter param-name="partyId"/>
+                <parameter param-name="roleTypeId" from-field="roleTypeIdTo"/>
+            </hyperlink>
+        </field>
         <field name="assignToMe"><hidden/></field>
     </form>
     <form name="AddRelatedCompany" type="single" target="createPartyRelationship">

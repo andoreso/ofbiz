@@ -36,7 +36,7 @@ import org.w3c.dom.Element;
 /**
  * Implements the &lt;webapp-property-to-field&gt; element.
  * 
- * @see <a href="https://cwiki.apache.org/confluence/display/OFBADMIN/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
+ * @see <a href="https://cwiki.apache.org/confluence/display/OFBIZ/Mini+Language+-+minilang+-+simple-method+-+Reference">Mini-language Reference</a>
  */
 public final class WebappPropertyToField extends MethodOperation {
 
@@ -63,7 +63,7 @@ public final class WebappPropertyToField extends MethodOperation {
     public boolean exec(MethodContext methodContext) throws MiniLangException {
         if (methodContext.getMethodType() == MethodContext.EVENT) {
             String resource = resourceFse.expandString(methodContext.getEnvMap());
-            ServletContext servletContext = (ServletContext) methodContext.getRequest().getAttribute("servletContext");
+            ServletContext servletContext = methodContext.getRequest().getServletContext();
             URL propsUrl = null;
             try {
                 propsUrl = servletContext.getResource(resource);

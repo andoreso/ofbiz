@@ -97,6 +97,9 @@ under the License.
         <menu-item name="ListCarrierShipmentMethods" title="${uiLabelMap.ProductCarrierShipmentMethods}">
             <link target="ListCarrierShipmentMethods"/>
         </menu-item>
+        <menu-item name="ListShipmentTimeEstimates" title="${uiLabelMap.ProductShipmentTimeEstimates}">
+            <link target="ListShipmentTimeEstimates"/>
+        </menu-item>
     </menu>
 
     <menu name="CategoryTabBar" extends="CommonTabBarMenu" extends-resource="component://common/widget/CommonMenus.xml">
@@ -169,7 +172,12 @@ under the License.
         </menu-item>
         <menu-item name="ProductCategoryPage" title="${uiLabelMap.ProductCategoryPage}" widget-style="buttontext website">
             <condition>
-                <not><if-empty field="productCategory"/></not>
+                <not>
+                    <or>
+                        <if-empty field="productCategory"/>
+                        <if-compare field="isEcommercePresent" operator="equals" value="false"/><!-- FIXME this is only temporary a more elaborate solution would be preferred, see OFBIZ-9241 -->
+                    </or>
+                </not>
             </condition>
             <link target="/ecommerce/control/category" url-mode="plain">
                 <parameter param-name="category_id" from-field="productCategoryId"/>
@@ -530,7 +538,12 @@ under the License.
         </menu-item>
         <menu-item name="ProductProductPage" title="${uiLabelMap.ProductProductPage}">
             <condition>
-                <not><if-empty field="product"/></not>
+                <not>
+                    <or>
+                        <if-empty field="product"/>
+                        <if-compare field="isEcommercePresent" operator="equals" value="false"/><!-- FIXME this is only temporary a more elaborate solution would be preferred, see OFBIZ-9241 -->
+                    </or>
+                </not>
             </condition>
             <link target="/ecommerce/control/product" url-mode="inter-app">
                 <parameter param-name="product_id" from-field="productId"/>
@@ -603,10 +616,7 @@ under the License.
         </menu-item>
         <menu-item name="ImageUpload" title="${uiLabelMap.CommonUpload}">
             <condition>
-                <or>
-                    <if-has-permission permission="IMAGE_MANAGEMENT_UPLOAD"/>
-                    <if-has-permission permission="IMAGE_MANAGEMENT_ADMIN"/>
-                </or>
+                <if-has-permission permission="IMAGE_MANAGEMENT" action="_UPLOAD"/>
             </condition>
             <link target="ImageUpload"/>
         </menu-item>
@@ -620,28 +630,19 @@ under the License.
         </menu-item>
         <menu-item name="ImageApprove" title="${uiLabelMap.ImageManagementApprove}">
             <condition>
-                <or>
-                    <if-has-permission permission="IMAGE_MANAGEMENT_APPROVE"/>
-                    <if-has-permission permission="IMAGE_MANAGEMENT_ADMIN"/>
-                </or>
+                <if-has-permission permission="IMAGE_MANAGEMENT" action="_APPROVE"/>
             </condition>
             <link target="ImageApprove"/>
         </menu-item>
         <menu-item name="ImageRejected" title="${uiLabelMap.CommonRejected}">
             <condition>
-                <or>
-                    <if-has-permission permission="IMAGE_MANAGEMENT_APPROVE"/>
-                    <if-has-permission permission="IMAGE_MANAGEMENT_ADMIN"/>
-                </or>
+                <if-has-permission permission="IMAGE_MANAGEMENT" action="_APPROVE"/>
             </condition>
             <link target="ImageRejected"/>
         </menu-item>
         <menu-item name="ImageRecentlyApproved" title="${uiLabelMap.ImageManagementRecentlyApproved}">
             <condition>
-                <or>
-                    <if-has-permission permission="IMAGE_MANAGEMENT_APPROVE"/>
-                    <if-has-permission permission="IMAGE_MANAGEMENT_ADMIN"/>
-                </or>
+                <if-has-permission permission="IMAGE_MANAGEMENT" action="_APPROVE"/>
             </condition>
             <link target="ImageRecentlyApproved"/>
         </menu-item>

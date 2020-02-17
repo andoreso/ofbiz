@@ -25,6 +25,9 @@
             <actions>
                 <property-map resource="PartyUiLabels" map-name="uiLabelMap" global="true"/>
                 <set field="parameters.partyId" from-field="parameters.partyId" default-value="${userLogin.partyId}"/>
+                <entity-one entity-name="Party" value-field="party">
+                    <field-map field-name="partyId" from-field="parameters.partyId"/>
+                </entity-one>
                 <entity-and entity-name="PartyNameHistory" list="partyNameHistoryList">
                     <field-map field-name="partyId" from-field="parameters.partyId"/>
                     <order-by field-name="-changeDate"/>
@@ -41,7 +44,7 @@
                     <order-by field-name="-fromDate"/>
                 </entity-and>
                 <set field="partyContentId" from-field="partyContentList[0].contentId"/>
-                <set field="partyContent" value="${groovy: partyContentId!=null?'/content/control/stream?contentId=' + partyContentId + externalKeyParam : ''}"/>
+                <set field="partyContent" value="${groovy: partyContentId!=null?'/partymgr/control/stream?contentId=' + partyContentId + externalKeyParam : ''}"/>
                 <set field="partyGroupLogoLinkUrl" from-field="partyContent" default-value="${lookupGroup.logoImageUrl}" global="true"/>
                 <set field="personalImage" from-field="partyContent"/>
             </actions>
@@ -524,8 +527,8 @@
                         <if-compare field="party.partyTypeId" operator="equals" value="PARTY_GROUP"/>
                     </condition>
                     <widgets>
-                        <screenlet title="${uiLabelMap.PartyListRelatedContacts}" navigation-menu-name="AddRelContactAccounts">
-                            <include-menu name="AddRelContactAccounts" location="component://party/widget/partymgr/PartyMenus.xml"/>
+                        <screenlet title="${uiLabelMap.PartyListRelatedContacts}" navigation-menu-name="AddRelAccountContacts">
+                            <include-menu name="AddRelAccountContacts" location="component://party/widget/partymgr/PartyMenus.xml"/>
                             <section>
                                 <condition>
                                     <not><if-empty field="parameters.editPartyRel"/></not>

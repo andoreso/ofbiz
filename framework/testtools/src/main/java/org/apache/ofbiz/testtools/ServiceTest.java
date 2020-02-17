@@ -21,9 +21,6 @@ package org.apache.ofbiz.testtools;
 import java.util.List;
 import java.util.Map;
 
-import junit.framework.AssertionFailedError;
-import junit.framework.TestResult;
-
 import org.apache.ofbiz.base.util.UtilGenerics;
 import org.apache.ofbiz.base.util.UtilMisc;
 import org.apache.ofbiz.base.util.UtilValidate;
@@ -31,6 +28,9 @@ import org.apache.ofbiz.service.GenericServiceException;
 import org.apache.ofbiz.service.ModelService;
 import org.apache.ofbiz.service.testtools.OFBizTestCase;
 import org.w3c.dom.Element;
+
+import junit.framework.AssertionFailedError;
+import junit.framework.TestResult;
 
 public class ServiceTest extends OFBizTestCase {
 
@@ -68,7 +68,7 @@ public class ServiceTest extends OFBizTestCase {
             }
 
             // do something with the errorMessageList
-            List<Object> errorMessageList = UtilGenerics.checkList(serviceResult.get(ModelService.ERROR_MESSAGE_LIST));
+            List<Object> errorMessageList = UtilGenerics.cast(serviceResult.get(ModelService.ERROR_MESSAGE_LIST));
             if (UtilValidate.isNotEmpty(errorMessageList)) {
                 for (Object message: errorMessageList) {
                     result.addFailure(this, new AssertionFailedError(message.toString()));

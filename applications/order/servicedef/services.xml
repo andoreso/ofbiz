@@ -34,6 +34,7 @@ under the License.
         <attribute name="body" type="String" mode="OUT" optional="true"/>
         <attribute name="sendTo" type="String" mode="IN" optional="true"/>
         <attribute name="sendCc" type="String" mode="IN" optional="true"/>
+        <attribute name="sendBcc" type="String" mode="IN" optional="true"/>
         <attribute name="note" type="String" mode="IN" optional="true"/>
         <attribute name="temporaryAnonymousUserLogin" type="org.apache.ofbiz.entity.GenericValue" mode="IN" optional="true"/>
         <attribute name="messageWrapper" type="org.apache.ofbiz.service.mail.MimeMessageWrapper" mode="OUT" optional="true"/>
@@ -107,6 +108,7 @@ under the License.
         <attribute name="webSiteId" type="String" mode="IN" optional="true"/>
         <attribute name="externalId" type="String" mode="IN" optional="true"/>
         <attribute name="internalCode" type="String" mode="IN" optional="true"/>
+        <attribute name="agreementId" type="String" mode="IN" optional="true"/>
         <attribute name="distributorId" type="String" mode="IN" optional="true"/>
         <attribute name="orderTypeId" type="String" mode="INOUT" optional="false"/>
         <attribute name="salesChannelEnumId" type="String" mode="IN" optional="true"/>
@@ -141,6 +143,8 @@ under the License.
         <attribute name="supplierPartyId" type="String" mode="IN" optional="true"/>
         <attribute name="orderId" type="String" mode="INOUT" optional="true"/>
         <attribute name="originOrderId" type="String" mode="IN" optional="true"/>
+        <attribute name="isRushOrder" type="String" mode="IN" optional="true"/>
+        <attribute name="priority" type="String" mode="IN" optional="true"/>
         <attribute name="statusId" type="String" mode="OUT" optional="false"/>
     </service>
 
@@ -309,6 +313,7 @@ under the License.
         <attribute name="itemAttributesMap" type="Map" mode="IN" string-map-prefix="iam_" optional="true"/>
         <attribute name="itemShipDateMap" type="Map" mode="IN" string-map-prefix="isdm_" optional="true"/>
         <attribute name="itemDeliveryDateMap" type="Map" mode="IN" string-map-prefix="iddm_" optional="true"/>
+        <attribute name="itemReserveAfterDateMap" type="Map" mode="IN" string-map-prefix="iradm_" optional="true"/>
         <attribute name="shoppingCart" type="org.apache.ofbiz.order.shoppingcart.ShoppingCart" mode="OUT" optional="false"/>
     </service>
     <service name="loadCartForUpdate" engine="java" auth="true"
@@ -435,7 +440,7 @@ under the License.
             location="org.apache.ofbiz.order.order.OrderServices" invoke="createOrderNote" auth="true">
         <description>Create a note item and associate with a order header</description>
         <attribute name="orderId" type="String" mode="IN"/>
-        <attribute name="note" type="String" mode="IN" allow-html="any"/>
+        <attribute name="note" type="String" mode="IN" allow-html="safe"/>
         <attribute name="internalNote" type="String" mode="IN"/>
         <attribute name="noteName" type="String" mode="IN" optional="true"/>
     </service>
@@ -652,23 +657,29 @@ under the License.
     <service name="createCommunicationEventOrder" default-entity-name="CommunicationEventOrder" engine="entity-auto" invoke="create" auth="true">
         <description>Create a Communication Event Order</description>
         <required-permissions join-type="AND">
-            <check-permission permission="ORDERMGR" action="CREATE"/>
+            <check-permission permission="ORDERMGR" action="_CREATE"/>
         </required-permissions>
         <auto-attributes entity-name="CommunicationEventOrder" include="pk" mode="IN"/>
     </service>
     <service name="removeCommunicationEventOrder" default-entity-name="CommunicationEventOrder" engine="entity-auto" invoke="delete" auth="true">
         <description>Remove a Communication Event Order</description>
         <required-permissions join-type="AND">
-            <check-permission permission="ORDERMGR" action="DELETE"/>
+            <check-permission permission="ORDERMGR" action="_DELETE"/>
         </required-permissions>
         <auto-attributes entity-name="CommunicationEventOrder" include="pk" mode="IN"/>
+    </service>
+    <service name="createOrderConversation" engine="groovy" invoke="createOrderConversation" auth="true"
+             location="component://order/groovyScripts/communications/CommunicationServices.groovy">
+        <description>Create a order conversation</description>
+        <implements service="createCommunicationEvent"/>
+        <implements service="createCommunicationEventPurpose"/>
     </service>
 
     <!-- Order Shipping and Contacts -->
     <service name="createOrderItemShipGroup" default-entity-name="OrderItemShipGroup" engine="entity-auto" invoke="create" auth="true">
         <description>Creates a new OrderItemShipGroup.</description>
         <required-permissions join-type="AND">
-            <check-permission permission="ORDERMGR" action="CREATE"/>
+            <check-permission permission="ORDERMGR" action="_CREATE"/>
         </required-permissions>
         <auto-attributes mode="IN" include="nonpk" optional="true"/>
         <attribute name="orderId" type="String" mode="IN" optional="false"/>
@@ -687,7 +698,7 @@ under the License.
     <service name="createOrderContactMech" default-entity-name="OrderContactMech" engine="entity-auto" invoke="create" auth="true">
         <description>Create Order Contact Mech</description>
         <required-permissions join-type="AND">
-            <check-permission permission="ORDERMGR" action="CREATE"/>
+            <check-permission permission="ORDERMGR" action="_CREATE"/>
         </required-permissions>
         <auto-attributes include="pk" mode="IN" optional="false"/>
     </service>
@@ -702,7 +713,7 @@ under the License.
     <service name="removeOrderContactMech" default-entity-name="OrderContactMech" engine="entity-auto" invoke="delete" auth="true">
         <description>Remove Order Contact Mech</description>
         <required-permissions join-type="AND">
-            <check-permission permission="ORDERMGR" action="DELETE"/>
+            <check-permission permission="ORDERMGR" action="_DELETE"/>
         </required-permissions>
         <auto-attributes include="pk" mode="IN" optional="false"/>
     </service>
@@ -711,7 +722,7 @@ under the License.
     <service name="createOrderTerm" default-entity-name="OrderTerm" engine="entity-auto" invoke="create" auth="true">
         <description>Create an Order Term</description>
         <required-permissions join-type="AND">
-            <check-permission permission="ORDERMGR" action="CREATE"/>
+            <check-permission permission="ORDERMGR" action="_CREATE"/>
         </required-permissions>
         <auto-attributes include="pk" mode="IN" optional="false"/>
         <auto-attributes include="nonpk" mode="IN" optional="true"/>
@@ -720,7 +731,7 @@ under the License.
     <service name="updateOrderTerm" default-entity-name="OrderTerm" engine="entity-auto" invoke="update" auth="true">
         <description>Update an Order Term</description>
         <required-permissions join-type="AND">
-            <check-permission permission="ORDERMGR" action="UPDATE"/>
+            <check-permission permission="ORDERMGR" action="_UPDATE"/>
         </required-permissions>
         <auto-attributes entity-name="OrderTerm" include="pk" mode="IN" optional="false"/>
         <auto-attributes entity-name="OrderTerm" include="nonpk" mode="IN" optional="true"/>
@@ -728,7 +739,7 @@ under the License.
     <service name="removeOrderTerm" default-entity-name="OrderTerm" engine="entity-auto" invoke="delete" auth="true">
         <description>Remove an Order Term</description>
         <required-permissions join-type="AND">
-            <check-permission permission="ORDERMGR" action="DELETE"/>
+            <check-permission permission="ORDERMGR" action="_DELETE"/>
         </required-permissions>
         <auto-attributes entity-name="OrderTerm" include="pk" mode="IN" optional="false"/>
     </service>
@@ -1103,14 +1114,13 @@ under the License.
         <auto-attributes include="pk" mode="IN" optional="false"/>
     </service>
 
-    <service name="createQuoteTerm" engine="simple" default-entity-name="QuoteTerm"
-        location="component://order/minilang/quote/QuoteServices.xml" invoke="createQuoteTerm">
+    <service name="createQuoteTerm" engine="entity-auto" default-entity-name="QuoteTerm" invoke="create">
         <description>
             Create a new Quate term.
         </description>
         <auto-attributes mode="IN" include="pk" optional="false"/>
         <auto-attributes mode="IN" include="nonpk" optional="true"/>
-        <override name="quoteItemSeqId" type="String" mode="IN" optional="true"/>
+        <override name="quoteItemSeqId" type="String" mode="IN" default-value="_NA_"/>
     </service>
     <service name="updateQuoteTerm" engine="entity-auto" default-entity-name="QuoteTerm" invoke="update">
         <description>
@@ -1119,8 +1129,7 @@ under the License.
         <auto-attributes mode="IN" include="pk" optional="false"/>
         <auto-attributes mode="IN" include="nonpk" optional="true"/>
     </service>
-    <service name="deleteQuoteTerm" engine="simple" default-entity-name="QuoteTerm"
-        location="component://order/minilang/quote/QuoteServices.xml" invoke="deleteQuoteTerm">
+    <service name="deleteQuoteTerm" engine="entity-auto" default-entity-name="QuoteTerm" invoke="delete">
         <description>
             delete the Quate term.
         </description>
@@ -1219,21 +1228,6 @@ under the License.
         <auto-attributes include="pk" mode="IN" optional="false"/>
     </service>
 
-    <service name="createSalesOrderItemFact" default-entity-name="SalesOrderItemFact" engine="entity-auto" invoke="create" auth="true">
-        <description>Create a SalesOrderItemFact</description>
-        <auto-attributes include="pk" mode="IN" optional="false"/>
-        <auto-attributes include="nonpk" mode="IN" optional="true"/>
-    </service>
-    <service name="updateSalesOrderItemFact" default-entity-name="SalesOrderItemFact" engine="entity-auto" invoke="update" auth="true">
-        <description>Update a SalesOrderItemFact</description>
-        <auto-attributes include="pk" mode="IN" optional="false"/>
-        <auto-attributes include="nonpk" mode="IN" optional="true"/>
-    </service>
-    <service name="deleteSalesOrderItemFact" default-entity-name="SalesOrderItemFact" engine="entity-auto" invoke="delete" auth="true">
-        <description>Delete a SalesOrderItemFact</description>
-        <auto-attributes include="pk" mode="IN" optional="false"/>
-    </service>
-
     <!-- ProductOrderItem services -->
     <service name="createProductOrderItem" default-entity-name="ProductOrderItem" engine="entity-auto" invoke="create" auth="true">
         <description>Create a ProductOrderItem</description>
@@ -1248,5 +1242,130 @@ under the License.
     <service name="deleteProductOrderItem" default-entity-name="ProductOrderItem" engine="entity-auto" invoke="delete" auth="true">
         <description>Delete a ProductOrderItem</description>
         <auto-attributes include="pk" mode="IN" optional="false"/>
+    </service>
+
+    <!-- Allocation Plan services -->
+    <service name="createAllocationPlanHeader" engine="entity-auto" default-entity-name="AllocationPlanHeader" invoke="create" auth="true">
+        <description>Create Allocation Plan Header</description>
+        <auto-attributes include="pk" mode="IN"/>
+        <auto-attributes include="nonpk" mode="IN" optional="true"/>
+        <override name="planId" mode="INOUT"/>
+        <override name="planTypeId" optional="false"/>
+    </service>
+    <service name="updateAllocationPlanHeader" engine="entity-auto" default-entity-name="AllocationPlanHeader" invoke="update" auth="true">
+        <description>Update Allocation Plan Header</description>
+        <auto-attributes include="pk" mode="IN"/>
+        <auto-attributes include="nonpk" mode="IN" optional="true"/>
+    </service>
+    <service name="deleteAllocationPlanHeader" engine="entity-auto" default-entity-name="AllocationPlanHeader" invoke="delete" auth="true">
+        <description>Delete Allocation Plan Header</description>
+        <auto-attributes include="pk" mode="IN"/>
+    </service>
+    <service name="createAllocationPlanItem" engine="entity-auto" default-entity-name="AllocationPlanItem" invoke="create" auth="true">
+        <description>Create Allocation Plan Item</description>
+        <auto-attributes include="pk" mode="IN"/>
+        <auto-attributes include="nonpk" mode="IN" optional="true"/>
+        <override name="planItemSeqId" mode="OUT"/>
+        <override name="planMethodEnumId" optional="false"/>
+        <override name="productId" optional="false"/>
+        <override name="orderId" optional="false"/>
+        <override name="orderItemSeqId" optional="false"/>
+    </service>
+    <service name="updateAllocationPlanItem" engine="entity-auto" default-entity-name="AllocationPlanItem" invoke="update" auth="true">
+        <description>Update Allocation Plan Item</description>
+        <auto-attributes include="pk" mode="INOUT"/>
+        <auto-attributes include="nonpk" mode="IN" optional="true"/>
+    </service>
+    <service name="deleteAllocationPlanItem" engine="entity-auto" default-entity-name="AllocationPlanItem" invoke="delete" auth="true">
+        <description>Delete Allocation Plan Item</description>
+        <auto-attributes include="pk" mode="IN"/>
+    </service>
+    <service name="associateOrderWithAllocationPlans" engine="java" auth="true"
+            location="org.apache.ofbiz.order.order.OrderServices" invoke="associateOrderWithAllocationPlans">
+        <description>Associate order with the allocation plans of inline products</description>
+        <attribute name="orderId" type="String" mode="IN"/>
+        <attribute name="productPlanMap" mode="OUT" type="Map" optional="true"/>
+    </service>
+    <service name="approveAllocationPlanItems" engine="java" auth="true"
+            location="org.apache.ofbiz.order.order.OrderServices" invoke="approveAllocationPlanItems">
+        <description>Mark all the items of an allocation plan as approve</description>
+        <attribute name="planId" type="String" mode="IN"/>
+    </service>
+    <service name="cancelAllocationPlanItems" engine="java" auth="true"
+            location="org.apache.ofbiz.order.order.OrderServices" invoke="cancelAllocationPlanItems">
+        <description>Mark all the items of an allocation plan as cancel</description>
+        <attribute name="planId" type="String" mode="IN"/>
+    </service>
+    <service name="changeAllocationPlanStatus" engine="java" auth="true"
+            location="org.apache.ofbiz.order.order.OrderServices" invoke="changeAllocationPlanStatus">
+        <description>Change Allocation Plan Status</description>
+        <attribute name="planId" type="String" mode="INOUT"/>
+        <attribute name="statusId" type="String" mode="IN"/>
+        <attribute name="oldStatusId" type="String" mode="OUT"/>
+    </service>
+    <service name="changeAllocationPlanItemStatus" engine="java" auth="true"
+            location="org.apache.ofbiz.order.order.OrderServices" invoke="changeAllocationPlanItemStatus">
+        <description>Change Allocation Plan Item Status</description>
+        <attribute name="planId" type="String" mode="IN"/>
+        <attribute name="planItemSeqId" type="String" mode="IN"/>
+        <attribute name="statusId" type="String" mode="IN"/>
+        <attribute name="oldStatusId" type="String" mode="OUT"/>
+    </service>
+    <service name="completeAllocationPlanItemByOrderItem" engine="java" auth="true"
+            location="org.apache.ofbiz.order.order.OrderServices" invoke="completeAllocationPlanItemByOrderItem">
+        <description>Complete Allocation Plan Item By Providing Order Id and Item Seq Id</description>
+        <attribute name="orderId" type="String" mode="IN"/>
+        <attribute name="orderItemSeqId" type="String" mode="IN" optional="true"/>
+    </service>
+    <service name="cancelAllocationPlanItemByOrderItem" engine="java" auth="true"
+            location="org.apache.ofbiz.order.order.OrderServices" invoke="cancelAllocationPlanItemByOrderItem">
+        <description>Cancel Allocation Plan Item By Providing Order Id and Item Seq Id</description>
+        <attribute name="orderId" type="String" mode="IN"/>
+        <attribute name="orderItemSeqId" type="String" mode="IN" optional="true"/>
+    </service>
+    <service name="updateAllocatedQuantityOnOrderItemChange" engine="java" auth="true"
+            location="org.apache.ofbiz.order.order.OrderServices" invoke="updateAllocatedQuantityOnOrderItemChange">
+        <description>Update Allocated Quantity On Order Item Change</description>
+        <attribute name="orderId" type="String" mode="IN"/>
+        <attribute name="orderItemSeqId" type="String" mode="IN" optional="true"/>
+    </service>
+    <service name="createAllocationPlanAndItems" engine="java" auth="true"
+             location="org.apache.ofbiz.order.order.OrderServices" invoke="createAllocationPlanAndItems">
+        <description>Create Allocation Plan And Items</description>
+        <attribute name="productId" type="String" mode="IN"/>
+        <attribute name="planName" type="String" mode="IN" optional="true"/>
+        <attribute name="itemListSize" type="Integer" mode="IN"/>
+        <attribute name="itemOrderIdMap" type="Map" mode="IN" string-map-prefix="ioim_"/>
+        <attribute name="itemOrderItemSeqIdMap" type="Map" mode="IN" string-map-prefix="ioisim_"/>
+        <attribute name="itemAllocatedQuantityMap" type="Map" mode="IN" string-map-prefix="iaqm_"/>
+        <attribute name="planId" type="String" mode="OUT"/>
+    </service>
+
+    <service name="isInventoryAllocationRequired" engine="java" auth="true"
+             location="org.apache.ofbiz.order.order.OrderServices" invoke="isInventoryAllocationRequired">
+        <description>Check whether the inventory allocation is enabled or not at product store.</description>
+        <attribute name="serviceContext" type="Map" mode="IN"/>
+        <attribute name="serviceName" type="String" mode="IN"/>
+        <attribute name="conditionReply" type="Boolean" mode="OUT"/>
+    </service>
+
+    <service name="updateAllocationPlanItems" engine="java" auth="true"
+             location="org.apache.ofbiz.order.order.OrderServices" invoke="updateAllocationPlanItems">
+        <description>Update Allocation Plan Items</description>
+        <attribute name="planId" type="String" mode="IN"/>
+        <attribute name="orderIdMap" type="Map" mode="IN" string-map-prefix="oim_"/>
+        <attribute name="orderItemSeqIdMap" type="Map" mode="IN" string-map-prefix="oisim_"/>
+        <attribute name="productIdMap" type="Map" mode="IN" string-map-prefix="pim_"/>
+        <attribute name="prioritySeqIdMap" type="Map" mode="IN" string-map-prefix="psim_"/>
+        <attribute name="allocatedQuantityMap" type="Map" mode="IN" string-map-prefix="aqm_"/>
+        <attribute name="rowSubmitMap" type="Map" mode="IN" string-map-prefix="rsm_"/>
+    </service>
+
+    <service name="uploadOrderContentFile" engine="group" transaction-timeout="300">
+        <description>Upload and attach a file to an order</description>
+        <group>
+            <invoke name="createContentFromUploadedFile" result-to-context="true"/>
+            <invoke name="createOrderContent"/>
+        </group>
     </service>
 </services>

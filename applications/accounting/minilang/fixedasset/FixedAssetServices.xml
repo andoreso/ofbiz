@@ -186,7 +186,7 @@ under the License.
             </entity-condition>
             <set field="listSize" value="0" type="Long"/>
             <if-not-empty field="maintList">
-                <set field="listSize" value="${util:size(maintList)}" type="Long"/>
+                <set field="listSize" value="${groovy:maintList.size()}" type="Long"/>
             </if-not-empty>
             <set field="maxIntervalQty" value="0" type="BigDecimal"/>
             <iterate list="maintList" entry="maintValue">
@@ -263,7 +263,7 @@ under the License.
                 <if-not-empty field="compareDate">
                     <set field="listSize" value="0" type="Long"/>
                     <if-not-empty field="maintList">
-                        <set field="listSize" value="${util:size(maintList)}" type="Long"/>
+                        <set field="listSize" value="${groovy:maintList.size()}" type="Long"/>
                     </if-not-empty>
                     <set field="lastSvcLong" value="0" type="Long"/>
                     <set field="lastSvcDate" from-field="lastSvcLong" type="Timestamp"/>
@@ -402,6 +402,9 @@ under the License.
                     </calculate>
                 </if-compare>
                 <set field="depreciationYear" from-field="assetAcquiredYear" type="BigDecimal"/>
+                <if-compare-field field="numberOfYears" operator="less" to-field="intUsageYears" type="BigDecimal">
+                    <set field="intUsageYears" from-field="numberOfYears" type="BigDecimal"/>
+                </if-compare-field>
                 <loop count="${intUsageYears}">
                     <calculate field="purchaseCost">
                         <calcop operator="subtract">
@@ -478,7 +481,13 @@ under the License.
             </then>
         </if>
         <field-to-result field="nextDepreciationAmount"/>
-        <field-to-result field="depreciationTotal" result-name="plannedPastDepreciationTotal"/>
+        <calculate field="plannedPastDepreciationTotal">
+            <calcop operator="subtract">
+                <calcop operator="get" field="depreciationTotal"/>
+                <calcop operator="get" field="fixedAsset.depreciation"/>
+            </calcop>
+        </calculate>
+        <field-to-result field="plannedPastDepreciationTotal"/>
     </simple-method>
 
     <simple-method method-name="doubleDecliningBalanceDepreciation" short-description="Calculate double declining balance depreciation to Fixed Asset">

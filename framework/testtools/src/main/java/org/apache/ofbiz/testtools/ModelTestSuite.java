@@ -23,10 +23,6 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
-
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.ObjectType;
@@ -44,35 +40,28 @@ import org.apache.ofbiz.service.ServiceContainer;
 import org.apache.ofbiz.service.testtools.OFBizTestCase;
 import org.w3c.dom.Element;
 
+import junit.framework.Test;
+import junit.framework.TestCase;
+import junit.framework.TestSuite;
+
 /**
  * Use this class in a JUnit test runner to bootstrap the Test Suite runner.
  */
 public class ModelTestSuite {
-
     public static final String module = ModelTestSuite.class.getName();
+    public static final String DELEGATOR_NAME = "test";
+    public static final String DISPATCHER_NAME = "test-dispatcher";
 
     protected String suiteName;
-    protected String originalDelegatorName;
-    protected String originalDispatcherName;
-
     protected Delegator delegator;
     protected LocalDispatcher dispatcher;
-
-    protected List<Test> testList = new ArrayList<Test>();
+    protected List<Test> testList = new ArrayList<>();
 
     public ModelTestSuite(Element mainElement, String testCase) {
-        this.suiteName = mainElement.getAttribute("suite-name");
-
-        this.originalDelegatorName = mainElement.getAttribute("delegator-name");
-        if (UtilValidate.isEmpty(this.originalDelegatorName)) this.originalDelegatorName = "test";
-
-        this.originalDispatcherName = mainElement.getAttribute("dispatcher-name");
-        if (UtilValidate.isEmpty(this.originalDispatcherName)) this.originalDispatcherName = "test-dispatcher";
-
         String uniqueSuffix = "-" + RandomStringUtils.randomAlphanumeric(10);
-
-        this.delegator = DelegatorFactory.getDelegator(this.originalDelegatorName).makeTestDelegator(this.originalDelegatorName + uniqueSuffix);
-        this.dispatcher = ServiceContainer.getLocalDispatcher(originalDispatcherName + uniqueSuffix, delegator);
+        this.suiteName = mainElement.getAttribute("suite-name");
+        this.delegator = DelegatorFactory.getDelegator(DELEGATOR_NAME).makeTestDelegator(DELEGATOR_NAME + uniqueSuffix);
+        this.dispatcher = ServiceContainer.getLocalDispatcher(DISPATCHER_NAME + uniqueSuffix, delegator);
 
         for (Element testCaseElement : UtilXml.childElementList(mainElement, UtilMisc.toSet("test-case", "test-group"))) {
             String caseName = testCaseElement.getAttribute("case-name");

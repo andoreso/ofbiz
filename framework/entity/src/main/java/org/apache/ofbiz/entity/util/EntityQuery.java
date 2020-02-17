@@ -35,6 +35,7 @@ import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.base.util.collections.PagedList;
 import org.apache.ofbiz.entity.Delegator;
 import org.apache.ofbiz.entity.GenericEntityException;
+import org.apache.ofbiz.entity.GenericPK;
 import org.apache.ofbiz.entity.GenericValue;
 import org.apache.ofbiz.entity.condition.EntityCondition;
 import org.apache.ofbiz.entity.model.DynamicViewEntity;
@@ -67,6 +68,8 @@ public class EntityQuery {
     private boolean filterByDate = false;
     private Timestamp filterByDateMoment;
     private List<String> filterByFieldNames = null;
+    private boolean searchPkOnly = false;
+    private Map<String, Object> fieldMap = null;
 
 
 
@@ -148,7 +151,7 @@ public class EntityQuery {
      * @return this EntityQuery object, to enable chaining
      */
     public EntityQuery where(Map<String, Object> fieldMap) {
-        this.whereEntityCondition = EntityCondition.makeCondition(fieldMap);
+        this.fieldMap = fieldMap;
         return this;
     }
 
@@ -416,6 +419,7 @@ public class EntityQuery {
      * @return GenericValue representing the only result record from the query
      */
     public GenericValue queryOne() throws GenericEntityException {
+        this.searchPkOnly = true;
         GenericValue result =  EntityUtil.getOnly(queryList());
         return result;
     }
@@ -428,14 +432,8 @@ public class EntityQuery {
      */
     public long queryCount() throws GenericEntityException {
         if (dynamicViewEntity != null) {
-            EntityListIterator iterator = null;
-            try {
-                iterator = queryIterator();
+            try (EntityListIterator iterator = queryIterator()) {
                 return iterator.getResultsSizeAfterPartialList();
-            } finally {
-                if (iterator != null) {
-                    iterator.close();
-                }
             }
         }
         return delegator.findCountByCondition(entityName, makeWhereCondition(false), havingEntityCondition, makeEntityFindOptions());
@@ -449,19 +447,19 @@ public class EntityQuery {
             findOptions = efo;
         }
         List<GenericValue> result = null;
-        if (dynamicViewEntity == null) {
+        if (dynamicViewEntity == null && this.havingEntityCondition == null) {
             result = delegator.findList(entityName, makeWhereCondition(useCache), fieldsToSelect, orderBy, findOptions, useCache);
         } else {
-            EntityListIterator it = queryIterator();
-            result = it.getCompleteList();
-            it.close();
+            try (EntityListIterator it = queryIterator()) { 
+                result = it.getCompleteList();
+            }
         }
         if (filterByDate && useCache) {
             return EntityUtil.filterByCondition(result, this.makeDateCondition());
         }
         return result;
     }
-    
+
     private EntityFindOptions makeEntityFindOptions() {
         EntityFindOptions findOptions = new EntityFindOptions();
         if (resultSetType != null) {
@@ -480,6 +478,19 @@ public class EntityQuery {
     }
 
     private EntityCondition makeWhereCondition(boolean usingCache) {
+        if (whereEntityCondition == null && fieldMap != null) {
+            if (this.searchPkOnly) {
+                //Resolve if the map contains a sub map parameters, use a containsKeys to avoid error when a GenericValue is given as map
+                Map<String, Object> parameters =
+                        fieldMap.containsKey("parameters") ? UtilGenerics.cast(fieldMap.get("parameters")) : null;
+                GenericPK pk = GenericPK.create(delegator.getModelEntity(entityName));
+                pk.setPKFields(parameters);
+                pk.setPKFields(fieldMap);
+                this.whereEntityCondition = EntityCondition.makeCondition(pk.getPrimaryKey());
+            } else {
+                this.whereEntityCondition = EntityCondition.makeCondition(fieldMap);
+            }
+        }
         // we don't use the useCache field here because not all queries will actually use the cache, e.g. findCountByCondition never uses the cache
         if (filterByDate && !usingCache) {
             if (whereEntityCondition != null) {
@@ -492,7 +503,7 @@ public class EntityQuery {
     }
 
     private EntityCondition makeDateCondition() {
-        List<EntityCondition> conditions = new ArrayList<EntityCondition>();
+        List<EntityCondition> conditions = new ArrayList<>();
         if (UtilValidate.isEmpty(this.filterByFieldNames)) {
             this.filterByDate(filterByDateMoment, "fromDate", "thruDate");
         }
@@ -510,11 +521,9 @@ public class EntityQuery {
     }
 
     public <T> List<T> getFieldList(final String fieldName) throws GenericEntityException {select(fieldName);
-        EntityListIterator genericValueEli = null;
-        try {
-            genericValueEli = queryIterator();
-            if (this.distinct) {
-                Set<T> distinctSet = new HashSet<T>();
+        try (EntityListIterator genericValueEli = queryIterator()) {
+            if (Boolean.TRUE.equals(this.distinct)) {
+                Set<T> distinctSet = new HashSet<>();
                 GenericValue value = null;
                 while ((value = genericValueEli.next()) != null) {
                     T fieldValue = UtilGenerics.<T>cast(value.get(fieldName));
@@ -522,10 +531,10 @@ public class EntityQuery {
                         distinctSet.add(fieldValue);
                     }
                 }
-                return new ArrayList<T>(distinctSet);
+                return new ArrayList<>(distinctSet);
             }
             else {
-                List<T> fieldList = new LinkedList<T>();
+                List<T> fieldList = new LinkedList<>();
                 GenericValue value = null;
                 while ((value = genericValueEli.next()) != null) {
                     T fieldValue = UtilGenerics.<T>cast(value.get(fieldName));
@@ -534,11 +543,6 @@ public class EntityQuery {
                     }
                 }
                 return fieldList;
-            }
-        }
-        finally {
-            if (genericValueEli != null) {
-                genericValueEli.close();
             }
         }
     }
@@ -551,15 +555,8 @@ public class EntityQuery {
      * @see EntityUtil#getPagedList
      */
     public PagedList<GenericValue> queryPagedList(final int viewIndex, final int viewSize) throws GenericEntityException {
-        EntityListIterator genericValueEli = null;
-        try {
-            genericValueEli = queryIterator();
+        try (EntityListIterator genericValueEli = queryIterator()) {
             return EntityUtil.getPagedList(genericValueEli, viewIndex, viewSize);
-        }
-        finally {
-            if (genericValueEli != null) {
-                genericValueEli.close();
-            }
         }
     }
 

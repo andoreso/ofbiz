@@ -18,7 +18,6 @@
  *******************************************************************************/
 package org.apache.ofbiz.product.config;
 
-import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -27,7 +26,6 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 
 import org.apache.ofbiz.base.util.Debug;
-import org.apache.ofbiz.base.util.UtilGenerics;
 import org.apache.ofbiz.base.util.UtilHttp;
 import org.apache.ofbiz.base.util.UtilProperties;
 import org.apache.ofbiz.base.util.UtilValidate;
@@ -79,18 +77,25 @@ public final class ProductConfigWorker {
             } else {
                 configWrapper = new ProductConfigWrapper(configWrapper);
             }
-        } catch (ProductConfigWrapperException we) {
-            configWrapper = null;
         } catch (Exception e) {
             Debug.logWarning(e.getMessage(), module);
+            configWrapper = null;
         }
         return configWrapper;
     }
 
     public static void fillProductConfigWrapper(ProductConfigWrapper configWrapper, HttpServletRequest request) {
         int numOfQuestions = configWrapper.getQuestions().size();
+        Map<String, Object> combinedMap = UtilHttp.getCombinedMap(request);
         for (int k = 0; k < numOfQuestions; k++) {
-            String[] opts = request.getParameterValues(Integer.toString(k));
+            String[] opts = new String[0];
+            Object o = combinedMap.get(Integer.toString(k));
+            if (o instanceof String) {
+                opts = new String[]{(String)o};
+            } else if(o instanceof List) {
+                List<?> list = (List<?>)o;
+                opts = list.toArray(new String[list.size()]);
+            }
             if (opts == null) {
 
                 //  check for standard item comments
@@ -98,7 +103,7 @@ public final class ProductConfigWorker {
                 if (question.isStandard()) {
                     int i = 0;
                     while (i <= (question.getOptions().size() -1)) {
-                        String comments = request.getParameter("comments_" + k + "_" + i);
+                        String comments = (String) combinedMap.get("comments_" + k + "_" + i);
                         if (UtilValidate.isNotEmpty(comments)) {
                             try {
                                 configWrapper.setSelected(k, i, comments);
@@ -118,9 +123,9 @@ public final class ProductConfigWorker {
                     String comments = null;
                     ProductConfigWrapper.ConfigItem question = configWrapper.getQuestions().get(k);
                     if (question.isSingleChoice()) {
-                        comments = request.getParameter("comments_" + k + "_" + "0");
+                        comments = (String) combinedMap.get("comments_" + k + "_" + "0");
                     } else {
-                        comments = request.getParameter("comments_" + k + "_" + cnt);
+                        comments = (String) combinedMap.get("comments_" + k + "_" + cnt);
                     }
 
                     configWrapper.setSelected(k, cnt, comments);
@@ -134,7 +139,7 @@ public final class ProductConfigWorker {
                             GenericValue component = components.get(i);
                             if (option.isVirtualComponent(component)) {
                                 String productParamName = "add_product_id" + k + "_" + cnt + "_" + variantIndex;
-                                String selectedProductId = request.getParameter(productParamName);
+                                String selectedProductId = (String) combinedMap.get(productParamName);
                                 if (UtilValidate.isEmpty(selectedProductId)) {
                                     Debug.logWarning("ERROR: Request param [" + productParamName + "] not found!", module);
                                 } else {
@@ -143,14 +148,13 @@ public final class ProductConfigWorker {
                                     if (ProductWorker.isVirtual((Delegator)request.getAttribute("delegator"), selectedProductId)) {
                                         if ("VV_FEATURETREE".equals(ProductWorker.getProductVirtualVariantMethod((Delegator)request.getAttribute("delegator"), selectedProductId))) {
                                             // get the selected features
-                                            List<String> selectedFeatures = new LinkedList<String>();
-                                            Enumeration<String> paramNames = UtilGenerics.cast(request.getParameterNames());
-                                            while (paramNames.hasMoreElements()) {
-                                                String paramName = paramNames.nextElement();
-                                                if (paramName.startsWith("FT" + k + "_" + cnt + "_" + variantIndex)) {
-                                                    selectedFeatures.add(request.getParameterValues(paramName)[0]);
+                                            List<String> selectedFeatures = new LinkedList<>();
+                                            String prefix = "FT" + k + "_" + cnt + "_" + variantIndex;
+                                            request.getParameterMap().forEach((name, values) -> {
+                                                if (name.startsWith(prefix)) {
+                                                    selectedFeatures.add(values[0]);
                                                 }
-                                            }
+                                            });
 
                                             // check if features are selected
                                             if (UtilValidate.isEmpty(selectedFeatures)) {
@@ -187,15 +191,17 @@ public final class ProductConfigWorker {
      * @param delegator the delegator
      */
     public static void storeProductConfigWrapper(ProductConfigWrapper configWrapper, Delegator delegator) {
-        if (configWrapper == null || (!configWrapper.isCompleted()))  return;
+        if (configWrapper == null || (!configWrapper.isCompleted())) {
+            return;
+        }
         String configId = null;
         List<ConfigItem> questions = configWrapper.getQuestions();
-        List<GenericValue> configsToCheck = new LinkedList<GenericValue>();
+        List<GenericValue> configsToCheck = new LinkedList<>();
         int selectedOptionSize = 0;
         for (ConfigItem ci: questions) {
             String configItemId = null;
             Long sequenceNum = null;
-            List<ProductConfigWrapper.ConfigOption> selectedOptions = new LinkedList<ProductConfigWrapper.ConfigOption>();
+            List<ProductConfigWrapper.ConfigOption> selectedOptions = new LinkedList<>();
             List<ConfigOption> options = ci.getOptions();
             if (ci.isStandard()) {
                 selectedOptions.addAll(options);
@@ -244,7 +250,7 @@ public final class ProductConfigWorker {
                             for (ConfigItem ci: questions) {
                                 String configItemId = null;
                                 Long sequenceNum = null;
-                                List<ProductConfigWrapper.ConfigOption> selectedOptions = new LinkedList<ProductConfigWrapper.ConfigOption>();
+                                List<ProductConfigWrapper.ConfigOption> selectedOptions = new LinkedList<>();
                                 List<ConfigOption> options = ci.getOptions();
                                 if (ci.isStandard()) {
                                     selectedOptions.addAll(options);
@@ -264,7 +270,10 @@ public final class ProductConfigWorker {
                                             if (anOption.isVirtualComponent(aComponent)) {
                                                 Map<String, String> componentOptions = anOption.getComponentOptions();
                                                 String optionProductId = aComponent.getString("productId");
-                                                String optionProductOptionId = componentOptions.get(optionProductId);
+                                                String optionProductOptionId = null;
+                                                if(UtilValidate.isNotEmpty(componentOptions)) {
+                                                    optionProductOptionId = componentOptions.get(optionProductId);
+                                                }
                                                 String configOptionId = anOption.configOption.getString("configOptionId");
                                                 configItemId = ci.getConfigItemAssoc().getString("configItemId");
                                                 sequenceNum = ci.getConfigItemAssoc().getLong("sequenceNum");
@@ -310,7 +319,7 @@ public final class ProductConfigWorker {
         for (ConfigItem ci: questions) {
             String configItemId = null;
             Long sequenceNum = null;
-            List<ProductConfigWrapper.ConfigOption> selectedOptions = new LinkedList<ProductConfigWrapper.ConfigOption>();
+            List<ProductConfigWrapper.ConfigOption> selectedOptions = new LinkedList<>();
             List<ConfigOption> options = ci.getOptions();
            if (ci.isStandard()) {
                 selectedOptions.addAll(options);
@@ -332,7 +341,7 @@ public final class ProductConfigWorker {
                 sequenceNum = ci.getConfigItemAssoc().getLong("sequenceNum");
                 for (ConfigOption oneOption: selectedOptions) {
                     Map<String, String>  componentOptions = oneOption.componentOptions;
-                    List<GenericValue> toBeStored = new LinkedList<GenericValue>();
+                    List<GenericValue> toBeStored = new LinkedList<>();
                     String configOptionId = oneOption.configOption.getString("configOptionId");
                     String description = oneOption.getComments();
                     GenericValue productConfigConfig = delegator.makeValue("ProductConfigConfig");
@@ -394,7 +403,7 @@ public final class ProductConfigWorker {
         ProductConfigWrapper configWrapper = null;
         try {
              configWrapper = new ProductConfigWrapper(delegator, dispatcher, productId, productStoreId, catalogId, webSiteId, currencyUomId, locale, autoUserLogin);
-            if (configWrapper != null && UtilValidate.isNotEmpty(configId)) {
+            if (UtilValidate.isNotEmpty(configId)) {
                 configWrapper.loadConfig(delegator, configId);
             }
         } catch (Exception e) {

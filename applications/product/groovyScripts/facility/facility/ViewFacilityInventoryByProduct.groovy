@@ -28,6 +28,7 @@ import org.apache.ofbiz.entity.model.ModelKeyMap
 import org.apache.ofbiz.entity.util.EntityFindOptions
 import org.apache.ofbiz.product.inventory.*
 
+module = "ViewFacilityInventoryByProduct"
 action = request.getParameter("action")
 statusId = request.getParameter("statusId")
 searchParameterString = ""
@@ -52,6 +53,8 @@ if (action) {
             hasOffsetQOH = true
             searchParameterString = searchParameterString + "&offsetQOHQty=" + offsetQOH
         } catch (NumberFormatException nfe) {
+            Debug.logError(nfe, "Caught an exception : " + nfe.toString(), module)
+            request.setAttribute("_ERROR_MESSAGE", "An entered value seems non-numeric")
         }
     }
     if (offsetATPQty) {
@@ -60,6 +63,8 @@ if (action) {
             hasOffsetATP = true
             searchParameterString = searchParameterString + "&offsetATPQty=" + offsetATP
         } catch (NumberFormatException nfe) {
+            Debug.logError(nfe, "Caught an exception : " + nfe.toString(), module)
+            request.setAttribute("_ERROR_MESSAGE", "An entered value seems non-numeric")
         }
     }
 
@@ -122,12 +127,19 @@ if (action) {
         whereConditionsList.add(EntityCondition.makeCondition("productId", EntityOperator.LIKE, productId + "%"))
         searchParameterString = searchParameterString + "&productId=" + productId
     }
-    whereCondition = EntityCondition.makeCondition(whereConditionsList, EntityOperator.AND)
+    // add statusId in search parametters
+    if (statusId) {
+        searchParameterString = searchParameterString + "&statusId=" + statusId;
+    }
+    
+        whereCondition = EntityCondition.makeCondition(whereConditionsList, EntityOperator.AND)
 
     beganTransaction = false
     // get the indexes for the partial list
     lowIndex = ((viewIndex.intValue() * viewSize.intValue()) + 1)
     highIndex = (viewIndex.intValue() + 1) * viewSize.intValue()
+    // add viewSize and viewIndex in search parameters
+    searchParameterString = searchParameterString + "&VIEW_SIZE=" + viewSize + "&VIEW_INDEX=" + viewIndex;
     List prods = null
     try {
         beganTransaction = TransactionUtil.begin()
@@ -137,12 +149,12 @@ if (action) {
         prodsEli.close()
     } catch (GenericEntityException e) {
         errMsg = "Failure in operation, rolling back transaction"
-        Debug.logError(e, errMsg, "ViewFacilityInventoryByProduct")
+        Debug.logError(e, errMsg, module)
         try {
             // only rollback the transaction if we started one...
             TransactionUtil.rollback(beganTransaction, errMsg, e)
         } catch (GenericEntityException e2) {
-            Debug.logError(e2, "Could not rollback transaction: " + e2.toString(), "ViewFacilityInventoryByProduct")
+            Debug.logError(e2, "Could not rollback transaction: " + e2.toString(), module)
         }
         // after rolling back, rethrow the exception
         throw e
@@ -162,7 +174,8 @@ if (action) {
             checkTime = UtilDateTime.toTimestamp(cal.getTime())
             searchParameterString += "&monthsInPastLimit=" + monthsInPastLimitStr
         } catch (Exception e) {
-            // Ignore
+            Debug.logError(e, "Caught an exception : " + e.toString(), module)
+            request.setAttribute("_ERROR_MESSAGE", "An exception occured please check the log")
         }
     }
 

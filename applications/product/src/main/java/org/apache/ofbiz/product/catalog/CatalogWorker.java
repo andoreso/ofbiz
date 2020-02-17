@@ -32,7 +32,6 @@ import org.apache.ofbiz.base.util.StringUtil;
 import org.apache.ofbiz.base.util.UtilHttp;
 import org.apache.ofbiz.base.util.UtilMisc;
 import org.apache.ofbiz.base.util.UtilValidate;
-import org.apache.ofbiz.webapp.website.WebSiteWorker;
 import org.apache.ofbiz.entity.Delegator;
 import org.apache.ofbiz.entity.GenericEntityException;
 import org.apache.ofbiz.entity.GenericValue;
@@ -40,6 +39,7 @@ import org.apache.ofbiz.entity.util.EntityQuery;
 import org.apache.ofbiz.entity.util.EntityUtil;
 import org.apache.ofbiz.product.category.CategoryWorker;
 import org.apache.ofbiz.product.store.ProductStoreWorker;
+import org.apache.ofbiz.webapp.website.WebSiteWorker;
 
 /**
  * CatalogWorker - Worker class for catalog related functionality
@@ -68,7 +68,7 @@ public final class CatalogWorker {
     }
 
     public static List<String> getAllCatalogIds(ServletRequest request) {
-        List<String> catalogIds = new LinkedList<String>();
+        List<String> catalogIds = new LinkedList<>();
         List<GenericValue> catalogs = null;
         Delegator delegator = (Delegator) request.getAttribute("delegator");
         try {
@@ -194,8 +194,8 @@ public final class CatalogWorker {
     }
 
     public static List<String> getCatalogIdsAvailable(List<GenericValue> partyCatalogs, List<GenericValue> storeCatalogs) {
-        List<String> categoryIds = new LinkedList<String>();
-        List<GenericValue> allCatalogLinks = new LinkedList<GenericValue>();
+        List<String> categoryIds = new LinkedList<>();
+        List<GenericValue> allCatalogLinks = new LinkedList<>();
         if (partyCatalogs != null) allCatalogLinks.addAll(partyCatalogs);
         if (storeCatalogs != null) allCatalogLinks.addAll(storeCatalogs);
 
@@ -386,7 +386,7 @@ public final class CatalogWorker {
     public static Collection<String> getCatalogQuickaddCategories(ServletRequest request, String prodCatalogId) {
         if (UtilValidate.isEmpty(prodCatalogId)) return null;
 
-        Collection<String> categoryIds = new LinkedList<String>();
+        Collection<String> categoryIds = new LinkedList<>();
 
         Collection<GenericValue> prodCatalogCategories = getProdCatalogCategories(request, prodCatalogId, "PCCT_QUICK_ADD");
 

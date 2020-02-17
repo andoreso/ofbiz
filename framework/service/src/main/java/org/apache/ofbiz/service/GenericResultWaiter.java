@@ -42,21 +42,16 @@ public class GenericResultWaiter implements GenericRequester {
     private Map<String, Object> result = null;
     private Throwable t = null;
 
-    /**
-     * @see org.apache.ofbiz.service.GenericRequester#receiveResult(java.util.Map)
-     */
+    @Override
     public synchronized void receiveResult(Map<String, Object> result) {
         this.result = result;
         completed = true;
         status = SERVICE_FINISHED;
         notify();
-        if (Debug.verboseOn())
-            Debug.logVerbose("Received Result (" + completed + ") -- " + result, module);
+        if (Debug.verboseOn()) Debug.logVerbose("Received Result (" + completed + ") -- " + result, module);
     }
 
-    /**
-     * @see org.apache.ofbiz.service.GenericRequester#receiveThrowable(java.lang.Throwable)
-     */
+    @Override
     public synchronized void receiveThrowable(Throwable t) {
         this.t = t;
         completed = true;
@@ -85,8 +80,9 @@ public class GenericResultWaiter implements GenericRequester {
      * @return Exception
      */
     public synchronized Throwable getThrowable() {
-        if (!isCompleted())
+        if (!isCompleted()) {
             throw new java.lang.IllegalStateException("Cannot return exception, synchronous call has not completed.");
+        }
         return this.t;
     }
 
@@ -95,8 +91,9 @@ public class GenericResultWaiter implements GenericRequester {
      * @return Map
      */
     public synchronized Map<String, Object> getResult() {
-        if (!isCompleted())
+        if (!isCompleted()) {
             throw new java.lang.IllegalStateException("Cannot return result, asynchronous call has not completed.");
+        }
         return result;
     }
 

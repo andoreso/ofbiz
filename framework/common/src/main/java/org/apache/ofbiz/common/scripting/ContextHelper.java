@@ -21,8 +21,8 @@ package org.apache.ofbiz.common.scripting;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
-import java.util.Locale;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -41,6 +41,7 @@ import org.apache.ofbiz.entity.GenericValue;
 import org.apache.ofbiz.security.Security;
 import org.apache.ofbiz.service.LocalDispatcher;
 import org.apache.ofbiz.service.ModelService;
+import org.apache.ofbiz.widget.renderer.VisualTheme;
 
 /**
  * A set of <code>ScriptContext</code> convenience methods for scripting engines.
@@ -112,15 +113,15 @@ public final class ContextHelper {
     public List<String> getErrorMessages() {
         List<String> errorMessages = null;
         if (isService()) {
-            errorMessages = UtilGenerics.checkList(getResults().get(ModelService.ERROR_MESSAGE_LIST));
+            errorMessages = UtilGenerics.cast(getResults().get(ModelService.ERROR_MESSAGE_LIST));
             if (errorMessages == null) {
-                errorMessages = new LinkedList<String>();
+                errorMessages = new LinkedList<>();
                 getResults().put(ModelService.ERROR_MESSAGE_LIST, errorMessages);
             }
         } else {
-            errorMessages = UtilGenerics.checkList(getResults().get("_error_message_list_"));
+            errorMessages = UtilGenerics.cast(getResults().get("_error_message_list_"));
             if (errorMessages == null) {
-                errorMessages = new LinkedList<String>();
+                errorMessages = new LinkedList<>();
                 getResults().put("_error_message_list_", errorMessages);
             }
         }
@@ -135,14 +136,18 @@ public final class ContextHelper {
         return (Locale) this.context.getAttribute("locale");
     }
 
+    public VisualTheme getVisualTheme() {
+        return (VisualTheme) this.context.getAttribute("visualTheme");
+    }
+
     public Object getParameter(String key) {
         return getParameters().get(key);
     }
 
     public Map<String, Object> getParameters() {
-        Map<String, Object> parameters = UtilGenerics.checkMap(this.context.getAttribute(ScriptUtil.PARAMETERS_KEY));
+        Map<String, Object> parameters = UtilGenerics.cast(this.context.getAttribute(ScriptUtil.PARAMETERS_KEY));
         if (parameters == null) {
-            parameters =  new LinkedHashMap<String, Object>();
+            parameters =  new LinkedHashMap<>();
             this.context.setAttribute(ScriptUtil.PARAMETERS_KEY, parameters, ScriptContext.ENGINE_SCOPE);
         }
         return parameters;
@@ -161,9 +166,9 @@ public final class ContextHelper {
     }
 
     public Map<String, Object> getResults() {
-        Map<String, Object> results = UtilGenerics.checkMap(this.context.getAttribute(ScriptUtil.RESULT_KEY));
+        Map<String, Object> results = UtilGenerics.cast(this.context.getAttribute(ScriptUtil.RESULT_KEY));
         if (results == null) {
-            results =  new LinkedHashMap<String, Object>();
+            results =  new LinkedHashMap<>();
             this.context.setAttribute(ScriptUtil.RESULT_KEY, results, ScriptContext.ENGINE_SCOPE);
         }
         return results;

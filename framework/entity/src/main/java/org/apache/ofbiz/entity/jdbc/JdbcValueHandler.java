@@ -31,6 +31,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import javax.sql.rowset.serial.SerialBlob;
@@ -53,7 +54,7 @@ public abstract class JdbcValueHandler<T> {
         for the specified Java type. The JdbcValueHandler instances are
         initialized with the SQL type recommended by Sun/Oracle.
          */
-        Map<String, JdbcValueHandler<?>> result = new HashMap<String, JdbcValueHandler<?>>();
+        Map<String, JdbcValueHandler<?>> result = new HashMap<>();
         // JDBC 1
         result.put("Array", new ArrayJdbcValueHandler(Types.ARRAY));
         result.put("java.sql.Array", new ArrayJdbcValueHandler(Types.ARRAY));
@@ -101,7 +102,7 @@ public abstract class JdbcValueHandler<T> {
         method must be called with the correct type, or an
         exception will be thrown.
          */
-        Map<String, Integer> result = new HashMap<String, Integer>();
+        Map<String, Integer> result = new HashMap<>();
         // SQL 2003 Data Types
         result.put("ARRAY", Types.ARRAY);
         result.put("BIGINT", Types.BIGINT);
@@ -181,8 +182,8 @@ public abstract class JdbcValueHandler<T> {
     }
 
     protected static String parseSqlType(String sqlType) {
-        String result = sqlType.toUpperCase();
-        int pos = result.indexOf("(");
+        String result = sqlType.toUpperCase(Locale.getDefault());
+        int pos = result.indexOf('(');
         if (pos != -1) {
             result = result.substring(0, pos);
         }
@@ -191,19 +192,11 @@ public abstract class JdbcValueHandler<T> {
 
     protected static byte[] serializeObject(Object obj) throws SQLException {
         ByteArrayOutputStream os = new ByteArrayOutputStream();
-        ObjectOutputStream oos = null;
         try {
-            oos = new ObjectOutputStream(os);
+            ObjectOutputStream oos = new ObjectOutputStream(os);
             oos.writeObject(obj);
-            os.close();
         } catch (IOException e) {
             throw new SQLException(e);
-        } finally {
-            if (oos != null) {
-                try {
-                    oos.close();
-                } catch (IOException e) {}
-            }
         }
         return os.toByteArray();
     }
@@ -380,7 +373,7 @@ public abstract class JdbcValueHandler<T> {
         @Override
         public Boolean getValue(ResultSet rs, int columnIndex) throws SQLException {
             boolean value = rs.getBoolean(columnIndex);
-            return rs.wasNull() ? null : Boolean.valueOf(value);
+            return rs.wasNull() ? null : value;
         }
         @Override
         protected JdbcValueHandler<Boolean> newInstance(int sqlType) {
@@ -435,7 +428,9 @@ public abstract class JdbcValueHandler<T> {
                 Debug.logWarning("Clob java-type used for java.lang.String. Use java.lang.String java-type instead.", module);
                 ps.setString(parameterIndex, str);
                 return;
-            } catch (ClassCastException e) {}
+            } catch (ClassCastException e) {
+                Debug.logInfo(e.getMessage(), module);
+            }
             ps.setClob(parameterIndex, (java.sql.Clob) obj);
             return;
         }
@@ -445,9 +440,8 @@ public abstract class JdbcValueHandler<T> {
             if (clob == null || clob.length() == 0) {
                 return null;
             }
-            Reader clobReader = null;
-            try {
-                clobReader = clob.getCharacterStream();
+            try (Reader clobReader = clob.getCharacterStream()) {
+                
                 int clobLength = (int) clob.length();
                 char[] charBuffer = new char[clobLength];
                 int offset = 0;
@@ -462,13 +456,6 @@ public abstract class JdbcValueHandler<T> {
                 return new String(charBuffer);
             } catch (IOException e) {
                 throw new SQLException(e);
-            }
-            finally {
-                if (clobReader != null) {
-                    try {
-                        clobReader.close();
-                    } catch (IOException e) {}
-                }
             }
         }
         @Override
@@ -520,7 +507,7 @@ public abstract class JdbcValueHandler<T> {
         @Override
         public Double getValue(ResultSet rs, int columnIndex) throws SQLException {
             double value = rs.getDouble(columnIndex);
-            return rs.wasNull() ? null : Double.valueOf(value);
+            return rs.wasNull() ? null : value;
         }
         @Override
         protected JdbcValueHandler<Double> newInstance(int sqlType) {
@@ -546,7 +533,7 @@ public abstract class JdbcValueHandler<T> {
         @Override
         public Float getValue(ResultSet rs, int columnIndex) throws SQLException {
             float value = rs.getFloat(columnIndex);
-            return rs.wasNull() ? null : Float.valueOf(value);
+            return rs.wasNull() ? null : value;
         }
         @Override
         protected JdbcValueHandler<Float> newInstance(int sqlType) {
@@ -572,7 +559,7 @@ public abstract class JdbcValueHandler<T> {
         @Override
         public Integer getValue(ResultSet rs, int columnIndex) throws SQLException {
             int value = rs.getInt(columnIndex);
-            return rs.wasNull() ? null : Integer.valueOf(value);
+            return rs.wasNull() ? null : value;
         }
         @Override
         protected JdbcValueHandler<Integer> newInstance(int sqlType) {
@@ -598,7 +585,7 @@ public abstract class JdbcValueHandler<T> {
         @Override
         public Long getValue(ResultSet rs, int columnIndex) throws SQLException {
             long value = rs.getLong(columnIndex);
-            return rs.wasNull() ? null : Long.valueOf(value);
+            return rs.wasNull() ? null : value;
         }
         @Override
         protected JdbcValueHandler<Long> newInstance(int sqlType) {
@@ -624,9 +611,8 @@ public abstract class JdbcValueHandler<T> {
         @Override
         public Object getValue(ResultSet rs, int columnIndex) throws SQLException {
             ObjectInputStream in = null;
-            InputStream bis = null;
-            try {
-                bis = rs.getBinaryStream(columnIndex);
+            try (InputStream bis = rs.getBinaryStream(columnIndex)) {
+                
                 if (bis == null) {
                     return null;
                 }
@@ -638,12 +624,9 @@ public abstract class JdbcValueHandler<T> {
                 if (in != null) {
                     try {
                         in.close();
-                    } catch (IOException e) {}
-                }
-                if (bis != null) {
-                    try {
-                        bis.close();
-                    } catch (IOException e) {}
+                    } catch (IOException e) {
+                        Debug.logError(e, module);
+                    }
                 }
             }
         }
@@ -696,7 +679,7 @@ public abstract class JdbcValueHandler<T> {
         @Override
         public Short getValue(ResultSet rs, int columnIndex) throws SQLException {
             short value = rs.getShort(columnIndex);
-            return rs.wasNull() ? null : Short.valueOf(value);
+            return rs.wasNull() ? null : value;
         }
         @Override
         protected JdbcValueHandler<Short> newInstance(int sqlType) {

@@ -37,12 +37,10 @@ public class CatalogUrlSeoFilter extends CatalogUrlFilter {
 
     public final static String module = CatalogUrlSeoFilter.class.getName();
 
-    protected static String defaultLocaleString = null;
-    protected static String redirectUrl = null;
+    protected String defaultLocaleString = null;
+    protected String redirectUrl = null;
 
-    /**
-     * @see javax.servlet.Filter#doFilter(javax.servlet.ServletRequest, javax.servlet.ServletResponse, javax.servlet.FilterChain)
-     */
+    @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
@@ -62,7 +60,7 @@ public class CatalogUrlSeoFilter extends CatalogUrlFilter {
 
         // set the ServletContext in the request for future use
         httpRequest.setAttribute("servletContext", config.getServletContext());
-        if (CatalogUrlSeoTransform.forwardUri(httpRequest, httpResponse, delegator, ControlServlet.controlServlet)) {
+        if (CatalogUrlSeoTransform.forwardUri(httpRequest, httpResponse, delegator, ControlServlet.getControlServlet())) {
             return;
         }
         super.doFilter(httpRequest, httpResponse, chain);

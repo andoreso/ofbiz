@@ -84,7 +84,7 @@ public class GridFactory {
         String cacheKey = webappName + "::" + resourceName + "::" + gridName;
         ModelGrid modelGrid = gridWebappCache.get(cacheKey);
         if (modelGrid == null) {
-            ServletContext servletContext = (ServletContext) request.getAttribute("servletContext");
+            ServletContext servletContext = request.getServletContext();
             Delegator delegator = (Delegator) request.getAttribute("delegator");
             LocalDispatcher dispatcher = (LocalDispatcher) request.getAttribute("dispatcher");
             URL gridFileUrl = servletContext.getResource(resourceName);
@@ -100,7 +100,7 @@ public class GridFactory {
     }
 
     public static Map<String, ModelGrid> readGridDocument(Document gridFileDoc, ModelReader entityModelReader, DispatchContext dispatchContext, String gridLocation) {
-        Map<String, ModelGrid> modelGridMap = new HashMap<String, ModelGrid>();
+        Map<String, ModelGrid> modelGridMap = new HashMap<>();
         if (gridFileDoc != null) {
             // read document and construct ModelGrid for each grid element
             Element rootElement = gridFileDoc.getDocumentElement();

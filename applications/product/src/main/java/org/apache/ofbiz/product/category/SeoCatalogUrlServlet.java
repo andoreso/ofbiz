@@ -23,7 +23,6 @@ import java.util.LinkedList;
 import java.util.List;
 
 import javax.servlet.RequestDispatcher;
-import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -31,10 +30,10 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.ofbiz.base.util.Debug;
 import org.apache.ofbiz.base.util.StringUtil;
-import org.apache.ofbiz.base.util.UtilMisc;
 import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.entity.Delegator;
 import org.apache.ofbiz.entity.GenericEntityException;
+import org.apache.ofbiz.entity.util.EntityQuery;
 
 /**
  * SeoCatalogUrlServlet.java
@@ -49,14 +48,6 @@ public class SeoCatalogUrlServlet extends HttpServlet {
 
     public SeoCatalogUrlServlet() {
         super();
-    }
-
-    /**
-     * @see javax.servlet.http.HttpServlet#init(javax.servlet.ServletConfig)
-     */
-    @Override
-    public void init(ServletConfig config) throws ServletException {
-        super.init(config);
     }
 
     /**
@@ -81,7 +72,7 @@ public class SeoCatalogUrlServlet extends HttpServlet {
         String productId = null;
         try {
             String lastPathElement = pathElements.get(pathElements.size() - 1);
-            if (lastPathElement.startsWith("p_") || delegator.findOne("Product", UtilMisc.toMap("productId", lastPathElement), true) != null) {
+            if (lastPathElement.startsWith("p_") || EntityQuery.use(delegator).from("Product").where("productId", lastPathElement).cache().queryOne() != null) {
                 if (lastPathElement.startsWith("p_")) {
                     productId = lastPathElement.substring(2);
                 } else {
@@ -104,7 +95,7 @@ public class SeoCatalogUrlServlet extends HttpServlet {
         } else if (pathElements.size() > 2) {
             List<String> trail = CategoryWorker.getTrail(request);
             if (trail == null) {
-                trail = new LinkedList<String>();
+                trail = new LinkedList<>();
             }
 
             if (trail.contains(pathElements.get(0))) {
@@ -139,18 +130,11 @@ public class SeoCatalogUrlServlet extends HttpServlet {
             request.setAttribute("productId", productId);
         }
 
-        RequestDispatcher rd = request.getRequestDispatcher("/" + (UtilValidate.isEmpty(SeoControlServlet.controlServlet) ? "" : (SeoControlServlet.controlServlet + "/"))
+        RequestDispatcher rd = request.getRequestDispatcher("/" + (UtilValidate.isEmpty(SeoControlServlet.getControlServlet()) ? "" : (SeoControlServlet.getControlServlet() + "/"))
                 + (productId != null ? PRODUCT_REQUEST : CATEGORY_REQUEST));
         rd.forward(request, response);
     }
 
-    /**
-     * @see javax.servlet.http.HttpServlet#destroy()
-     */
-    @Override
-    public void destroy() {
-        super.destroy();
-    }
 
     public static String makeCatalogUrl(HttpServletRequest request, String productId, String currentCategoryId, String previousCategoryId) {
         StringBuilder urlBuilder = new StringBuilder();

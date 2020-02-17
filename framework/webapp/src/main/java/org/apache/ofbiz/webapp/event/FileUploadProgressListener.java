@@ -18,9 +18,9 @@
  *******************************************************************************/
 package org.apache.ofbiz.webapp.event;
 
-import org.apache.commons.fileupload.ProgressListener;
-
 import java.io.Serializable;
+
+import org.apache.commons.fileupload.ProgressListener;
 
 /**
  * FileUploadProgressListener - Commons FileUpload progress listener
@@ -35,6 +35,7 @@ public class FileUploadProgressListener implements ProgressListener, Serializabl
     protected int items = -1;
     protected boolean hasStarted = false;
 
+    @Override
     public void update(long bytesRead, long contentLength, int items) {
         this.contentLength = contentLength;
         this.bytesRead = bytesRead;

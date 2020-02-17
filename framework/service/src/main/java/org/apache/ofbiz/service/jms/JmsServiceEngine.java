@@ -18,6 +18,7 @@
  *******************************************************************************/
 package org.apache.ofbiz.service.jms;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -50,6 +51,7 @@ import org.apache.ofbiz.base.util.GeneralException;
 import org.apache.ofbiz.base.util.JNDIContextFactory;
 import org.apache.ofbiz.base.util.UtilValidate;
 import org.apache.ofbiz.base.util.UtilXml;
+import org.apache.ofbiz.entity.serialize.SerializeException;
 import org.apache.ofbiz.entity.transaction.GenericTransactionException;
 import org.apache.ofbiz.entity.transaction.TransactionUtil;
 import org.apache.ofbiz.service.GenericRequester;
@@ -94,7 +96,7 @@ public class JmsServiceEngine extends AbstractEngine {
         try {
             if (Debug.verboseOn()) Debug.logVerbose("Serializing Context --> " + context, module);
             xmlContext = JmsSerializer.serialize(context);
-        } catch (Exception e) {
+        } catch (SerializeException | IOException e) {
             throw new GenericServiceException("Cannot serialize context.", e);
         }
         MapMessage message = session.createMapMessage();
@@ -108,9 +110,9 @@ public class JmsServiceEngine extends AbstractEngine {
         String sendMode = serviceElement.getAttribute("send-mode");
         List<? extends Element> serverList = UtilXml.childElementList(serviceElement, "server");
 
-        if (sendMode.equals("none")) {
-            return new ArrayList<Element>();
-        } else if (sendMode.equals("all")) {
+        if ("none".equals(sendMode)) {
+            return new ArrayList<>();
+        } else if ("all".equals(sendMode)) {
             return serverList;
         } else {
             throw new GenericServiceException("Requested send mode not supported.");
@@ -266,7 +268,7 @@ public class JmsServiceEngine extends AbstractEngine {
         try {
             con = factory.createXAQueueConnection(userName, password);
 
-            if (clientId != null && clientId.length() > 1)
+            if (clientId.length() > 1)
                 con.setClientID(userName);
             con.start();
 
@@ -309,12 +311,12 @@ public class JmsServiceEngine extends AbstractEngine {
         JmsService serviceElement = getServiceElement(modelService);
         List<Server> serverList = serviceElement.getServers();
 
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         for (Server server: serverList) {
             String serverType = server.getType();
-            if (serverType.equals("topic"))
+            if ("topic".equals(serverType))
                 result.putAll(runTopic(modelService, context, server));
-            else if (serverType.equals("queue"))
+            else if ("queue".equals(serverType))
                 result.putAll(runQueue(modelService, context, server));
             else
                 throw new GenericServiceException("Illegal server messaging type.");
@@ -322,32 +324,24 @@ public class JmsServiceEngine extends AbstractEngine {
         return result;
     }
 
-    /**
-     * @see org.apache.ofbiz.service.engine.GenericEngine#runSync(java.lang.String, org.apache.ofbiz.service.ModelService, java.util.Map)
-     */
+    @Override
     public Map<String, Object> runSync(String localName, ModelService modelService, Map<String, Object> context) throws GenericServiceException {
         return run(modelService, context);
     }
 
-    /**
-     * @see org.apache.ofbiz.service.engine.GenericEngine#runSyncIgnore(java.lang.String, org.apache.ofbiz.service.ModelService, java.util.Map)
-     */
+    @Override
     public void runSyncIgnore(String localName, ModelService modelService, Map<String, Object> context) throws GenericServiceException {
         run(modelService, context);
     }
 
-    /**
-     * @see org.apache.ofbiz.service.engine.GenericEngine#runAsync(java.lang.String, org.apache.ofbiz.service.ModelService, java.util.Map, org.apache.ofbiz.service.GenericRequester, boolean)
-     */
+    @Override
     public void runAsync(String localName, ModelService modelService, Map<String, Object> context, GenericRequester requester, boolean persist) throws GenericServiceException {
         Map<String, Object> result = run(modelService, context);
 
         requester.receiveResult(result);
     }
 
-    /**
-     * @see org.apache.ofbiz.service.engine.GenericEngine#runAsync(java.lang.String, org.apache.ofbiz.service.ModelService, java.util.Map, boolean)
-     */
+    @Override
     public void runAsync(String localName, ModelService modelService, Map<String, Object> context, boolean persist) throws GenericServiceException {
         run(modelService, context);
     }

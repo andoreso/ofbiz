@@ -19,19 +19,17 @@
 package org.apache.ofbiz.base.util;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Set;
 
 import javax.script.Bindings;
@@ -48,6 +46,8 @@ import javax.script.SimpleScriptContext;
 
 import org.apache.ofbiz.base.location.FlexibleLocation;
 import org.apache.ofbiz.base.util.cache.UtilCache;
+import org.apache.ofbiz.base.util.ScriptHelper;
+import org.apache.ofbiz.common.scripting.ScriptHelperImpl;
 import org.codehaus.groovy.runtime.InvokerHelper;
 
 /**
@@ -71,12 +71,11 @@ public final class ScriptUtil {
     public static final String SCRIPT_HELPER_KEY = "ofbiz";
     private static final UtilCache<String, CompiledScript> parsedScripts = UtilCache.createUtilCache("script.ParsedScripts", 0, 0, false);
     private static final Object[] EMPTY_ARGS = {};
-    private static ScriptHelperFactory helperFactory = null;
     /** A set of script names - derived from the JSR-223 scripting engines. */
     public static final Set<String> SCRIPT_NAMES;
 
     static {
-        Set<String> writableScriptNames = new HashSet<String>();
+        Set<String> writableScriptNames = new HashSet<>();
         ScriptEngineManager manager = new ScriptEngineManager();
         List<ScriptEngineFactory> engines = manager.getEngineFactories();
         if (engines.isEmpty()) {
@@ -105,20 +104,11 @@ public final class ScriptUtil {
             }
         }
         SCRIPT_NAMES = Collections.unmodifiableSet(writableScriptNames);
-        Iterator<ScriptHelperFactory> iter = ServiceLoader.load(ScriptHelperFactory.class).iterator();
-        if (iter.hasNext()) {
-            helperFactory = iter.next();
-            if (Debug.verboseOn()) {
-                Debug.logVerbose("ScriptHelper factory set to " + helperFactory.getClass().getName(), module);
-            }
-        } else {
-            Debug.logWarning("ScriptHelper factory not found", module);
-        }
     }
 
     /**
      * Returns a compiled script.
-     * 
+     *
      * @param filePath Script path and file name.
      * @return The compiled script, or <code>null</code> if the script engine does not support compilation.
      * @throws IllegalArgumentException
@@ -137,7 +127,7 @@ public final class ScriptUtil {
             try {
                 Compilable compilableEngine = (Compilable) engine;
                 URL scriptUrl = FlexibleLocation.resolveLocation(filePath);
-                BufferedReader reader = new BufferedReader(new InputStreamReader(scriptUrl.openStream()));
+                BufferedReader reader = new BufferedReader(new InputStreamReader(scriptUrl.openStream(), StandardCharsets.UTF_8));
                 script = compilableEngine.compile(reader);
                 if (Debug.verboseOn()) {
                     Debug.logVerbose("Compiled script " + filePath + " using engine " + engine.getClass().getName(), module);
@@ -156,7 +146,7 @@ public final class ScriptUtil {
 
     /**
      * Returns a compiled script.
-     * 
+     *
      * @param language
      * @param script
      * @return The compiled script, or <code>null</code> if the script engine does not support compilation.
@@ -196,20 +186,18 @@ public final class ScriptUtil {
      * <p>If a <code>CompiledScript</code> instance is to be shared by multiple threads, then
      * each thread must create its own <code>ScriptContext</code> and pass it to the
      * <code>CompiledScript</code> eval method.</p>
-     * 
+     *
      * @param context
      * @return
      */
     public static ScriptContext createScriptContext(Map<String, Object> context) {
         Assert.notNull("context", context);
-        Map<String, Object> localContext = new HashMap<String, Object>(context);
+        Map<String, Object> localContext = new HashMap<>(context);
         localContext.put(WIDGET_CONTEXT_KEY, context);
         localContext.put("context", context);
         ScriptContext scriptContext = new SimpleScriptContext();
-        ScriptHelper helper = createScriptHelper(scriptContext);
-        if (helper != null) {
-            localContext.put(SCRIPT_HELPER_KEY, helper);
-        }
+        ScriptHelper helper = new ScriptHelperImpl(scriptContext);
+        localContext.put(SCRIPT_HELPER_KEY, helper);
         Bindings bindings = new SimpleBindings(localContext);
         scriptContext.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
         return scriptContext;
@@ -220,36 +208,26 @@ public final class ScriptUtil {
      * <p>If a <code>CompiledScript</code> instance is to be shared by multiple threads, then
      * each thread must create its own <code>ScriptContext</code> and pass it to the
      * <code>CompiledScript</code> eval method.</p>
-     * 
+     *
      * @param context
      * @param protectedKeys
      * @return
      */
     public static ScriptContext createScriptContext(Map<String, Object> context, Set<String> protectedKeys) {
         Assert.notNull("context", context, "protectedKeys", protectedKeys);
-        Map<String, Object> localContext = new HashMap<String, Object>(context);
+        Map<String, Object> localContext = new HashMap<>(context);
         localContext.put(WIDGET_CONTEXT_KEY, context);
         localContext.put("context", context);
         ScriptContext scriptContext = new SimpleScriptContext();
         Bindings bindings = new ProtectedBindings(localContext, Collections.unmodifiableSet(protectedKeys));
         scriptContext.setBindings(bindings, ScriptContext.ENGINE_SCOPE);
-        ScriptHelper helper = createScriptHelper(scriptContext);
-        if (helper != null) {
-            localContext.put(SCRIPT_HELPER_KEY, helper);
-        }
+        localContext.put(SCRIPT_HELPER_KEY, new ScriptHelperImpl(scriptContext));
         return scriptContext;
     }
 
-    public static ScriptHelper createScriptHelper(ScriptContext context) {
-        if (helperFactory != null) {
-            return helperFactory.getInstance(context);
-        }
-        return null;
-    }
-
-     /**
+    /**
      * Executes a script <code>String</code> and returns the result.
-     * 
+     *
      * @param language
      * @param script
      * @param scriptClass
@@ -286,7 +264,7 @@ public final class ScriptUtil {
 
     /**
      * Executes a compiled script and returns the result.
-     * 
+     *
      * @param script Compiled script.
      * @param functionName Optional function or method to invoke.
      * @param scriptContext Script execution context.
@@ -313,7 +291,7 @@ public final class ScriptUtil {
 
     /**
      * Executes the script at the specified location and returns the result.
-     * 
+     *
      * @param filePath Script path and file name.
      * @param functionName Optional function or method to invoke.
      * @param context Script execution context.
@@ -326,7 +304,7 @@ public final class ScriptUtil {
 
     /**
      * Executes the script at the specified location and returns the result.
-     * 
+     *
      * @param filePath Script path and file name.
      * @param functionName Optional function or method to invoke.
      * @param context Script execution context.
@@ -351,7 +329,7 @@ public final class ScriptUtil {
 
     /**
      * Executes the script at the specified location and returns the result.
-     * 
+     *
      * @param filePath Script path and file name.
      * @param functionName Optional function or method to invoke.
      * @param scriptContext Script execution context.
@@ -370,7 +348,7 @@ public final class ScriptUtil {
             // The test for null can be removed when the engine is fixed.
             CompiledScript script = compileScriptFile(filePath);
             if (script != null) {
-                return executeScript(script, functionName, scriptContext, args);
+                return executeScript(script, null, scriptContext, args);
             }
         }
         String fileExtension = getFileExtension(filePath);
@@ -384,17 +362,20 @@ public final class ScriptUtil {
         }
         engine.setContext(scriptContext);
         URL scriptUrl = FlexibleLocation.resolveLocation(filePath);
-        FileReader reader = new FileReader(new File(scriptUrl.getFile()));
-        Object result = engine.eval(reader);
-        if (UtilValidate.isNotEmpty(functionName)) {
-            try {
-                Invocable invocableEngine = (Invocable) engine;
-                result = invocableEngine.invokeFunction(functionName, args == null ? EMPTY_ARGS : args);
-            } catch (ClassCastException e) {
-                throw new ScriptException("Script engine " + engine.getClass().getName() + " does not support function/method invocations");
+        try (
+                InputStreamReader reader = new InputStreamReader(new FileInputStream(scriptUrl.getFile()), StandardCharsets.UTF_8);) {
+            Object result = engine.eval(reader);
+            if (UtilValidate.isNotEmpty(functionName)) {
+                try {
+                    Invocable invocableEngine = (Invocable) engine;
+                    result = invocableEngine.invokeFunction(functionName, args == null ? EMPTY_ARGS : args);
+                } catch (ClassCastException e) {
+                    throw new ScriptException("Script engine " + engine.getClass().getName()
+                            + " does not support function/method invocations");
+                }
             }
+            return result;
         }
-        return result;
     }
 
     private static String getFileExtension(String filePath) {
@@ -427,6 +408,7 @@ public final class ScriptUtil {
             this.bindings = bindings;
             this.protectedKeys = protectedKeys;
         }
+        @Override
         public void clear() {
             for (String key : bindings.keySet()) {
                 if (!protectedKeys.contains(key)) {
@@ -434,12 +416,15 @@ public final class ScriptUtil {
                 }
             }
         }
+        @Override
         public boolean containsKey(Object key) {
             return bindings.containsKey(key);
         }
+        @Override
         public boolean containsValue(Object value) {
             return bindings.containsValue(value);
         }
+        @Override
         public Set<java.util.Map.Entry<String, Object>> entrySet() {
             return bindings.entrySet();
         }
@@ -447,6 +432,7 @@ public final class ScriptUtil {
         public boolean equals(Object o) {
             return bindings.equals(o);
         }
+        @Override
         public Object get(Object key) {
             return bindings.get(key);
         }
@@ -454,12 +440,15 @@ public final class ScriptUtil {
         public int hashCode() {
             return bindings.hashCode();
         }
+        @Override
         public boolean isEmpty() {
             return bindings.isEmpty();
         }
+        @Override
         public Set<String> keySet() {
             return bindings.keySet();
         }
+        @Override
         public Object put(String key, Object value) {
             Assert.notNull("key", key);
             if (protectedKeys.contains(key)) {
@@ -469,6 +458,7 @@ public final class ScriptUtil {
             }
             return bindings.put(key, value);
         }
+        @Override
         public void putAll(Map<? extends String, ? extends Object> map) {
             for (Map.Entry<? extends String, ? extends Object> entry : map.entrySet()) {
                 Assert.notNull("key", entry.getKey());
@@ -477,6 +467,7 @@ public final class ScriptUtil {
                 }
             }
         }
+        @Override
         public Object remove(Object key) {
             if (protectedKeys.contains(key)) {
                 UnsupportedOperationException e = new UnsupportedOperationException("Variable " + key + " is read-only");
@@ -485,9 +476,11 @@ public final class ScriptUtil {
             }
             return bindings.remove(key);
         }
+        @Override
         public int size() {
             return bindings.size();
         }
+        @Override
         public Collection<Object> values() {
             return bindings.values();
         }
